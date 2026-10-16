@@ -15,8 +15,7 @@ from compliance_rag.retrieval.types import ChunkRecord, Principal
 from compliance_rag.retrieval.vector.base import VectorStore
 from compliance_rag.retrieval.vector.pgvector import PgVectorStore
 from compliance_rag.retrieval.vector.qdrant import QdrantStore
-
-from .conftest import Database
+from tests.fixtures_services import Database
 
 pytestmark = pytest.mark.integration
 DIM = 384

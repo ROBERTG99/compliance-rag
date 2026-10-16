@@ -16,6 +16,8 @@ from typing import Any
 
 import pytest
 
+pytest_plugins = ["tests.fixtures_services"]
+
 os.environ.setdefault("DEMO_MODE", "offline")
 os.environ.setdefault("CRAG_LLM_PROVIDER", "fake")
 for _key in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "COHERE_API_KEY"):

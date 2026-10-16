@@ -15,8 +15,6 @@ from dataclasses import dataclass
 import psycopg
 import pytest
 
-pytestmark = pytest.mark.integration
-
 PG_IMAGE = "pgvector/pgvector:pg16"
 REDIS_IMAGE = "redis:7-alpine"
 OPENSEARCH_IMAGE = "opensearchproject/opensearch:2.19.1"
@@ -191,3 +189,44 @@ async def aconn(migrated_db: Database) -> AsyncIterator[psycopg.AsyncConnection]
         yield conn
     finally:
         await conn.close()
+
+
+@pytest.fixture(scope="session")
+def lsa_embedder():  # type: ignore[no-untyped-def]
+    from compliance_rag.embed.lsa import LocalLSAEmbedder
+    from data.generator.corpus import SEED, build_corpus
+
+    texts = [
+        a.heading + "\n" + "\n".join(a.paragraphs)
+        for p in build_corpus(SEED)[:80]
+        for a in p.current.articles
+    ]
+    return LocalLSAEmbedder(dim=384, seed=2026).fit(texts)
+
+
+@pytest.fixture
+async def ingest_deps(
+    migrated_db: Database, s3_config: S3Config, opensearch_url: str, os_index: str, lsa_embedder
+):  # type: ignore[no-untyped-def]
+    from compliance_rag.db.pool import create_pool
+    from compliance_rag.ingest.objectstore import S3ObjectStore
+    from compliance_rag.ingest.pipeline import IngestDeps
+    from compliance_rag.retrieval.bm25 import BM25Index
+
+    pool = await create_pool(migrated_db.url, min_size=1, max_size=6)
+    objects = S3ObjectStore(
+        s3_config.endpoint_url,
+        s3_config.access_key,
+        s3_config.secret_key,
+        bucket=f"crag-test-{uuid.uuid4().hex[:8]}",
+    )
+    await objects.ensure_bucket()
+    bm25 = BM25Index(opensearch_url, index=os_index, alias=f"{os_index}-alias")
+    await bm25.init()
+    deps = IngestDeps(pool=pool, objects=objects, bm25=bm25, embedder=lsa_embedder)
+    try:
+        yield deps
+    finally:
+        await bm25.drop()
+        await bm25.close()
+        await pool.close()

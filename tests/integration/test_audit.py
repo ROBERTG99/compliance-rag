@@ -8,8 +8,7 @@ from typer.testing import CliRunner
 
 from compliance_rag.cli import app
 from compliance_rag.db.audit import append_audit, verify_chain
-
-from .conftest import Database
+from tests.fixtures_services import Database
 
 pytestmark = pytest.mark.integration
 

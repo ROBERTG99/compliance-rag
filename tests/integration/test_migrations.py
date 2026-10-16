@@ -6,8 +6,7 @@ import psycopg
 import pytest
 
 from compliance_rag.db.migrate import downgrade, upgrade
-
-from .conftest import Database
+from tests.fixtures_services import Database
 
 pytestmark = pytest.mark.integration
 
