@@ -12,6 +12,8 @@ from compliance_rag.settings import get_settings
 app = typer.Typer(help="compliance-rag operations CLI", no_args_is_help=True)
 audit_app = typer.Typer(help="Audit log commands", no_args_is_help=True)
 app.add_typer(audit_app, name="audit")
+corpus_app = typer.Typer(help="Synthetic corpus commands", no_args_is_help=True)
+app.add_typer(corpus_app, name="corpus")
 
 
 @app.command()
@@ -39,6 +41,24 @@ def audit_verify(database_url: str = typer.Option(None, help="Override CRAG_DATA
             raise typer.Exit(1)
 
     asyncio.run(_run())
+
+
+@corpus_app.command("generate")
+def corpus_generate(
+    out: str = typer.Option("data/generated/corpus.v1", help="Output directory"),
+    seed: int = typer.Option(2026, help="Generator seed"),
+    render: bool = typer.Option(True, help="Render source files (md/html/docx/pdf)"),
+) -> None:
+    """Generate the seeded corpus, rendered sources and manifest."""
+    from pathlib import Path
+
+    from data.generator.build import write_corpus
+
+    manifest = write_corpus(Path(out), seed=seed, render=render)
+    typer.echo(
+        f"{manifest['n_policies']} policies, {manifest['n_versions']} versions, "
+        f"manifest {manifest['manifest_sha256'][:16]}"
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover
