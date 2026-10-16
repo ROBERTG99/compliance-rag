@@ -35,7 +35,7 @@ chore: configure commit attribution
 | T-13 | M1 | Renderers and injection documents (FR-1, FR-13) | done | `uv run pytest tests/unit/data` → 11 passed (4 formats parse back with facts, byte-stable, 30 unique canaries); `crag corpus generate` twice → manifest b982aaa7999afe26 both runs, 17 s |
 | T-14 | M1 | Questions and judge labels | done | `uv run pytest tests/unit/data/test_questions.py` → 5 passed (300 rows: dev 180/test 120, §11 mix; 80 judge labels; committed files equal the generator output) |
 | T-15 | M2 | Loaders and chunker (FR-2) | done | `uv run pytest tests/unit/ingest/test_chunker.py` → 8 passed (4 formats respect article boundaries, Hypothesis offset round-trip 60 examples, long-article split, magic bytes) |
-| T-16 | M2 | Embedders (FR-4) | todo | |
+| T-16 | M2 | Embedders (FR-4) | done | `uv run pytest tests/unit/embed tests/contract/providers` → 8 passed (LSA fit twice max diff < 1e-6, npz round-trip, Titan/OpenAI request+response shapes against fixtures) |
 | T-17 | M2 | Vector stores (FR-5) | todo | |
 | T-18 | M2 | OpenSearch BM25 (FR-6) | todo | |
 | T-19 | M2 | Ingestion worker (FR-3) | todo | |
