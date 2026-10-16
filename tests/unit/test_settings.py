@@ -54,3 +54,9 @@ def test_every_crag_variable_documented() -> None:
         "LOG_LEVEL",
     ):
         assert shared in documented, shared
+
+
+def test_no_stale_variables_in_env_example() -> None:
+    example = (ROOT / ".env.example").read_text()
+    documented = set(re.findall(r"^(CRAG_[A-Z0-9_]+)=", example, flags=re.M))
+    assert documented <= set(Settings.env_names())

@@ -22,6 +22,17 @@ AuditAction = Literal[
 ]
 
 
+def _stringify_floats(value: Any) -> Any:
+    """jsonb does not round-trip every float exactly, so floats are hashed and stored as strings."""
+    if isinstance(value, float):
+        return repr(value)
+    if isinstance(value, dict):
+        return {str(k): _stringify_floats(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_stringify_floats(v) for v in value]
+    return value
+
+
 def canonical_json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
 
@@ -52,7 +63,10 @@ async def append_audit(
     target: str,
     details: dict[str, Any],
 ) -> str:
-    """Append one row inside the caller's transaction (or its own when autocommit)."""
+    """Append one row inside the caller's transaction (or its own when autocommit).
+
+    Callers must use READ COMMITTED (the default): the last hash is read after the advisory lock.
+    """
     async with conn.transaction():
         await conn.execute("SELECT pg_advisory_xact_lock(%s)", (_LOCK_KEY,))
         cur = await conn.execute("SELECT hash FROM audit ORDER BY seq DESC LIMIT 1")
@@ -60,7 +74,7 @@ async def append_audit(
         prev = str(last[0]) if last else GENESIS
         ts = datetime.now(UTC)
         # round-trip details through JSON so the stored jsonb and the hashed value agree
-        normalized = json.loads(canonical_json(details))
+        normalized = json.loads(canonical_json(_stringify_floats(details)))
         digest = row_hash(prev, _row(ts, actor_sub, actor_role, action, target, normalized))
         await conn.execute(
             """INSERT INTO audit (ts, actor_sub, actor_role, action, target, details, prev_hash, hash)

@@ -99,6 +99,7 @@ bench: stack-ready ## Performance tests with budgets
 # ---------------------------------------------------------------- data, AI and evals
 corpus: ## Generate the corpus and questions (seed 2026)
 	$(PY) crag corpus generate
+	$(PY) crag corpus export-datasets
 
 fit-reranker: ## Fit reranker weights on the dev split
 	$(PY) python scripts/fit_reranker.py

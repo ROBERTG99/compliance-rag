@@ -62,3 +62,18 @@ async def test_concurrent_appends_keep_chain(migrated_db: Database) -> None:
     async with await psycopg.AsyncConnection.connect(migrated_db.url) as conn:
         result = await verify_chain(conn)
     assert result.ok and result.rows == 10
+
+
+async def test_truncate_rejected_and_float_details_verify(migrated_db: Database) -> None:
+    async with await psycopg.AsyncConnection.connect(migrated_db.url, autocommit=True) as conn:
+        await append_audit(
+            conn,
+            actor_sub="u",
+            actor_role="analyst",
+            action="ask",
+            target="r",
+            details={"cost": 1.5e16, "ratio": 0.1, "nested": {"x": 2.0}},
+        )
+        assert (await verify_chain(conn)).ok
+        with pytest.raises(psycopg.errors.RaiseException, match="append-only"):
+            await conn.execute("TRUNCATE audit")

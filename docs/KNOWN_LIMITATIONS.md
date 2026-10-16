@@ -1,0 +1,14 @@
+# Known limitations
+
+Gaps that are known and accepted for v0.1.0. Each entry says why and what would fix it.
+
+| Area | Limitation | Why / mitigation |
+|---|---|---|
+| Evals | Dev/test split is stratified by question, not by document: 52 of the 160 gold documents serve both dev and test questions. | `questions.v1.jsonl` is append-only; the reranker uses document-agnostic features and τ is a single scalar, so the leakage surface is small. A `questions.v2.jsonl` split by document is the fix. |
+| Evals | Labels are by construction; no human review yet. | "Maintainer review of 40 questions" is listed in `PROGRESS.md` → Needs the maintainer. |
+| Audit | Removing the newest audit rows (tail truncation by a superuser) is not detectable from the chain alone. | Row and statement triggers block UPDATE/DELETE/TRUNCATE for the app; anchoring the latest hash externally (logs or a WORM store) would close it. |
+| Providers | Titan and OpenAI embedding fixtures are synthetic, following the documented response shapes. | No provider keys in the build environment; `make record-fixtures` re-records them. |
+| Dependencies | `langchain-community` is being sunset upstream; its loaders are kept because FR-2 names them. | Migrate to standalone loader packages when they cover PDF/DOCX/HTML. |
+| Packaging | The corpus generator ships as a top-level `data` package in the wheel. | Only the API image installs it (for `crag seed`); rename to `compliance_rag_data` before publishing a wheel. |
+| Harness | The pre-tool guard cannot see dataset writes made from inside a program (for example `python -c "open(...,'a')"`). | `tests/unit/data/test_questions.py` fails if the committed datasets drift from the generator. |
+| Harness | Claude Code deny rules win over allow rules, so `Read(.env.example)` is blocked by `Read(.env.*)`. | Kept for safety; `.env.example` is readable with shell tools and documented in README. |
