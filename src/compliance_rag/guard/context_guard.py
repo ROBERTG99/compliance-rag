@@ -12,7 +12,9 @@ from dataclasses import dataclass
 
 REMOVE_THRESHOLD = 0.7
 
-_SENTENCE_RE = re.compile(r"[^.!?\n]+(?:[.!?]+|$)", re.M)
+_SENTENCE_RE = re.compile(r"\S(?:[^.!?]|[.!?](?=\S))*(?:[.!?]+|$)")
+_HEADING_LINE = re.compile(r"^[ \t]*(?:#{1,6}[ \t]*\S.*|Article[ \t]+\d+\b.*)$", re.M)
+_BLANK = re.compile(r"\n[ \t]*\n")
 _OVERRIDE = re.compile(
     r"\b(ignore|disregard|forget|override|bypass)\b[^.!?\n]{0,40}\b(previous|prior|above|earlier|all|your|the)\b"
     r"[^.!?\n]{0,30}\b(instructions?|rules?|prompts?|polic(y|ies) text|guidelines|rubric|context|above)\b",
@@ -50,10 +52,42 @@ class GuardResult:
     max_score: float
 
 
+def _regions(text: str) -> list[tuple[int, int, bool]]:
+    """Paragraph regions separated by blank lines; heading lines become their own region."""
+    regions: list[tuple[int, int, bool]] = []
+    cursor = 0
+    for h in _HEADING_LINE.finditer(text):
+        if h.start() > cursor:
+            regions.append((cursor, h.start(), False))
+        regions.append((h.start(), h.end(), True))
+        cursor = h.end()
+    regions.append((cursor, len(text), False))
+    out: list[tuple[int, int, bool]] = []
+    for start, end, heading in regions:
+        if heading:
+            out.append((start, end, True))
+            continue
+        pos = start
+        for blank in _BLANK.finditer(text, start, end):
+            out.append((pos, blank.start(), False))
+            pos = blank.end()
+        out.append((pos, end, False))
+    return [r for r in out if text[r[0] : r[1]].strip()]
+
+
 def split_sentences(text: str) -> list[Sentence]:
-    return [
-        Sentence(m.group(0), m.start(), m.end()) for m in _SENTENCE_RE.finditer(text) if m.group(0).strip()
-    ]
+    """Sentences end at . ! ? (not inside numbers), blank lines or heading lines; a single newline
+    (PDF/DOCX line wrapping) is treated as a space."""
+    out: list[Sentence] = []
+    for start, end, heading in _regions(text):
+        if heading:
+            seg = text[start:end].strip()
+            s0 = start + text[start:end].index(seg)
+            out.append(Sentence(seg, s0, s0 + len(seg)))
+            continue
+        for m in _SENTENCE_RE.finditer(text, start, end):
+            out.append(Sentence(m.group(0), m.start(), m.end()))
+    return out
 
 
 def score_sentence(sentence: str) -> float:

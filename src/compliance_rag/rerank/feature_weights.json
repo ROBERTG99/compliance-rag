@@ -1,11 +1,29 @@
 {
-  "coef": [1.5, 1.0, 5.0, 3.0, 0.2],
-  "dev_ids_sha256": "",
-  "extra": {},
-  "features": ["bm25", "cosine", "term_jaccard", "heading_match", "freshness"],
-  "intercept": -5.0,
-  "n_questions": 0,
-  "n_samples": 0,
-  "notes": "Hand-set starting weights; replaced by `make fit-reranker` (dev split only).",
+  "coef": [
+    7.468121,
+    6.66473,
+    9.077181,
+    4.975031,
+    -1.774604
+  ],
+  "dev_ids_sha256": "652a4f72bc7eb7fe225635fcc8611ff82f2d25c025eaed5203d26bfe73e3be28",
+  "extra": {
+    "C": 1.0,
+    "dev_abstention_accuracy_at_tau": 0.9722,
+    "hard_weight": 1.0,
+    "intercept_shift": -1.4,
+    "tau": 0.35
+  },
+  "features": [
+    "bm25",
+    "cosine",
+    "term_jaccard",
+    "heading_match",
+    "freshness"
+  ],
+  "intercept": -18.032734,
+  "n_questions": 180,
+  "n_samples": 9000,
+  "notes": "Fitted by scripts/fit_reranker.py on the dev split of questions.v1.jsonl.",
   "split": "dev"
 }

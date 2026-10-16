@@ -17,7 +17,8 @@ from typing import Any
 
 import numpy as np
 
-from compliance_rag.rerank.text import content_terms
+from compliance_rag.guard.context_guard import split_sentences
+from compliance_rag.rerank.text import content_terms, entity_terms
 from compliance_rag.retrieval.types import Candidate
 
 FEATURES = ("bm25", "cosine", "term_jaccard", "heading_match", "freshness")
@@ -46,22 +47,37 @@ class FeatureWeights:
 
 
 def extract_features(question: str, candidates: Sequence[Candidate], as_of: date) -> list[list[float]]:
+    """Five features per candidate (all in [0, 1]).
+
+    * ``bm25``: saturating absolute score ``s / (s + 15)`` (comparable across questions, unlike max-normalising);
+    * ``cosine``: embedding similarity;
+    * ``term_jaccard``: best single-sentence share of the question's non-entity content terms (evidence is a
+      sentence, so filler that merely mentions the product does not look relevant);
+    * ``heading_match``: share of the question's named-entity terms (capitalised words, e.g. product names)
+      found in the document title and section heading; 1.0 when the question names no entity;
+    * ``freshness``: ``exp(-age / 2 years)`` of the version at ``as_of``.
+    """
     q_terms = content_terms(question)
-    max_bm25 = max((c.get("bm25") or 0.0 for c in candidates), default=0.0) or 1.0
+    q_entities = entity_terms(question)
+    q_predicate = (q_terms - q_entities) or q_terms
     rows: list[list[float]] = []
     for c in candidates:
-        c_terms = content_terms(c["text"])
-        h_terms = content_terms(f"{c.get('title', '')} {c.get('section_path', '')}")
-        overlap = len(q_terms & c_terms) / len(q_terms) if q_terms else 0.0
-        heading = len(q_terms & h_terms) / len(q_terms) if q_terms else 0.0
+        heading_text = f"{c.get('title', '')} {c.get('section_path', '')}"
+        h_terms = content_terms(heading_text)
+        overlap = 0.0
+        if q_predicate:
+            for sentence in split_sentences(c["text"]):
+                s_terms = content_terms(sentence.text)
+                overlap = max(overlap, len(q_predicate & s_terms) / len(q_predicate))
+        # no named entity in the question → nothing in the heading can contradict it
+        heading = len(q_entities & h_terms) / len(q_entities) if q_entities else 1.0
         try:
             age_days = max(0, (as_of - date.fromisoformat(c["valid_from"])).days)
         except ValueError:
             age_days = 3650
         freshness = math.exp(-age_days / 730)
-        rows.append(
-            [(c.get("bm25") or 0.0) / max_bm25, float(c.get("cosine") or 0.0), overlap, heading, freshness]
-        )
+        bm25 = float(c.get("bm25") or 0.0)
+        rows.append([bm25 / (bm25 + 15.0), float(c.get("cosine") or 0.0), overlap, heading, freshness])
     return rows
 
 
@@ -100,11 +116,15 @@ class FeatureReranker:
         return sorted(out, key=lambda c: (-(c["rerank"] or 0.0), c["chunk_id"]))
 
 
-LabelledFn = Callable[[dict[str, Any]], list[tuple[list[float], int]]]
+LabelledFn = Callable[[dict[str, Any]], list[tuple[list[float], int]] | list[tuple[list[float], int, float]]]
 
 
 def fit_weights(
-    rows: list[dict[str, Any]], labelled: LabelledFn, c: float = 1.0, notes: str = ""
+    rows: list[dict[str, Any]],
+    labelled: LabelledFn,
+    c: float = 1.0,
+    notes: str = "",
+    class_weight: str | None = "balanced",
 ) -> FeatureWeights:
     """Fit on dev rows only; ``labelled(row)`` returns (features, label) pairs for one question."""
     from sklearn.linear_model import LogisticRegression
@@ -114,14 +134,18 @@ def fit_weights(
         raise ValueError("no dev rows: reranker weights are fitted on the dev split only")
     xs: list[list[float]] = []
     ys: list[int] = []
+    ws: list[float] = []
     for row in dev:
-        for features, label in labelled(row):
-            xs.append(features)
-            ys.append(label)
+        for item in labelled(row):
+            xs.append(list(item[0]))
+            ys.append(int(item[1]))
+            ws.append(float(item[2]) if len(item) > 2 else 1.0)
     if len(set(ys)) < 2:
         raise ValueError("need positive and negative examples")
-    model = LogisticRegression(C=c, solver="lbfgs", max_iter=1000, random_state=2026)
-    model.fit(np.asarray(xs, dtype=np.float64), np.asarray(ys))
+    model = LogisticRegression(
+        C=c, solver="lbfgs", max_iter=1000, random_state=2026, class_weight=class_weight
+    )
+    model.fit(np.asarray(xs, dtype=np.float64), np.asarray(ys), sample_weight=np.asarray(ws))
     ids = ",".join(sorted(r["id"] for r in dev))
     return FeatureWeights(
         features=list(FEATURES),

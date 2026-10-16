@@ -71,10 +71,40 @@ _WORD = re.compile(r"[a-z0-9]+(?:[-'][a-z0-9]+)*")
 
 
 def _stem(word: str) -> str:
-    for suffix in ("ies", "es", "s"):
-        if len(word) > 4 and word.endswith(suffix):
-            return word[: -len(suffix)] + ("y" if suffix == "ies" else "")
-    return word
+    """Light suffix stripping so "escalated"/"escalate" and "records"/"record" match."""
+    if len(word) <= 4:
+        return word
+    for suffix, repl in (
+        ("ies", "y"),
+        ("ied", "y"),
+        ("ing", ""),
+        ("ed", ""),
+        ("es", ""),
+        ("s", ""),
+        ("ly", ""),
+    ):
+        if word.endswith(suffix) and len(word) - len(suffix) >= 3:
+            word = word[: -len(suffix)] + repl
+            break
+    return word[:-1] if word.endswith("e") and len(word) > 4 else word
+
+
+# Small compliance lexicon: map paraphrases onto one canonical term after stemming
+# ("must not be older than" ~ "maximum age", "capped at" ~ "cap", "every N months" ~ "how often").
+CANONICAL = {
+    "older": "age",
+    "old": "age",
+    "exceed": "maximum",
+    "max": "maximum",
+    "most": "maximum",
+    "cap": "maximum",
+    "capp": "maximum",
+    "least": "minimum",
+    "min": "minimum",
+    "often": "frequency",
+    "every": "frequency",
+    "frequent": "frequency",
+}
 
 
 def content_terms(text: str) -> set[str]:
@@ -82,5 +112,15 @@ def content_terms(text: str) -> set[str]:
     for word in _WORD.findall(text.lower()):
         for part in word.split("-"):
             if part and part not in STOPWORDS and not part.isdigit():
-                terms.add(_stem(part))
+                stem = _stem(part)
+                terms.add(CANONICAL.get(stem, stem))
     return terms
+
+
+_PROPER = re.compile(r"(?<![.?!]\s)(?<!^)\b[A-Z][a-zA-Z]+(?:[-'][A-Za-z]+)*")
+
+
+def entity_terms(question: str) -> set[str]:
+    """Content terms of capitalised words that are not sentence-initial (product and entity names)."""
+    words = [m.group(0) for m in _PROPER.finditer(question.strip())]
+    return content_terms(" ".join(words))

@@ -45,6 +45,39 @@ def audit_verify(database_url: str = typer.Option(None, help="Override CRAG_DATA
     asyncio.run(_run())
 
 
+@app.command()
+def seed(
+    force: bool = typer.Option(False, help="Re-seed even if the corpus fingerprint is already loaded"),
+    qdrant: bool = typer.Option(False, help="Also index into Qdrant (profile qdrant)"),
+    migrate_first: bool = typer.Option(True, "--migrate/--no-migrate", help="Run migrations first"),
+) -> None:
+    """Load the synthetic corpus (seed 2026): S3 raw files, Postgres, OpenSearch (and Qdrant)."""
+    from compliance_rag.db.migrate import upgrade
+    from compliance_rag.ingest.seed import seed_corpus
+    from compliance_rag.runtime import build_services
+
+    settings = get_settings()
+    if migrate_first:
+        upgrade(settings.psycopg_url)
+
+    async def _run() -> None:
+        services = await build_services(settings, with_qdrant=qdrant or settings.vector_store == "qdrant")
+        try:
+            await services.objects.ensure_bucket()
+            await services.bm25.init()
+            if services.qdrant is not None:
+                await services.qdrant.ensure_collection()
+            report = await seed_corpus(services.ingest_deps(), force=force, log=typer.echo)
+            typer.echo(
+                f"seed {report.status}: {report.documents} documents, {report.versions} versions, "
+                f"{report.chunks} chunks in {report.seconds:.1f}s (fingerprint {report.fingerprint[:12]})"
+            )
+        finally:
+            await services.close()
+
+    asyncio.run(_run())
+
+
 @search_app.command("init")
 def search_init(opensearch_url: str = typer.Option(None, help="Override CRAG_OPENSEARCH_URL")) -> None:
     """Create the BM25 index and alias if missing (idempotent)."""

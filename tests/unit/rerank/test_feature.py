@@ -48,27 +48,35 @@ def cand(
     )
 
 
-def test_features_capture_overlap_and_heading() -> None:
+def test_features_capture_entity_and_sentence_evidence() -> None:
     q = "What is the daily spending limit on the Orion Prepaid Card?"
     good = cand(
         "a",
-        "The daily spending limit on the Orion Prepaid Card is EUR 1,000.",
+        "Staff log decisions. The daily spending limit on the Orion Prepaid Card is EUR 1,000.",
         "Daily Spending Limits Policy — Orion Prepaid Card",
         bm25=12.0,
         cosine=0.8,
     )
-    bad = cand(
+    other_product = cand(
         "b",
         "The daily spending limit on the Vega FX Transfer is EUR 500.",
         "Daily Spending Limits Policy — Vega FX Transfer",
         bm25=10.0,
         cosine=0.7,
     )
-    fg, fb = extract_features(q, [good, bad], AS_OF)
+    filler = cand(
+        "c",
+        "Training on the daily process is mandatory. Staff supporting the spending team log limits.",
+        "Training Policy — Orion Prepaid Card",
+        bm25=8.0,
+        cosine=0.6,
+    )
+    fg, fo, ff = extract_features(q, [good, other_product, filler], AS_OF)
     names = list(FEATURES)
-    assert fg[names.index("term_jaccard")] > fb[names.index("term_jaccard")]
-    assert fg[names.index("heading_match")] > fb[names.index("heading_match")]
-    assert fg[names.index("bm25")] == 1.0
+    heading, jaccard, bm25 = names.index("heading_match"), names.index("term_jaccard"), names.index("bm25")
+    assert fg[heading] == 1.0 and fo[heading] == 0.0  # product name lives in the title
+    assert fg[jaccard] == 1.0 and fg[jaccard] > ff[jaccard]  # evidence is one sentence, not scattered terms
+    assert 0.0 < fg[bm25] < 1.0 and fg[bm25] > fo[bm25]  # saturating absolute BM25
 
 
 def test_fit_reads_dev_split_only() -> None:
