@@ -124,3 +124,21 @@ def test_single_character_mutations_rejected(start: int, pos: int, letter: str) 
     assume(normalize(mutated) not in normalize(TEXT))
     claim = Claim(text="A claim without numbers.", citations=[Citation(chunk_id=CID, quote=mutated)])
     assert verify_citations(answer(claim), ctx()).rejected[0]["reason"] == "quote_not_found"
+
+
+def test_quote_cut_inside_a_number_is_rejected() -> None:
+    chunk = "Article 5 — Controls\n\nThe daily spending limit is EUR 1,000 for each card. A fee of 2.5 percent applies."
+    for quote, claim_text in [
+        ("spending limit is EUR 1", "The daily spending limit is EUR 1."),
+        ("limit is EUR 1,0", "The daily spending limit is EUR 1,0."),
+        ("A fee of 2", "A fee of 2 applies."),
+        ("000 for each card", "000 for each card."),
+    ]:
+        claim = Claim(text=claim_text, citations=[Citation(chunk_id=CID, quote=quote.ljust(12))])
+        result = verify_citations(answer(claim), ctx(text=chunk))
+        assert result.rejected and result.rejected[0]["reason"] == "quote_not_found", quote
+    whole = Claim(
+        text="The limit is EUR 1,000.",
+        citations=[Citation(chunk_id=CID, quote="spending limit is EUR 1,000")],
+    )
+    assert verify_citations(answer(whole), ctx(text=chunk)).claims

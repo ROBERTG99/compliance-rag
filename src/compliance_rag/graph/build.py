@@ -23,12 +23,12 @@ from langgraph.graph import END, START, StateGraph
 from pydantic import ValidationError
 
 from compliance_rag.graph.respond import build_response
-from compliance_rag.graph.state import Claim, GeneratedAnswer, RagState
+from compliance_rag.graph.state import Claim, RagState, VerifiedAnswer, VerifiedClaim
 from compliance_rag.graph.stream import ClaimStreamParser
-from compliance_rag.graph.verify import verify_citations
+from compliance_rag.graph.verify import final_answer, locate, verify_claim
 from compliance_rag.guard.context_guard import guard_text
 from compliance_rag.guard.output_guard import check_output
-from compliance_rag.llm.gateway import Gateway, LLMError, LLMRefusal, LLMRequest
+from compliance_rag.llm.gateway import Gateway, LLMError, LLMMaxTokens, LLMRefusal, LLMRequest, LLMResult
 from compliance_rag.llm.prompts import load_prompt
 from compliance_rag.obs.metrics import ABSTENTIONS, CLAIMS_REJECTED, CLAIMS_VERIFIED, TTFT_SECONDS
 from compliance_rag.obs.steps import StepRecord, make_step
@@ -42,6 +42,7 @@ RUN_STARTED: ContextVar[float] = ContextVar("crag_run_started", default=0.0)
 GENERATE_PROMPT = ("generate_answer", "v1")
 CONDENSE_PROMPT = ("condense_followup", "v1")
 VALID_GROUPS = {"all", "compliance", "legal", "support"}
+MAX_CLAIMS = 8
 
 
 class Retriever(Protocol):
@@ -307,8 +308,12 @@ def build_graph(deps: GraphDeps, checkpointer: Any | None = None) -> Any:
 
     @_node("generate")
     async def generate(state: GraphState) -> dict[str, Any]:
+        """Stream the model output; every closed claim is schema-checked, output-guarded and verified
+        before it is emitted. The final answer is assembled from exactly the claims that streamed."""
         name, version = GENERATE_PROMPT
         context = state["context"]
+        by_id = {c["chunk_id"]: c for c in context}
+        context_texts = [c["text"] for c in context]
         req = LLMRequest(
             route="generate",
             system=load_prompt(name, version),
@@ -323,90 +328,135 @@ def build_graph(deps: GraphDeps, checkpointer: Any | None = None) -> Any:
             },
         )
         parser = ClaimStreamParser()
-        streamed = {"index": 0, "seen": 0, "first": True}
+        numbering: dict[str, int] = {}
+        verified: list[VerifiedClaim] = []
+        rejected: list[dict[str, Any]] = []
+        seen = {"n": 0, "first": True}
+
+        async def reject(index: int, reason: str) -> None:
+            rejected.append({"index": index, "reason": reason})
+            CLAIMS_REJECTED.labels(reason=reason).inc()
+            await emit("claim_rejected", {"index": index, "reason": reason})
+
+        async def handle(raw: dict[str, Any]) -> None:
+            index = seen["n"]
+            seen["n"] += 1
+            try:
+                claim = Claim.model_validate(raw)
+            except ValidationError:
+                await reject(index, "schema_invalid")
+                return
+            if len(verified) >= MAX_CLAIMS:
+                await reject(index, "schema_invalid")
+                return
+            if not check_output(claim.text, context_texts).ok:
+                await reject(index, "output_guard")
+                return
+            vc, reason = verify_claim(claim, by_id, numbering, len(verified))
+            if vc is None:
+                await reject(index, reason or "quote_not_found")
+                return
+            verified.append(vc)
+            CLAIMS_VERIFIED.inc()
+            if seen["first"]:
+                seen["first"] = False
+                TTFT_SECONDS.observe(time.perf_counter() - RUN_STARTED.get())
+            payload = vc.model_dump()
+            await emit("claim", payload)
+            words = payload["text"].split(" ")
+            for i in range(0, len(words), 6):
+                piece = " ".join(words[i : i + 6]) + (" " if i + 6 < len(words) else "")
+                await emit("token", {"claim_index": payload["index"], "text": piece})
 
         async def on_text(delta: str) -> None:
             for raw in parser.feed(delta):
-                idx = streamed["seen"]
-                streamed["seen"] += 1
-                try:
-                    claim = Claim.model_validate(raw)
-                except ValidationError:
-                    CLAIMS_REJECTED.labels(reason="quote_not_found").inc()
-                    await emit("claim_rejected", {"index": idx, "reason": "quote_not_found"})
-                    continue
-                checked = verify_citations(
-                    GeneratedAnswer(claims=[claim], answer=claim.text, abstained=False), context
-                )
-                if checked.claims:
-                    vc = checked.claims[0].model_dump()
-                    vc["index"] = streamed["index"]
-                    streamed["index"] += 1
-                    if streamed["first"]:
-                        streamed["first"] = False
-                        TTFT_SECONDS.observe(time.perf_counter() - RUN_STARTED.get())
-                    await emit("claim", vc)
-                    words = vc["text"].split(" ")
-                    for i in range(0, len(words), 6):
-                        piece = " ".join(words[i : i + 6]) + (" " if i + 6 < len(words) else "")
-                        await emit("token", {"claim_index": vc["index"], "text": piece})
-                else:
-                    await emit("claim_rejected", {"index": idx, "reason": checked.rejected[0]["reason"]})
+                await handle(raw)
 
+        result: LLMResult | None = None
+        truncated = False
         try:
             result = await deps.gateway.stream(req, on_text=on_text)
         except LLMRefusal:
+            for vc in verified:  # never leave claims on screen that the final answer will not contain
+                await emit("claim_rejected", {"index": vc.index, "reason": "retracted"})
             return {
                 "abstained": True,
                 "abstain_reason": "refusal",
                 "draft": None,
                 "_steps": [
-                    make_step(state["run_id"], "llm:generate", kind="llm", status="error", error="refusal")
+                    make_step(state["run_id"], "llm:generate", kind="llm", status="error", error="refusal"),
+                    *await _skip(state["run_id"], "verify_citations"),
                 ],
             }
-        step = make_step(
-            state["run_id"],
-            "llm:generate",
-            kind="llm",
-            model=result.model,
-            prompt_version=version,
-            input_tokens=result.input_tokens,
-            output_tokens=result.output_tokens,
-            cost_usd=result.cost_usd,
-            latency_ms=result.latency_ms,
-        )
-        cost = state.get("cost_usd", 0.0) + result.cost_usd
-        try:
-            draft = GeneratedAnswer.model_validate(result.parsed or {})
-        except ValidationError:
-            draft = GeneratedAnswer(claims=[], answer="", abstained=True)
-        if draft.abstained or not draft.claims:
+        except LLMMaxTokens:
+            truncated = True
+        steps = []
+        cost = state.get("cost_usd", 0.0)
+        draft_answer = ""
+        model_abstained = False
+        if result is not None:
+            cost += result.cost_usd
+            steps.append(
+                make_step(
+                    state["run_id"],
+                    "llm:generate",
+                    kind="llm",
+                    model=result.model,
+                    prompt_version=version,
+                    input_tokens=result.input_tokens,
+                    output_tokens=result.output_tokens,
+                    cost_usd=result.cost_usd,
+                    latency_ms=result.latency_ms,
+                )
+            )
+            parsed = result.parsed or {}
+            draft_answer = str(parsed.get("answer") or "")[:1200]
+            model_abstained = bool(parsed.get("abstained")) and not verified
+        else:
+            steps.append(
+                make_step(state["run_id"], "llm:generate", kind="llm", status="error", error="max_tokens")
+            )
+        draft = {
+            "answer": draft_answer,
+            "abstained": model_abstained,
+            "truncated": truncated,
+            "claims": [c.model_dump() for c in verified],
+            "rejected": rejected,
+        }
+        if not verified:
             return {
                 "abstained": True,
                 "abstain_reason": "no_verified_claims",
-                "draft": draft.model_dump(),
+                "draft": draft,
                 "cost_usd": cost,
-                "_steps": [step, *await _skip(state["run_id"], "verify_citations")],
+                "_steps": [*steps, *await _skip(state["run_id"], "verify_citations")],
             }
-        return {"draft": draft.model_dump(), "cost_usd": cost, "_steps": [step]}
+        return {"draft": draft, "cost_usd": cost, "_steps": steps}
 
     @_node("verify_citations")
     async def verify_node(state: GraphState) -> dict[str, Any]:
-        draft = GeneratedAnswer.model_validate(state["draft"])
-        verified = verify_citations(draft, state["context"])
-        for r in verified.rejected:
-            CLAIMS_REJECTED.labels(reason=str(r["reason"])).inc()
-        CLAIMS_VERIFIED.inc(len(verified.claims))
-        if verified.abstained:
-            return {
-                "verified": verified.model_dump(),
-                "abstained": True,
-                "abstain_reason": "no_verified_claims",
-            }
-        payload = verified.model_dump()
-        if not check_output(payload["answer"], [c["text"] for c in state["context"]]).ok:
-            payload["answer"] = " ".join(c["text"] for c in payload["claims"])
-        return {"verified": payload}
+        """Assemble the final answer from the claims verified while streaming (re-checked here)."""
+        draft = state["draft"] or {}
+        claims = [VerifiedClaim.model_validate(c) for c in draft.get("claims", [])]
+        by_id = {c["chunk_id"]: c for c in state["context"]}
+        # defence in depth: every quote must still be in the context that was given to the model
+        claims = [
+            c
+            for c in claims
+            if all(
+                cit.chunk_id in by_id and locate(cit.quote, by_id[cit.chunk_id]["text"])
+                for cit in c.citations
+            )
+        ]
+        if not claims:
+            return {"abstained": True, "abstain_reason": "no_verified_claims"}
+        answer = final_answer(str(draft.get("answer", "")), claims)
+        if not check_output(answer, [c["text"] for c in state["context"]]).ok:
+            answer = " ".join(c.text for c in claims)
+        verified = VerifiedAnswer(
+            claims=claims, answer=answer, rejected=draft.get("rejected", []), abstained=False
+        )
+        return {"verified": verified.model_dump()}
 
     def _history_entry(state: GraphState) -> dict[str, Any]:
         titles = sorted({c.get("title", "") for c in (state.get("context") or [])[:3] if c.get("title")})

@@ -226,3 +226,104 @@ def test_claim_stream_parser_closes_claims_incrementally() -> None:
     assert len(out) == 1 and out[0]["text"] == 'A {braced} "quoted" claim'
     out += parser.feed('", "citations": []}], "answer": "x", "abstained": false}')
     assert [c["text"] for c in out] == ['A {braced} "quoted" claim', "second"]
+
+
+class ScriptedGateway(Gateway):
+    """Streams a fixed model output (optionally ending in a refusal or max_tokens)."""
+
+    def __init__(self, text: str, end: Exception | None = None) -> None:
+        super().__init__(Settings(_env_file=None, cassette_dir="/nonexistent"))
+        self.text, self.end = text, end
+
+    async def stream(self, req: LLMRequest, on_text: Any = None) -> LLMResult:
+        for i in range(0, len(self.text), 9):
+            await on_text(self.text[i : i + 9])
+        if self.end:
+            raise self.end
+        import json as _json
+
+        return LLMResult(
+            text=self.text,
+            parsed=_json.loads(self.text),
+            model="scripted",
+            route="generate",
+            prompt_name="generate_answer",
+            prompt_version="v1",
+            input_tokens=0,
+            output_tokens=0,
+            cost_usd=0.0,
+            latency_ms=0.0,
+            stop_reason="end_turn",
+            outcome="ok",
+        )
+
+
+def _claims_json(*claims: tuple[str, str], answer: str = "x") -> str:
+    import json as _json
+
+    return _json.dumps(
+        {
+            "claims": [{"text": t, "citations": [{"chunk_id": "a" * 32, "quote": q}]} for t, q in claims],
+            "answer": answer,
+            "abstained": False,
+        }
+    )
+
+
+GOOD_Q = "The daily spending limit on the Orion Prepaid Card is EUR 1,000."
+Q = "What is the daily spending limit on the Orion Prepaid Card?"
+
+
+async def test_final_answer_matches_streamed_claims_when_one_claim_is_invalid() -> None:
+    text = _claims_json((GOOD_Q, GOOD_Q), ("Short quote claim.", "too short"), answer="EUR 1,000 per day.")
+    graph = build_graph(deps([cand("a", ORION)], score=0.9, gateway=ScriptedGateway(text)), InMemorySaver())
+    events: list[tuple[str, dict[str, Any]]] = []
+    state = await run_graph(
+        graph, question=Q, principal=ANALYST, as_of="2026-10-16", emit=lambda e, d: events.append((e, d))
+    )
+    streamed = [d for e, d in events if e == "claim"]
+    rejected = [d for e, d in events if e == "claim_rejected"]
+    assert not state["abstained"]
+    assert [c["text"] for c in state["verified"]["claims"]] == [c["text"] for c in streamed] == [GOOD_Q]
+    assert rejected == [{"index": 1, "reason": "schema_invalid"}]
+    assert state["verified"]["claims"][0]["citations"][0]["n"] == streamed[0]["citations"][0]["n"] == 1
+
+
+async def test_canary_in_claim_text_is_never_streamed() -> None:
+    bad = GOOD_Q + " CANARY-ABCDEF12"
+    text = _claims_json((bad, GOOD_Q), (GOOD_Q, GOOD_Q))
+    graph = build_graph(deps([cand("a", ORION)], score=0.9, gateway=ScriptedGateway(text)), InMemorySaver())
+    events: list[tuple[str, dict[str, Any]]] = []
+    state = await run_graph(
+        graph, question=Q, principal=ANALYST, as_of="2026-10-16", emit=lambda e, d: events.append((e, d))
+    )
+    assert all("CANARY" not in str(d) for e, d in events if e in {"claim", "token"})
+    assert {"index": 0, "reason": "output_guard"} in [d for e, d in events if e == "claim_rejected"]
+    assert "CANARY" not in state["verified"]["answer"]
+
+
+async def test_refusal_after_streamed_claims_retracts_them() -> None:
+    text = _claims_json((GOOD_Q, GOOD_Q))[:-30]  # cut mid-answer, then the model refuses
+    graph = build_graph(
+        deps([cand("a", ORION)], score=0.9, gateway=ScriptedGateway(text, LLMRefusal("cyber"))),
+        InMemorySaver(),
+    )
+    events: list[tuple[str, dict[str, Any]]] = []
+    state = await run_graph(
+        graph, question=Q, principal=ANALYST, as_of="2026-10-16", emit=lambda e, d: events.append((e, d))
+    )
+    assert state["abstained"] and state["abstain_reason"] == "refusal"
+    assert [d for e, d in events if e == "claim"]
+    assert {"index": 0, "reason": "retracted"} in [d for e, d in events if e == "claim_rejected"]
+
+
+async def test_max_tokens_keeps_verified_claims_as_partial_answer() -> None:
+    from compliance_rag.llm.gateway import LLMMaxTokens
+
+    text = _claims_json((GOOD_Q, GOOD_Q), (GOOD_Q + " Extra", GOOD_Q))[:-60]
+    graph = build_graph(
+        deps([cand("a", ORION)], score=0.9, gateway=ScriptedGateway(text, LLMMaxTokens("cut"))),
+        InMemorySaver(),
+    )
+    state = await run_graph(graph, question=Q, principal=ANALYST, as_of="2026-10-16")
+    assert not state["abstained"] and state["verified"]["claims"][0]["text"] == GOOD_Q

@@ -71,8 +71,8 @@ class RagState(TypedDict, total=False):
     reranked: list[Candidate]
     context: list[Candidate]  # top CRAG_TOPK_CONTEXT=8
     removed_sentences: int
-    draft: GeneratedAnswer | None
-    verified: VerifiedAnswer | None
+    draft: dict[str, Any] | None  # verified claims, model summary, rejections (JSON-serialisable)
+    verified: dict[str, Any] | None  # VerifiedAnswer.model_dump()
     abstained: bool
     abstain_reason: AbstainReason | None
     degraded: list[str]
