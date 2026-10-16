@@ -39,7 +39,7 @@ chore: configure commit attribution
 | T-17 | M2 | Vector stores (FR-5) | done | `uv run pytest tests/integration/test_vector_stores.py` → 6 passed (pgvector + Qdrant: 300 nearer restricted chunks still yield 10 authorized hits, validity/visibility, 25 random group draws never leak) |
 | T-18 | M2 | OpenSearch BM25 (FR-6) | done | `uv run pytest tests/integration/test_bm25.py tests/unit/retrieval` → 5 passed (Legal-only chunk matching every term absent for support); `crag search init` twice → created, already present |
 | T-19 | M2 | Ingestion worker (FR-3) | done | `uv run pytest tests/integration/test_ingest_pipeline.py tests/integration/test_worker.py tests/perf/test_ingest_latency.py` → 9 passed (v2 closed at 2026-03-01 in PG + OpenSearch; crash after PG commit repaired by replay; Arq dedupes by idempotency key; md/pdf/docx/html each < 60 s) |
-| T-20 | M2 | Hybrid retrieval and RRF (FR-7) | todo | |
+| T-20 | M2 | Hybrid retrieval and RRF (FR-7) | done | `uv run pytest tests/unit/retrieval/test_hybrid.py` → 6 passed (BM25 timeout → degraded ["bm25"], both down → RetrievalUnavailable, RRF k=60 math, deterministic ties, post-check counted) |
 | T-21 | M2 | Rerankers (FR-7) | todo | |
 | T-22 | M2 | LLM gateway, FakeLLM, cassettes | todo | |
 | T-23 | M2 | Guards and PII redaction (FR-13) | in progress | `uv run pytest tests/unit/guard` → 15 passed (8 injection templates ≥ 0.7, filler/fact sentences < 0.7, 30 corpus canaries removed, output guard, PII redaction); PII spy on provider payloads pending gateway (T-22) |
