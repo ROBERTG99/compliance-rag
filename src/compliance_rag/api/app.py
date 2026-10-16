@@ -9,7 +9,7 @@ from fastapi import FastAPI
 
 from compliance_rag import __version__
 from compliance_rag.api.errors import install_error_handlers
-from compliance_rag.api.routes import ask, documents, health
+from compliance_rag.api.routes import admin, ask, documents, health
 from compliance_rag.api.state import AppState, build_state
 from compliance_rag.settings import Settings, get_settings
 
@@ -39,4 +39,5 @@ def create_app(settings: Settings | None = None, *, state: AppState | None = Non
     app.include_router(health.router)
     app.include_router(ask.router)
     app.include_router(documents.router)
+    app.include_router(admin.router)
     return app

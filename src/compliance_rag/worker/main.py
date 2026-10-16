@@ -81,13 +81,40 @@ async def poll_s3_inbox(ctx: dict[str, Any]) -> dict[str, int]:
     return {"registered": result.registered, "failed": result.failed, "waiting": result.waiting}
 
 
+async def sync_acl(ctx: dict[str, Any], job_id: str) -> bool:
+    from compliance_rag.worker.acl import sync_acl as do_sync
+
+    services: Services = ctx["services"]
+    if not await do_sync(services.ingest_deps(), job_id):
+        tries = int(ctx.get("job_try", 1))
+        if tries < pipeline.MAX_ATTEMPTS:
+            raise Retry(defer=2**tries)
+        return False
+    return True
+
+
+async def refresh_lag_metric(ctx: dict[str, Any]) -> dict[str, float | int]:
+    """Cron (every 15 s): export ingestion lag to Prometheus."""
+    from compliance_rag.obs.metrics import INGESTION_LAG
+    from compliance_rag.worker.acl import index_lag
+
+    services: Services = ctx["services"]
+    lag = await index_lag(services.ingest_deps())
+    INGESTION_LAG.labels(stat="p95").set(float(lag["p95_s"]))
+    INGESTION_LAG.labels(stat="oldest_pending").set(float(lag["oldest_pending_s"]))
+    return lag
+
+
 def redis_settings() -> RedisSettings:
     return RedisSettings.from_dsn(get_settings().redis_url)
 
 
 class WorkerSettings:
-    functions: ClassVar[list[Any]] = [ingest_document]
-    cron_jobs: ClassVar[list[Any]] = [cron(poll_s3_inbox, second={0, 30}, run_at_startup=False, unique=True)]
+    functions: ClassVar[list[Any]] = [ingest_document, sync_acl]
+    cron_jobs: ClassVar[list[Any]] = [
+        cron(poll_s3_inbox, second={0, 30}, run_at_startup=False, unique=True),
+        cron(refresh_lag_metric, second={0, 15, 30, 45}, run_at_startup=True, unique=True),
+    ]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = redis_settings()

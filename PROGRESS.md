@@ -95,7 +95,7 @@ chore: configure commit attribution
 | T-26 | M3 | Dev OIDC and auth (FR-11) | done | `uv run pytest tests/integration/test_auth.py` → 6 passed (wrong audience, expired, forged payload, foreign key, HS256 rejected; role caps groups; PKCE S256 single-use codes); `docker compose up dev-oidc` healthy, `/dev/token` mints RS256 |
 | T-27 | M3 | Ask and SSE (FR-10, FR-11) | done | `uv run pytest tests/integration/test_sse.py tests/integration/test_acl.py tests/integration/test_skeleton.py` → 9 passed (Last-Event-ID 4 replays 5..N, only verified text in tokens, as_of 2025-12-31 → KYC-0042 v2 superseded, owner-only runs, restricted vs unknown abstention identical minus run_id/conversation_id/latency, follow-up ownership, future as_of 422, 401 problem+json) |
 | T-28 | M3 | Documents and S3 inbox (FR-1) | done | `uv run pytest tests/integration/test_documents_api.py` → 6 passed (same bytes → same job_id, raw in S3, 21 MB → 413, fake PDF/EXE → 415, bad id → 422, changed bytes/ACL → 409, analyst → 403, from-s3 + 404, library/versions/evidence ACL → 404, cursor paging, valid_at, inbox sidecar poll); full `tests/integration` → 50 passed |
-| T-29 | M3 | ACL sync, jobs, lag (FR-14, FR-11) | todo | |
+| T-29 | M3 | ACL sync, jobs, lag (FR-14, FR-11) | done | `uv run pytest tests/integration/test_admin_api.py` → 2 passed (3 queued jobs → `pending` +3, jobs filter, analyst → 403; KYC-0042 ACL → compliance: support absent from BM25 and pgvector, ask abstains, document 404, audit `acl_change`, restored) |
 | T-30 | M3 | Feedback and audit (FR-12) | todo | |
 | T-31 | M3 | Limits and errors (NFR-6) | todo | |
 | T-32 | M3 | OpenAPI and contract tests | todo | |
