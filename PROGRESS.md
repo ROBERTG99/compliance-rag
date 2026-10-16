@@ -4,6 +4,53 @@
 
 - Switch `third_party/evalgate/` to `evalgate @ git+https://github.com/ROBERTG99/evalgate@v0.1.0` once that tag is published (the repository currently has no tag).
 - Maintainer review of 40 questions from `evals/datasets/questions.v1.jsonl` (labels are by construction).
+- Provider fixtures for Titan/OpenAI embeddings and Cohere rerank are synthetic (documented response shapes); re-record with `make record-fixtures` when keys are available.
+
+## Resume here (handoff, 2026-10-16)
+
+**State:** M0, M1 and M2 tasks are done (T-01…T-26 except as marked below); M3 has started (T-26 done). Next task: **T-27 Ask and SSE**. Branch `feat/practical-planck-8e2t30`, everything committed and pushed.
+
+### Milestone reviews
+
+| Milestone | Reviewer verdict | Notes |
+|---|---|---|
+| M0 | "ship" (after fixes) | Guard rewritten per review (segment tokeniser, identity/force-push variants, dataset false positives). |
+| M1 | "ship" | Follow-ups applied (audit TRUNCATE trigger, float hashing, `make corpus` exports datasets, env.example both directions). Deferred items in `docs/KNOWN_LIMITATIONS.md`. |
+| M2 | **"fix first" — open** | ACL-audit blockers 1, 3, 5, 7 fixed in `8cb824a`. The reviewer blockers below are still open; fix them first in the next session, then re-run the reviewer on M2. |
+
+### Open M2 blockers (do these before continuing T-27)
+
+1. **Verifier — partial-number quotes** (`src/compliance_rag/graph/verify.py`, `locate`): a quote ending inside a number ("…limit is EUR 1" vs chunk "EUR 1,000") passes with claim "…EUR 1." → reject matches whose span starts/ends inside a digit run (digits joined by `,`/`.`); add that regression test to `tests/unit/graph/test_verify_citations.py`.
+2. **Streamed claims vs final answer** (`graph/build.py` generate/verify nodes): build the final verified answer from the per-claim results (skip invalid claims instead of failing the whole `GeneratedAnswer` validation, e.g. quote < 12 chars, > 8 claims). On `refusal`/`max_tokens` claims may already have streamed: either buffer claims until the stream ends or emit an explicit retraction; test it. Also: report schema-invalid claims as their own reason (not `quote_not_found`), count `crag_claims_rejected_total` once, and keep citation `n` numbering identical between streamed and final claims.
+3. **Output guard on claims** (`graph/build.py`): run `guard.output_guard.check_output` on every claim text before emitting `claim` (emit `claim_rejected` otherwise) and re-check the rebuilt answer. Add a canary-in-claim test (FR-13).
+4. **Blocking provider calls in async code**: `embed_query` in `retrieval/hybrid.py` vector leg, the synchronous `rerank` node (`graph/build.py`), `rerank/cohere.py`, `FeatureReranker._fill_cosine`. Wrap in `asyncio.to_thread` (LSA is CPU-bound too) and route Titan/OpenAI embedding and Cohere rerank calls through gateway methods that redact PII and record usage/cost.
+5. **Citation offsets for BM25 hits**: OpenSearch docs lack `char_start/char_end`, and `rrf_fuse` keeps the BM25 copy, so offsets are chunk-relative. Add `char_start`/`char_end` to the OpenSearch mapping (`deploy/opensearch/crag-chunks-v1.json` + the packaged copy in `src/compliance_rag/retrieval/`, they must stay identical), index and return them, and add a fused-path test. Note: changing the strict mapping requires re-creating the dev index (`docker compose down -v` or delete `crag-chunks-v1`, then `uv run crag seed --force`).
+
+### Open ACL-audit items (fold into T-27 / T-39)
+
+- **Conversation ownership (T-27):** `/v1/ask` with `follow_up_of` must load the `answers` row and return 404 unless `user_sub` matches; reuse its `conversation_id` server-side only. Never return or serialise raw graph state (it holds per-leg hits); also store `principal.sub` in graph `history` entries and ignore entries from another sub.
+- **Uniform abstention body (T-27):** set `cost_usd` to `null` (or omit) in abstention bodies; real cost stays in `answers.cost_usd`. Extend the parity test to an abstention after generation (`no_verified_claims`).
+- **`as_of` cap (T-27):** reject `as_of` later than today with 422 for every role except `content_admin` (announced-but-not-in-force versions).
+- **Leak metric (T-39):** compute ACL leakage against ground truth (the corpus model's `acl_groups` and version validity, not the store's copy), require `persona` on every row, and assert `HybridResult.violations == 0` per case.
+- **Post-check gaps:** `AccessFilter.allows` cannot check `visible` (Candidates do not carry it); `n_bm25`/`n_vector` in the `retrieval` event are pre-post-check counts. Document in `docs/security.md` or add the field.
+- **Side channel to document (T-45):** BM25 IDF and the LSA embedder are fitted over all chunks, including restricted ones, so abstention timing/scores can shift slightly → `docs/KNOWN_LIMITATIONS.md`.
+- Non-blocking reviewer notes still to handle: context-guard sentence removal shifts offsets inside guarded chunks; NFKC per-char vs whole-string normalisation in `locate`; wrap non-retryable `anthropic` 4xx in an `LLMError` subclass; `chunk_text`/`embed_documents` should run in `to_thread` in the worker; a job failing during the OpenSearch/Qdrant sync on its last attempt should stay `activating` (or `make replay-failed-jobs` must repair it); worker docstring lists unregistered functions (`sync_acl`, `reindex_all`, crons — T-28/T-29) and `EmbedderNotReady` leaves a job in `embedding`.
+
+### T-27 plan (not started; no code written yet)
+
+- `src/compliance_rag/api/`: `app.py` lifespan builds `Services` (`runtime.build_services`), `Gateway`, `HybridRetriever`, reranker, `AsyncPostgresSaver` (pool with `autocommit=True, prepare_threshold=0, row_factory=dict_row`, `await saver.setup()`), the compiled graph, Redis, and `auth.jwt.TokenValidator(issuer=CRAG_OIDC_PUBLIC_ISSUER or CRAG_OIDC_ISSUER, audience, JWKSCache(CRAG_OIDC_ISSUER))`; refuse to start on `EmbedderMismatch`.
+- `api/errors.py` (RFC 9457 problem+json: 401 AuthError, 404, 409 VersionConflict/AclConflict, 413, 415, 422, 429, 503 `retrieval_unavailable`/`generation_unavailable`), `api/deps.py` (`current_principal`, `require_role`), `api/sse.py` (Redis Stream `crag:run:{run_id}`, explicit IDs `0-{seq}`, TTL 300 s, `: ping` every 15 s, `Last-Event-ID` replay, in-memory fallback when Redis is down), `api/routes/ask.py` (`POST /v1/ask` sync 200 / stream 202 `{run_id, events_url}`, `GET /v1/runs/{id}/events`, `GET /v1/runs/{id}` owner-only else 404), persist `answers` + `audit` (`ask`, details without question text), `/v1/me`, `/readyz` (503 when Postgres is down).
+- Tests to write first: `tests/integration/test_sse.py::test_resume_with_last_event_id`, `tests/integration/test_acl.py::test_abstention_does_not_reveal_restricted_documents` (support vs Legal-only `CMP-0215` vs unknown topic; chunk 404 part lands with T-28), and update `tests/integration/test_skeleton.py::test_ask_returns_fake_answer` to the real authenticated API (the skeleton route in `api/routes/ask.py` is still the hard-coded walking skeleton).
+- Fixture idea: a session-scoped API environment (migrated DB, OpenSearch index, MinIO bucket, Redis) seeded with `seed_corpus(only={...})` (≈20 documents incl. `KYC-0042`, `CMP-0215`, `AML-0107`), tokens from the in-process dev-oidc app (`apps/dev-oidc/dev_oidc/app.py`, see `tests/integration/test_auth.py`).
+
+### Environment notes for the next session (cloud container)
+
+- Start Docker per Appendix A (the SessionStart hook does it): `mirror.gcr.io` registry mirror; MinIO image is built from source (`docker/minio.Dockerfile`), OpenSearch from the Docker Hub mirror, `public.ecr.aws`/ghcr.io blobs are blocked.
+- Disk allowance is tight (~13 GB free after cleanup): prune unused images/caches with `docker image prune`, `go clean -modcache` if needed. OpenSearch disk watermarks are disabled in compose and tests.
+- Tools: gitleaks, actionlint, hadolint, trivy in `~/.local/bin` (`scripts/install_tools.sh`).
+- Dev stack: `docker compose up -d --wait` (postgres, redis, opensearch, minio, dev-oidc, api skeleton, web skeleton), then `uv run crag seed` (≈113 s: 400 documents, 1,199 versions, 22,717 chunks).
+- Commit with `scripts/task_commit.sh "<message>"` (formats, runs `make check-fast`, refuses to commit on red).
+- Dev-only evaluation helper used while tuning (not committed): run `answer_row` over dev rows with `compliance_rag.evals.metrics`; last dev numbers: recall@10 0.962, MRR@10 0.973, key-fact 0.939, abstention 0.972, ACL leak 0, retrieval p95 ≈ 95–105 ms (FakeLLM, `src/compliance_rag/rerank/feature_weights.json` from `make fit-reranker`). These are dev-split numbers for tuning, not reported results.
 
 ## Bootstrap evidence
 
@@ -46,13 +93,13 @@ chore: configure commit attribution
 | T-24 | M2 | Citation verifier (FR-9) | done | `uv run pytest tests/unit/graph/test_verify_citations.py` → 7 passed (fabricated quote → claim_rejected, chunk_not_in_context, numeric_mismatch + answer rewrite, offsets, NFKC; Hypothesis 80+80 examples: whitespace-changed substrings accepted, 1-char mutations rejected) |
 | T-25 | M2 | Graph, abstention, follow-up (FR-8) | done | `uv run pytest tests/unit/graph/test_graph.py` → 8 passed (low score abstains with 0 LLM calls, only verified claims stream, follow-up via checkpointer, refusal, identical abstention bodies, claim stream parser); `uv run pytest tests/integration/test_graph_offline.py` → 10/10 dev questions answered offline with AsyncPostgresSaver, follow-up reloads history |
 | T-26 | M3 | Dev OIDC and auth (FR-11) | done | `uv run pytest tests/integration/test_auth.py` → 6 passed (wrong audience, expired, forged payload, foreign key, HS256 rejected; role caps groups; PKCE S256 single-use codes); `docker compose up dev-oidc` healthy, `/dev/token` mints RS256 |
-| T-27 | M3 | Ask and SSE (FR-10, FR-11) | todo | |
+| T-27 | M3 | Ask and SSE (FR-10, FR-11) | next | Fix open M2 blockers first (see Resume here) |
 | T-28 | M3 | Documents and S3 inbox (FR-1) | todo | |
 | T-29 | M3 | ACL sync, jobs, lag (FR-14, FR-11) | todo | |
 | T-30 | M3 | Feedback and audit (FR-12) | todo | |
 | T-31 | M3 | Limits and errors (NFR-6) | todo | |
 | T-32 | M3 | OpenAPI and contract tests | todo | |
-| T-33 | M3 | Seed and demo | todo | |
+| T-33 | M3 | Seed and demo | in progress | `crag seed` bulk loader exists; `uv run pytest tests/integration/test_seed.py` → 1 passed (idempotent, invisible until activated); `scripts/seed.py`, `scripts/demo.py`, compose `seed` job pending |
 | T-34 | M4 | Tokens, shell, typed client | todo | |
 | T-35 | M4 | Ask screen (FR-10) | todo | |
 | T-36 | M4 | Evidence viewer (FR-9, FR-3) | todo | |
