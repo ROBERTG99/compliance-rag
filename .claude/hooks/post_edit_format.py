@@ -42,7 +42,12 @@ def main() -> None:
             prettier = _project_dir() / "web" / "node_modules" / ".bin" / "prettier"
             web = (_project_dir() / "web").resolve()
             if prettier.exists() and web in path.resolve().parents:
-                subprocess.run([str(prettier), "--write", "--log-level", "silent", str(path)], cwd=web, timeout=30, check=False)
+                subprocess.run(
+                    [str(prettier), "--write", "--log-level", "silent", str(path)],
+                    cwd=web,
+                    timeout=30,
+                    check=False,
+                )
     except Exception:
         return
 

@@ -22,12 +22,21 @@ ATTRIBUTION = re.compile(r"co-authored-by|claude-session|generated with claude c
 DATASET = re.compile(r"(^|[\s'\"=/])(evals/datasets/[^\s'\"]+\.jsonl)")
 
 FORBIDDEN_BASH: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\bgit\s+(-c\s+\S+\s+)*config\b[^|;&]*\buser\.(name|email)\b"), "changing git identity config"),
-    (re.compile(r"(^|[\s;&|(])(export\s+)?GIT_(AUTHOR|COMMITTER)_(NAME|EMAIL|DATE)="), "setting GIT_AUTHOR_*/GIT_COMMITTER_*"),
+    (
+        re.compile(r"\bgit\s+(-c\s+\S+\s+)*config\b[^|;&]*\buser\.(name|email)\b"),
+        "changing git identity config",
+    ),
+    (
+        re.compile(r"(^|[\s;&|(])(export\s+)?GIT_(AUTHOR|COMMITTER)_(NAME|EMAIL|DATE)="),
+        "setting GIT_AUTHOR_*/GIT_COMMITTER_*",
+    ),
     (re.compile(r"\bgit\s+push\b[^|;&]*(\s--force\b|\s--force-with-lease\b|\s-f\b|\s\+\S)"), "force push"),
     (re.compile(r"\bterraform\s+(apply|destroy)\b"), "terraform apply/destroy"),
     (re.compile(r"\brm\s+-[a-zA-Z]*r[a-zA-Z]*f?[a-zA-Z]*\s+(/|~)(\s|/?$|/\*|\*)"), "rm -rf on / or ~"),
-    (re.compile(r"\bgh\s+repo\s+(create|delete|edit\b[^|;&]*--visibility)"), "creating/deleting a repo or changing visibility"),
+    (
+        re.compile(r"\bgh\s+repo\s+(create|delete|edit\b[^|;&]*--visibility)"),
+        "creating/deleting a repo or changing visibility",
+    ),
 ]
 
 
@@ -49,7 +58,13 @@ def _is_existing_dataset(path_text: str) -> bool:
     except ValueError:
         return False
     parts = rel.parts
-    return len(parts) >= 3 and parts[0] == "evals" and parts[1] == "datasets" and rel.suffix == ".jsonl" and path.exists()
+    return (
+        len(parts) >= 3
+        and parts[0] == "evals"
+        and parts[1] == "datasets"
+        and rel.suffix == ".jsonl"
+        and path.exists()
+    )
 
 
 def check_bash(command: str) -> None:

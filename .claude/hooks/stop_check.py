@@ -25,16 +25,26 @@ def main() -> None:
     command = os.environ.get("CRAG_STOP_CHECK_CMD", "make check-fast")
     try:
         proc = subprocess.run(
-            command, shell=True, cwd=project, capture_output=True, text=True, timeout=60, check=False  # noqa: S602
+            command,
+            shell=True,
+            cwd=project,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
         )
     except (subprocess.TimeoutExpired, OSError):
         return
     if proc.returncode != 0:
         tail = "\n".join((proc.stdout + proc.stderr).strip().splitlines()[-15:])
-        print(json.dumps({
-            "decision": "block",
-            "reason": f"`{command}` failed; fix it before stopping (BUILD.md §0 rule 4).\n{tail}",
-        }))
+        print(
+            json.dumps(
+                {
+                    "decision": "block",
+                    "reason": f"`{command}` failed; fix it before stopping (BUILD.md §0 rule 4).\n{tail}",
+                }
+            )
+        )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,33 @@
+# Local hooks only: every tool is already pinned by uv.lock / web/pnpm-lock.yaml or installed by
+# scripts/install_tools.sh, so pre-commit needs no extra network access.
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff check
+        entry: uv run ruff check --force-exclude
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format --check --force-exclude
+        language: system
+        types: [python]
+      - id: prettier
+        name: prettier (web)
+        entry: bash -c 'cd web && pnpm exec prettier --check .'
+        language: system
+        files: ^web/
+        pass_filenames: false
+      - id: gitleaks
+        name: gitleaks
+        entry: bash -c 'PATH="$HOME/.local/bin:$HOME/go/bin:$PATH" gitleaks git --no-banner --redact --log-opts=-1 .'
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: markdownlint
+        name: markdownlint-cli2
+        entry: bash -c 'pnpm -C web exec markdownlint-cli2 --config ../.markdownlint-cli2.yaml'
+        language: system
+        files: \.md$
+        pass_filenames: false

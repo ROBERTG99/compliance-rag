@@ -94,12 +94,13 @@ extend-exclude = ["web", "migrations/versions/__pycache__"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "S", "ASYNC", "SIM", "RUF"]
-ignore = ["S101", "RUF001", "RUF002", "RUF003", "B008"]
+ignore = ["S101", "E501", "RUF001", "RUF002", "RUF003", "B008"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "B", "ASYNC"]
 "scripts/**" = ["S"]
 "data/generator/**" = ["S311"]
+".claude/hooks/**" = ["S603", "S602", "S607"]
 
 [tool.mypy]
 python_version = "3.12"

@@ -15,7 +15,7 @@ Compliance assistant that answers policy questions with verified citations, per-
 
 Claude Code (web or local) at the repository root:
 
-```
+```text
 Read BUILD.md and execute it end to end. Do not stop until every item in the Global Definition of Done is checked.
 ```
 

@@ -1,0 +1,16 @@
+{
+  "name": "compliance-rag",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/go:1": { "version": "1.24" }
+  },
+  "forwardPorts": [8600, 8610, 8612, 8690],
+  "postCreateCommand": "pipx install uv && npm i -g pnpm@10 && make bootstrap",
+  "customizations": {
+    "vscode": {
+      "extensions": ["charliermarsh.ruff", "ms-python.mypy-type-checker", "esbenp.prettier-vscode", "dbaeumer.vscode-eslint"]
+    }
+  }
+}

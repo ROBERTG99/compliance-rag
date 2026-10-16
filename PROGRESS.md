@@ -26,7 +26,7 @@ chore: configure commit attribution
 | T-04 | M0 | CLAUDE.md, AGENTS.md, settings, rules | done | `uv run pytest tests/harness/test_settings.py` → 4 passed; CLAUDE.md 98 lines |
 | T-05 | M0 | Hooks | done | `uv run pytest tests/harness` → 39 passed (guard staged in a temp file before swap) |
 | T-06 | M0 | Subagents and skills | done | `uv run pytest tests/harness/test_agents.py` → 3 passed (8 agents, 13 skills) |
-| T-07 | M0 | Repository integrations | todo | |
+| T-07 | M0 | Repository integrations | done | `uv run pre-commit run --all-files` → ruff, ruff-format, prettier, gitleaks, markdownlint passed |
 | T-08 | M0 | Walking skeleton in Docker (FR-8) | todo | |
 | T-09 | M1 | Settings and `.env.example` | todo | |
 | T-10 | M1 | Core migrations (FR-3, FR-5) | todo | |
@@ -90,13 +90,10 @@ chore: configure commit attribution
 - [ ] Every commit is authored and committed by the maintainer, and no commit message or pull request contains `Co-Authored-By`, `Claude-Session` or "Generated with Claude Code" (checked as in §19).
 - [ ] `BUILD.md` lives at `docs/specs/000-build-spec.md`; all work is committed, and pushed when a remote exists.
 
-
 Project-specific:
-
 
 - [ ] Each of FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-12, FR-13 and FR-14 passes its named test in §3.1.
 - [ ] ACL leakage = 0 on all 300 eval cases and `crag_acl_postcheck_violations_total` = 0 after `make demo`.
 - [ ] Hallucinated citation rate = 0 and stale-version citation rate < 0.01 in `evals/REPORT.md`.
 - [ ] `make bench` meets NFR-1, NFR-2, NFR-3 and NFR-8.
 - [ ] The ablation table is in `evals/REPORT.md`; `make redteam` reports 0 failures; `make up` is healthy in < 5 minutes.
-
