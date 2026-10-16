@@ -61,5 +61,38 @@ def corpus_generate(
     )
 
 
+@corpus_app.command("export-datasets")
+def corpus_export_datasets(
+    to: str = typer.Option("evals/datasets", help="Dataset directory"),
+    seed: int = typer.Option(2026, help="Generator seed"),
+) -> None:
+    """Write questions.v1.jsonl and judge_labels.v1.jsonl; refuses to change an existing file."""
+    import json
+    from pathlib import Path
+
+    from data.generator.corpus import build_corpus
+    from data.generator.questions import build_judge_labels, build_questions
+
+    policies = build_corpus(seed)
+    outputs = {
+        "questions.v1.jsonl": build_questions(policies, seed),
+        "judge_labels.v1.jsonl": build_judge_labels(policies, seed),
+    }
+    for name, rows in outputs.items():
+        target = Path(to) / name
+        text = "".join(json.dumps(r, sort_keys=True, ensure_ascii=False) + "\n" for r in rows)
+        if target.exists():
+            if target.read_text() != text:
+                typer.echo(
+                    f"{target} exists and differs; datasets are append-only, add a new version", err=True
+                )
+                raise typer.Exit(1)
+            typer.echo(f"{target} unchanged ({len(rows)} rows)")
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text)
+        typer.echo(f"wrote {target} ({len(rows)} rows)")
+
+
 if __name__ == "__main__":  # pragma: no cover
     app()
