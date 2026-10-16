@@ -1,0 +1,11 @@
+{
+  "coef": [1.5, 1.0, 5.0, 3.0, 0.2],
+  "dev_ids_sha256": "",
+  "extra": {},
+  "features": ["bm25", "cosine", "term_jaccard", "heading_match", "freshness"],
+  "intercept": -5.0,
+  "n_questions": 0,
+  "n_samples": 0,
+  "notes": "Hand-set starting weights; replaced by `make fit-reranker` (dev split only).",
+  "split": "dev"
+}
