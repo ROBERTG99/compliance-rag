@@ -151,3 +151,4 @@ source_modules = [
     "compliance_rag.llm.prompts",
 ]
 forbidden_modules = ["anthropic", "openai"]
+allow_indirect_imports = true
