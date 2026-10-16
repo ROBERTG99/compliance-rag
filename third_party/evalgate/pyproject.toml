@@ -1,0 +1,17 @@
+[project]
+name = "evalgate"
+version = "0.1.0"
+description = "Vendored subset of evalgate (suite loader, metrics, report.v1, check, report, calibrate). Replace with the upstream tag when published."
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = ["pydantic>=2.8", "pyyaml>=6.0", "typer>=0.12", "numpy>=1.26"]
+
+[project.scripts]
+evalgate = "evalgate.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/evalgate"]
