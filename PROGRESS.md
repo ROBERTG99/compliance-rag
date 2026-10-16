@@ -21,7 +21,7 @@ chore: configure commit attribution
 | ID | Milestone | Title | Status | Evidence |
 |---|---|---|---|---|
 | T-01 | M0 | Bootstrap and attribution evidence | done | `uv run pytest tests/harness/test_repo_files.py` → 1 passed |
-| T-02 | M0 | Python workspace and Makefile | todo | |
+| T-02 | M0 | Python workspace and Makefile | done | `make check-fast` → ruff, mypy, 4 harness tests passed; socket guard test passes |
 | T-03 | M0 | Web scaffold | todo | |
 | T-04 | M0 | CLAUDE.md, AGENTS.md, settings, rules | todo | |
 | T-05 | M0 | Hooks | todo | |

@@ -19,8 +19,17 @@ def test_bootstrap_files_exist() -> None:
     ]:
         assert (ROOT / rel).is_file(), rel
     ignore = (ROOT / ".gitignore").read_text()
-    for pattern in [".env", ".env.*", "!.env.example", ".venv/", "node_modules/", "web/dist/",
-                    "data/generated/", "evals/reports/runs/", "playwright-report/"]:
+    for pattern in [
+        ".env",
+        ".env.*",
+        "!.env.example",
+        ".venv/",
+        "node_modules/",
+        "web/dist/",
+        "data/generated/",
+        "evals/reports/runs/",
+        "playwright-report/",
+    ]:
         assert pattern in ignore.splitlines(), pattern
     assert "ROBERTG99" in (ROOT / "LICENSE").read_text()
     progress = (ROOT / "PROGRESS.md").read_text()
