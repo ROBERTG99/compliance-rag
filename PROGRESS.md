@@ -25,7 +25,7 @@ chore: configure commit attribution
 | T-03 | M0 | Web scaffold | done | `pnpm -C web test` → 1 passed; `pnpm -C web build` → built |
 | T-04 | M0 | CLAUDE.md, AGENTS.md, settings, rules | done | `uv run pytest tests/harness/test_settings.py` → 4 passed; CLAUDE.md 98 lines |
 | T-05 | M0 | Hooks | done | `uv run pytest tests/harness` → 39 passed (guard staged in a temp file before swap) |
-| T-06 | M0 | Subagents and skills | todo | |
+| T-06 | M0 | Subagents and skills | done | `uv run pytest tests/harness/test_agents.py` → 3 passed (8 agents, 13 skills) |
 | T-07 | M0 | Repository integrations | todo | |
 | T-08 | M0 | Walking skeleton in Docker (FR-8) | todo | |
 | T-09 | M1 | Settings and `.env.example` | todo | |
