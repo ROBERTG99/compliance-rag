@@ -114,3 +114,24 @@ async def test_postcheck_drops_and_counts_violations() -> None:
     result = await r.retrieve("q", SUPPORT, AS_OF)
     assert [c["chunk_id"] for c in result.fused] == ["ok"]
     assert ACL_POSTCHECK_VIOLATIONS._value.get() == before + 1
+
+
+async def test_zero_query_embedding_skips_vector_leg() -> None:
+    """An all-OOV question embeds to the zero vector; pgvector's cosine distance would be NaN."""
+
+    class ZeroEmbedder:
+        def embed_query(self, text: str) -> np.ndarray:
+            return np.zeros(4, dtype=np.float32)
+
+    vector = FakeVector([cand("b", cosine=float("nan"))])
+    r = HybridRetriever(
+        bm25=FakeBM25([cand("a", bm25=3.0)]),
+        vector=vector,
+        embedder=ZeroEmbedder(),
+        rrf_k=60,
+        leg_k=50,
+        timeout_ms=250,
+    )
+    result = await r.retrieve("cafeteria menu", SUPPORT, AS_OF)
+    assert [c["chunk_id"] for c in result.fused] == ["a"]
+    assert result.degraded == [] and result.n_vector == 0

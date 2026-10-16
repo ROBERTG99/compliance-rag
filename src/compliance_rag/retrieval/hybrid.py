@@ -94,6 +94,9 @@ class HybridRetriever:
         assert self.vector is not None
         # provider embedders (Titan/OpenAI) do network I/O and LSA is CPU-bound: keep both off the loop
         embedding = await asyncio.to_thread(self.embedder.embed_query, query)
+        if not np.any(embedding):
+            # no known term: cosine against a zero vector is undefined (NaN in pgvector), so no vector evidence
+            return []
         return await self.vector.search(embedding, principal, as_of, self.leg_k)
 
     async def run_legs(self, query: str, principal: Principal, as_of: date) -> HybridResult:

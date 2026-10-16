@@ -167,3 +167,11 @@ def test_cross_encoder_unavailable_falls_back() -> None:
     rr = create_reranker("cross_encoder")
     out = rr.rerank("daily limit", [cand("x", "daily limit", bm25=1.0)], AS_OF)
     assert out[0]["rerank"] is not None
+
+
+def test_non_finite_scores_become_zero_features() -> None:
+    nan = cand("a", "Proof of address must be recent.", bm25=float("nan"), cosine=float("nan"))
+    rows = extract_features("proof of address", [nan], AS_OF)
+    assert all(np.isfinite(v) for v in rows[0])
+    [scored] = FeatureReranker().rerank("proof of address", [nan], AS_OF)
+    assert np.isfinite(scored["rerank"])

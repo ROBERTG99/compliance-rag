@@ -46,6 +46,12 @@ class FeatureWeights:
         path.write_text(json.dumps(asdict(self), indent=2, sort_keys=True) + "\n")
 
 
+def _finite(value: float | None) -> float:
+    """Missing or non-finite backend scores carry no evidence (a NaN would poison the logistic score)."""
+    v = float(value or 0.0)
+    return v if math.isfinite(v) else 0.0
+
+
 def extract_features(question: str, candidates: Sequence[Candidate], as_of: date) -> list[list[float]]:
     """Five features per candidate (all in [0, 1]).
 
@@ -76,8 +82,8 @@ def extract_features(question: str, candidates: Sequence[Candidate], as_of: date
         except ValueError:
             age_days = 3650
         freshness = math.exp(-age_days / 730)
-        bm25 = float(c.get("bm25") or 0.0)
-        rows.append([bm25 / (bm25 + 15.0), float(c.get("cosine") or 0.0), overlap, heading, freshness])
+        bm25 = _finite(c.get("bm25"))
+        rows.append([bm25 / (bm25 + 15.0), _finite(c.get("cosine")), overlap, heading, freshness])
     return rows
 
 
