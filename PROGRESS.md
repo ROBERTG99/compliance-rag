@@ -45,7 +45,7 @@ chore: configure commit attribution
 | T-23 | M2 | Guards and PII redaction (FR-13) | done | `uv run pytest tests/unit/guard` → 15 passed (8 injection templates ≥ 0.7, filler/fact sentences < 0.7, 30 corpus canaries removed, output guard, PII redaction); PII spy: `tests/unit/llm/test_gateway.py::test_pii_never_reaches_the_provider` passes |
 | T-24 | M2 | Citation verifier (FR-9) | done | `uv run pytest tests/unit/graph/test_verify_citations.py` → 7 passed (fabricated quote → claim_rejected, chunk_not_in_context, numeric_mismatch + answer rewrite, offsets, NFKC; Hypothesis 80+80 examples: whitespace-changed substrings accepted, 1-char mutations rejected) |
 | T-25 | M2 | Graph, abstention, follow-up (FR-8) | done | `uv run pytest tests/unit/graph/test_graph.py` → 8 passed (low score abstains with 0 LLM calls, only verified claims stream, follow-up via checkpointer, refusal, identical abstention bodies, claim stream parser); `uv run pytest tests/integration/test_graph_offline.py` → 10/10 dev questions answered offline with AsyncPostgresSaver, follow-up reloads history |
-| T-26 | M3 | Dev OIDC and auth (FR-11) | todo | |
+| T-26 | M3 | Dev OIDC and auth (FR-11) | done | `uv run pytest tests/integration/test_auth.py` → 6 passed (wrong audience, expired, forged payload, foreign key, HS256 rejected; role caps groups; PKCE S256 single-use codes); `docker compose up dev-oidc` healthy, `/dev/token` mints RS256 |
 | T-27 | M3 | Ask and SSE (FR-10, FR-11) | todo | |
 | T-28 | M3 | Documents and S3 inbox (FR-1) | todo | |
 | T-29 | M3 | ACL sync, jobs, lag (FR-14, FR-11) | todo | |

@@ -74,6 +74,17 @@ services:
     ports: ["127.0.0.1:8641:9000", "127.0.0.1:8642:9001"]
     volumes: [miniodata:/data]
 
+  dev-oidc:
+    build:
+      context: .
+      dockerfile: docker/dev-oidc.Dockerfile
+      network: host
+      args: *build-args
+    image: compliance-rag/dev-oidc:dev
+    environment:
+      DEV_OIDC_PUBLIC_URL: http://localhost:8612
+    ports: ["127.0.0.1:8612:8612"]
+
   api:
     build:
       context: .
