@@ -11,11 +11,24 @@ def test_attribution_key_kept_and_env_denied() -> None:
     settings = json.loads((ROOT / ".claude/settings.json").read_text())
     assert settings["attribution"] == {"commit": "", "pr": "", "sessionUrl": False}
     perms = settings["permissions"]
-    for rule in ["Read(.env)", "Read(.env.*)", "Bash(git push --force*)", "Bash(git push -f*)",
-                 "Bash(rm -rf /*)", "Bash(rm -rf ~*)"]:
+    for rule in [
+        "Read(.env)",
+        "Read(.env.*)",
+        "Bash(git push --force*)",
+        "Bash(git push -f*)",
+        "Bash(rm -rf /*)",
+        "Bash(rm -rf ~*)",
+    ]:
         assert rule in perms["deny"], rule
-    for rule in ["Bash(make *)", "Bash(uv run *)", "Bash(pnpm *)", "Bash(docker compose *)",
-                 "Bash(git push -u origin *)", "Bash(crag *)", "Read(.env.example)"]:
+    for rule in [
+        "Bash(make *)",
+        "Bash(uv run *)",
+        "Bash(pnpm *)",
+        "Bash(docker compose *)",
+        "Bash(git push -u origin *)",
+        "Bash(crag *)",
+        "Read(.env.example)",
+    ]:
         assert rule in perms["allow"], rule
     assert "ask" not in perms or perms["ask"] == []
 
