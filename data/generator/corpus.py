@@ -325,6 +325,9 @@ def build_corpus(seed: int = SEED, n_policies: int = N_POLICIES) -> list[Policy]
         policy.versions = _build_versions(rng, product, process, templates, rng.choice([2, 3, 3, 4]), fmt)
         policies.append(policy)
     policies.sort(key=lambda p: p.document_id)
+    from data.generator.injections import apply_injections
+
+    apply_injections(policies, random.Random(seed + 13))
     return policies
 
 
