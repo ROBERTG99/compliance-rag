@@ -95,8 +95,9 @@ class HybridRetriever:
         embedding = self.embedder.embed_query(query)
         return await self.vector.search(embedding, principal, as_of, self.leg_k)
 
-    async def retrieve(self, query: str, principal: Principal, as_of: date) -> HybridResult:
-        flt = AccessFilter.for_principal(principal, as_of)  # validates the principal before any I/O
+    async def run_legs(self, query: str, principal: Principal, as_of: date) -> HybridResult:
+        """Run both legs concurrently; a failed or slow leg is listed in ``degraded``."""
+        AccessFilter.for_principal(principal, as_of)  # validates the principal before any I/O
         legs: dict[str, Any] = {}
         if self.bm25 is not None:
             legs["bm25"] = self._timed("bm25", self.bm25.search(query, principal, as_of, self.leg_k))
@@ -114,12 +115,22 @@ class HybridRetriever:
                 out[name], timings[name] = res
         if len(degraded) == len(legs):
             raise RetrievalUnavailable(f"all retrieval legs failed: {', '.join(degraded)}")
-        fusion_started = time.perf_counter()
-        fused = rrf_fuse([out["bm25"], out["vector"]], k=self.rrf_k)
+        timings["legs"] = (time.perf_counter() - started) * 1000
+        return HybridResult(out["bm25"], out["vector"], [], sorted(degraded), timings)
+
+    def fuse(self, result: HybridResult, principal: Principal, as_of: date) -> HybridResult:
+        """RRF-fuse the legs and drop (and count) any hit the principal should never see."""
+        flt = AccessFilter.for_principal(principal, as_of)
+        started = time.perf_counter()
+        fused = rrf_fuse([result.bm25_hits, result.vector_hits], k=self.rrf_k)
         allowed = [c for c in fused if flt.allows(c["acl_groups"], c["valid_from"], c["valid_to"])]
         violations = len(fused) - len(allowed)
         if violations:
             ACL_POSTCHECK_VIOLATIONS.inc(violations)
-        timings["fusion"] = (time.perf_counter() - fusion_started) * 1000
-        timings["legs"] = (fusion_started - started) * 1000
-        return HybridResult(out["bm25"], out["vector"], allowed, sorted(degraded), timings, violations)
+        result.fused = allowed
+        result.violations = violations
+        result.timings_ms["fusion"] = (time.perf_counter() - started) * 1000
+        return result
+
+    async def retrieve(self, query: str, principal: Principal, as_of: date) -> HybridResult:
+        return self.fuse(await self.run_legs(query, principal, as_of), principal, as_of)
