@@ -45,6 +45,12 @@ def test_every_crag_variable_documented() -> None:
     documented = set(re.findall(r"^#?\s*([A-Z][A-Z0-9_]+)=", example, flags=re.M))
     for name in Settings.env_names():
         assert name in documented, name
-    for shared in ("DEMO_MODE", "LIVE_EVAL_BUDGET_USD", "ANTHROPIC_API_KEY", "LANGFUSE_PUBLIC_KEY",
-                   "OTEL_EXPORTER_OTLP_ENDPOINT", "LOG_LEVEL"):
+    for shared in (
+        "DEMO_MODE",
+        "LIVE_EVAL_BUDGET_USD",
+        "ANTHROPIC_API_KEY",
+        "LANGFUSE_PUBLIC_KEY",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "LOG_LEVEL",
+    ):
         assert shared in documented, shared

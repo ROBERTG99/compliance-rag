@@ -30,7 +30,9 @@ def row_hash(prev_hash: str, row: dict[str, Any]) -> str:
     return hashlib.sha256((prev_hash + canonical_json(row)).encode()).hexdigest()
 
 
-def _row(ts: datetime, actor_sub: str, actor_role: str, action: str, target: str, details: Any) -> dict[str, Any]:
+def _row(
+    ts: datetime, actor_sub: str, actor_role: str, action: str, target: str, details: Any
+) -> dict[str, Any]:
     return {
         "ts": ts.astimezone(UTC).isoformat(timespec="microseconds"),
         "actor_sub": actor_sub,

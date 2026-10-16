@@ -17,8 +17,14 @@ pytestmark = pytest.mark.integration
 async def test_update_rejected_and_chain_verifies(migrated_db: Database) -> None:
     async with await psycopg.AsyncConnection.connect(migrated_db.url, autocommit=True) as conn:
         for i in range(5):
-            await append_audit(conn, actor_sub=f"user-{i}", actor_role="analyst", action="ask",
-                               target=f"run-{i}", details={"n": i, "q_len": 10 + i})
+            await append_audit(
+                conn,
+                actor_sub=f"user-{i}",
+                actor_role="analyst",
+                action="ask",
+                target=f"run-{i}",
+                details={"n": i, "q_len": 10 + i},
+            )
         result = await verify_chain(conn)
         assert result.ok and result.rows == 5
 
@@ -47,7 +53,9 @@ async def test_concurrent_appends_keep_chain(migrated_db: Database) -> None:
 
     async def one(i: int) -> None:
         async with await psycopg.AsyncConnection.connect(migrated_db.url) as c:
-            await append_audit(c, actor_sub="u", actor_role="analyst", action="ask", target=str(i), details={})
+            await append_audit(
+                c, actor_sub="u", actor_role="analyst", action="ask", target=str(i), details={}
+            )
             await c.commit()
 
     await asyncio.gather(*(one(i) for i in range(10)))
