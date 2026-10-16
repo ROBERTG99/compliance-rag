@@ -43,7 +43,7 @@ chore: configure commit attribution
 | T-21 | M2 | Rerankers (FR-7) | in progress | `uv run pytest tests/unit/rerank` → 7 passed (dev-only fit, deterministic weights, Cohere recorded shape + fallback, cross-encoder fallback); fitting against the seeded index pending |
 | T-22 | M2 | LLM gateway, FakeLLM, cassettes | done | `uv run pytest tests/unit/llm tests/harness/test_import_contract.py` → 8 passed (refusal → LLMRefusal, max_tokens → LLMMaxTokens, 400 surfaces, 529 → GenerationUnavailable, adaptive thinking + effort + json_schema + cached system, cassette precedence + mismatch); `lint-imports` → contract KEPT |
 | T-23 | M2 | Guards and PII redaction (FR-13) | done | `uv run pytest tests/unit/guard` → 15 passed (8 injection templates ≥ 0.7, filler/fact sentences < 0.7, 30 corpus canaries removed, output guard, PII redaction); PII spy: `tests/unit/llm/test_gateway.py::test_pii_never_reaches_the_provider` passes |
-| T-24 | M2 | Citation verifier (FR-9) | todo | |
+| T-24 | M2 | Citation verifier (FR-9) | done | `uv run pytest tests/unit/graph/test_verify_citations.py` → 7 passed (fabricated quote → claim_rejected, chunk_not_in_context, numeric_mismatch + answer rewrite, offsets, NFKC; Hypothesis 80+80 examples: whitespace-changed substrings accepted, 1-char mutations rejected) |
 | T-25 | M2 | Graph, abstention, follow-up (FR-8) | todo | |
 | T-26 | M3 | Dev OIDC and auth (FR-11) | todo | |
 | T-27 | M3 | Ask and SSE (FR-10, FR-11) | todo | |
