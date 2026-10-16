@@ -103,3 +103,18 @@ async def test_validity_visibility_and_acl_updates(index: BM25Index) -> None:
     await index.delete_version(hidden.version_id)
     await index.refresh()
     assert await index.search("security incidents notify", LEGAL, AS_OF, k=10) == []
+
+
+async def test_updates_target_the_alias_and_report_failures(index: BM25Index) -> None:
+    from compliance_rag.retrieval.bm25 import OpenSearchError
+
+    await index.bulk_index([_rec(1, "Vendors must notify incidents within 24 hours.", ["all"])], refresh=True)
+    await index.update_acl("CMP-0001", ["legal"])  # goes through the alias
+    await index.refresh()
+    assert await index.search("vendors notify incidents", SUPPORT, AS_OF, k=10) == []
+    broken = BM25Index(index.url, index="does-not-exist", alias="does-not-exist-alias")
+    try:
+        with pytest.raises(OpenSearchError):
+            await broken.update_acl("CMP-0001", ["all"])
+    finally:
+        await broken.close()

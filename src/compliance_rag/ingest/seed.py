@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
@@ -45,12 +45,15 @@ async def seed_corpus(
     force: bool = False,
     log: Any = print,
     exclude: set[tuple[str, int]] | None = None,
+    only: set[str] | None = None,
 ) -> SeedReport:
     from data.generator.corpus import build_corpus, corpus_fingerprint
     from data.generator.render import render_version
 
     started = time.perf_counter()
     policies = build_corpus(seed)
+    if only is not None:
+        policies = [p for p in policies if p.document_id in only]
     fingerprint = corpus_fingerprint(policies)
     done = await read_index_meta(deps.pool, "seed")
     if done and done.get("fingerprint") == fingerprint and not force:
@@ -115,7 +118,7 @@ async def seed_corpus(
     written = 0
     for p in parsed:
         records = await asyncio.to_thread(build_records, p, deps.embedder)
-        batch += [replace(r, visible=True) for r in records]
+        batch += records  # invisible until the activation step below
         if len(batch) >= 2000:
             await write_indexes(deps, batch)
             written += len(batch)
@@ -126,19 +129,26 @@ async def seed_corpus(
     await deps.bm25.refresh()
     log(f"indexed {written} chunks")
 
-    # 5. activate every version in one transaction
+    # 5. activate every version: Postgres in one transaction, then the search indexes
+    version_ids = [vid for vid, _, _ in jobs]
     async with deps.pool.connection() as conn, conn.transaction():
         await conn.execute(
             "UPDATE document_versions SET status = 'active', activated_at = COALESCE(activated_at, now()) "
             "WHERE id = ANY(%s::uuid[])",
-            ([vid for vid, _, _ in jobs],),
+            (version_ids,),
+        )
+        await conn.execute(
+            "UPDATE chunks SET visible = true WHERE version_id = ANY(%s::uuid[])", (version_ids,)
         )
         await conn.execute(
             """UPDATE ingestion_jobs j SET status = 'done', finished_at = now(), attempts = GREATEST(attempts, 1),
                       chunk_count = (SELECT count(*) FROM chunks c WHERE c.version_id = j.version_id)
                WHERE j.version_id = ANY(%s::uuid[]) AND j.status <> 'done'""",
-            ([vid for vid, _, _ in jobs],),
+            (version_ids,),
         )
+    await deps.bm25.set_visible_many(version_ids)
+    if deps.qdrant is not None:
+        await deps.qdrant.set_visible_many(version_ids)
     report = SeedReport(
         "seeded", len(policies), len(jobs), written, time.perf_counter() - started, fingerprint
     )

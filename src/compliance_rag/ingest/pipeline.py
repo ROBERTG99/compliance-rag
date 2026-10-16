@@ -37,6 +37,10 @@ class VersionConflict(ValueError):
     """(document_id, version) already exists with different content."""
 
 
+class AclConflict(ValueError):
+    """An upload names different groups than the document's ACL; ACL changes go through PUT /acl (sync_acl)."""
+
+
 class EmbedderNotReady(RuntimeError):
     """The embedder has not been fitted; run `crag seed` or `make reindex` first."""
 
@@ -122,15 +126,21 @@ async def register_upload(
             (meta.document_id, meta.title, meta.domain, meta.owner),
         )
         cur = await conn.execute(
-            "SELECT count(*) FROM document_acl WHERE document_id = %s", (meta.document_id,)
+            "SELECT array_agg(group_name ORDER BY group_name) FROM document_acl WHERE document_id = %s",
+            (meta.document_id,),
         )
         acl_row = await cur.fetchone()
-        if acl_row and acl_row[0] == 0:
+        current = sorted(acl_row[0]) if acl_row and acl_row[0] else []
+        if not current:
             for group in sorted(set(meta.acl_groups)):
                 await conn.execute(
                     "INSERT INTO document_acl (document_id, group_name, granted_by) VALUES (%s, %s, %s)",
                     (meta.document_id, group, requested_by),
                 )
+        elif current != sorted(set(meta.acl_groups)):
+            raise AclConflict(
+                f"{meta.document_id} is shared with {current}; change its ACL with PUT /v1/documents/{{id}}/acl"
+            )
         cur = await conn.execute(
             "SELECT id, content_sha256 FROM document_versions WHERE document_id = %s AND version = %s",
             (meta.document_id, meta.version),
@@ -278,12 +288,12 @@ async def activate_in_postgres(pool: AsyncConnectionPool, version_id: str) -> Ac
     """Make the version active and close the one it supersedes, atomically (replay-safe)."""
     async with pool.connection() as conn, conn.transaction():
         cur = await conn.execute(
-            "SELECT document_id, valid_from, status FROM document_versions WHERE id = %s FOR UPDATE",
+            "SELECT document_id, valid_from, valid_to FROM document_versions WHERE id = %s FOR UPDATE",
             (version_id,),
         )
         row = await cur.fetchone()
         assert row is not None
-        document_id, valid_from, _status = row
+        document_id, valid_from, own_valid_to = row
         await conn.execute("SELECT 1 FROM documents WHERE document_id = %s FOR UPDATE", (document_id,))
         # the version this one supersedes: latest active version that starts earlier
         cur = await conn.execute(
@@ -300,7 +310,9 @@ async def activate_in_postgres(pool: AsyncConnectionPool, version_id: str) -> Ac
             (document_id, version_id, valid_from),
         )
         nxt = await cur.fetchone()
-        new_valid_to = nxt[0] if nxt else None
+        # keep an explicit end date unless a later version starts earlier
+        ends = [d for d in (nxt[0] if nxt else None, own_valid_to) if d is not None]
+        new_valid_to = min(ends) if ends else None
         closed_id: str | None = None
         if prev is not None and (prev[1] is None or prev[1] > valid_from):
             closed_id = str(prev[0])

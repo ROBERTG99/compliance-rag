@@ -112,3 +112,51 @@ async def test_crash_between_stores_is_repaired_by_replay(ingest_deps: IngestDep
             await conn.execute("SELECT status, attempts FROM ingestion_jobs WHERE id = %s", (job3.job_id,))
         ).fetchone()
     assert row == ("done", 2)
+
+
+async def test_explicit_valid_to_survives_activation(ingest_deps: IngestDeps) -> None:
+    """A retired version (explicit valid_to, no successor) must stay closed in every store."""
+    policy = _kyc0042()
+    v1 = policy.versions[0]
+    meta = DocumentMeta(
+        policy.document_id,
+        v1.version,
+        policy.title,
+        policy.domain,
+        policy.owner,
+        date(2024, 1, 1),
+        v1.source_format,
+        policy.acl_groups,
+        valid_to=date(2025, 1, 1),
+    )
+    job = await register_upload(ingest_deps, meta, render_version(policy, v1), "admin")
+    await ingest_document(ingest_deps, job.job_id)
+    async with ingest_deps.pool.connection() as conn:
+        row = await (
+            await conn.execute("SELECT valid_to FROM document_versions WHERE id = %s", (job.version_id,))
+        ).fetchone()
+    assert row == (date(2025, 1, 1),)
+    assert await _versions_of_hits(ingest_deps, date(2026, 10, 16)) == (set(), set())
+    assert await _versions_of_hits(ingest_deps, date(2024, 6, 1)) == ({1}, {1})
+
+
+async def test_reupload_with_different_acl_is_rejected(ingest_deps: IngestDeps) -> None:
+    from compliance_rag.ingest.pipeline import AclConflict
+
+    policy = _kyc0042()
+    v2, v3 = policy.versions[1], policy.versions[2]
+    await register_upload(
+        ingest_deps, _meta(policy, v2, date(2025, 1, 1)), render_version(policy, v2), "admin"
+    )
+    narrowed = DocumentMeta(
+        policy.document_id,
+        v3.version,
+        policy.title,
+        policy.domain,
+        policy.owner,
+        date(2026, 3, 1),
+        v3.source_format,
+        ["legal"],
+    )
+    with pytest.raises(AclConflict):
+        await register_upload(ingest_deps, narrowed, render_version(policy, v3), "admin")

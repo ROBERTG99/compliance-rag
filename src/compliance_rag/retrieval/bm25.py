@@ -5,6 +5,7 @@ Talks to the REST API with httpx (traced by the httpx OpenTelemetry instrumentat
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import date
 from importlib import resources
@@ -173,15 +174,38 @@ class BM25Index:
         return out
 
     async def _update_by_query(self, term: dict[str, Any], source: str, params: dict[str, Any]) -> None:
-        await self._req(
-            "POST",
-            f"/{self.index}/_update_by_query",
-            params={"conflicts": "proceed", "refresh": "true"},
-            json={
-                "query": {"term": term},
-                "script": {"source": source, "lang": "painless", "params": params},
-            },
-        )
+        """Idempotent update through the alias; version conflicts are retried, failures raise."""
+        body = {"query": {"term": term}, "script": {"source": source, "lang": "painless", "params": params}}
+        for attempt in range(3):
+            resp = await self._req(
+                "POST",
+                f"/{self.alias}/_update_by_query",
+                params={"conflicts": "proceed", "refresh": "true"},
+                json=body,
+            )
+            result = resp.json()
+            if result.get("failures"):
+                raise OpenSearchError(f"update_by_query failures: {result['failures'][:1]}")
+            if not result.get("version_conflicts"):
+                return
+            await asyncio.sleep(0.2 * (attempt + 1))
+        raise OpenSearchError("update_by_query kept hitting version conflicts")
+
+    async def set_visible_many(self, version_ids: list[str]) -> None:
+        """Make many versions visible in one call (bulk seed activation)."""
+        for i in range(0, len(version_ids), 1000):
+            body = {
+                "query": {"terms": {"version_id": version_ids[i : i + 1000]}},
+                "script": {"source": "ctx._source.visible = true", "lang": "painless"},
+            }
+            resp = await self._req(
+                "POST",
+                f"/{self.alias}/_update_by_query",
+                params={"conflicts": "proceed", "refresh": "true"},
+                json=body,
+            )
+            if resp.json().get("failures"):
+                raise OpenSearchError("update_by_query failures while activating seed versions")
 
     async def set_visible(self, version_id: str, visible: bool) -> None:
         await self._update_by_query(
@@ -201,7 +225,7 @@ class BM25Index:
     async def delete_version(self, version_id: str) -> None:
         await self._req(
             "POST",
-            f"/{self.index}/_delete_by_query",
+            f"/{self.alias}/_delete_by_query",
             params={"conflicts": "proceed", "refresh": "true"},
             json={"query": {"term": {"version_id": version_id}}},
         )

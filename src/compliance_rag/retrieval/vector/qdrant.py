@@ -123,6 +123,21 @@ class QdrantStore:
     async def set_visible(self, version_id: str, visible: bool) -> None:
         await self._set_payload({"visible": visible}, "version_id", version_id)
 
+    async def set_visible_many(self, version_ids: list[str]) -> None:
+        for i in range(0, len(version_ids), 500):
+            await self.client.set_payload(
+                self.collection,
+                payload={"visible": True},
+                points=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="version_id", match=models.MatchAny(any=version_ids[i : i + 500])
+                        )
+                    ]
+                ),
+                wait=True,
+            )
+
     async def close_version(self, version_id: str, valid_to: date) -> None:
         await self._set_payload(
             {"valid_to": valid_to.isoformat(), "valid_to_n": date_to_int(valid_to)}, "version_id", version_id
