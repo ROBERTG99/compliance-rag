@@ -56,7 +56,7 @@ def _stable_zip(blob: bytes) -> bytes:
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as dst:
         names = src.namelist()
-        ordered = ["[Content_Types].xml"] + sorted(n for n in names if n != "[Content_Types].xml")
+        ordered = ["[Content_Types].xml", *sorted(n for n in names if n != "[Content_Types].xml")]
         for name in ordered:
             info = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
