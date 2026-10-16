@@ -123,6 +123,9 @@ markers = [
     "allow_network: test may open sockets to non-loopback hosts",
 ]
 timeout = 300
+filterwarnings = [
+    "ignore:`langchain-community` is being sunset:DeprecationWarning",
+]
 
 [tool.coverage.run]
 source = ["src/compliance_rag"]
