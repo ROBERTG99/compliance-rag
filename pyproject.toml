@@ -73,7 +73,6 @@ dev = [
     "locust>=2.31",
     "pre-commit>=3.8",
     "types-PyYAML",
-    "types-redis",
     "boto3-stubs[s3]",
 ]
 

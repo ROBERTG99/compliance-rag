@@ -1,0 +1,99 @@
+"""Everything the API process holds: services, graph, checkpointer, event store, token validator."""
+
+from __future__ import annotations
+
+import asyncio
+from dataclasses import dataclass, field
+from typing import Any
+
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg.rows import dict_row
+from psycopg_pool import AsyncConnectionPool
+from redis.asyncio import Redis
+
+from compliance_rag.api.sse import RunEvents
+from compliance_rag.auth.jwt import JWKSCache, TokenValidator
+from compliance_rag.graph.build import GraphDeps, build_graph
+from compliance_rag.llm.gateway import Gateway
+from compliance_rag.rerank import create_reranker
+from compliance_rag.retrieval.hybrid import HybridRetriever
+from compliance_rag.runtime import Services, build_services
+from compliance_rag.settings import Settings
+
+
+@dataclass
+class AppState:
+    settings: Settings
+    services: Services
+    gateway: Gateway
+    validator: TokenValidator
+    events: RunEvents
+    redis: Redis | None
+    checkpoint_pool: AsyncConnectionPool
+    checkpointer: AsyncPostgresSaver
+    graph: Any = None
+    background: set[asyncio.Task[Any]] = field(default_factory=set)
+
+    def build_graph(self) -> None:
+        s = self.services
+        vector: Any = s.qdrant if self.settings.vector_store == "qdrant" and s.qdrant is not None else s.pg
+        retriever = HybridRetriever(
+            s.bm25,
+            vector,
+            s.embedder,
+            rrf_k=self.settings.rrf_k,
+            leg_k=self.settings.leg_k,
+            timeout_ms=self.settings.leg_timeout_ms,
+        )
+        reranker = create_reranker(self.settings.reranker, embedder=s.embedder)
+        self.graph = build_graph(
+            GraphDeps(retriever, reranker, self.gateway, self.settings), self.checkpointer
+        )
+
+    async def reload(self) -> None:
+        """Reload the embedder (after seeding/reindexing) and rebuild the graph."""
+        await self.services.reload_embedder()
+        self.build_graph()
+
+    async def close(self) -> None:
+        for task in list(self.background):
+            task.cancel()
+        await self.services.close()
+        await self.checkpoint_pool.close()
+        if self.redis is not None:
+            await self.redis.aclose()
+
+
+async def build_state(settings: Settings, *, validator: TokenValidator | None = None) -> AppState:
+    services = await build_services(settings)
+    pool = AsyncConnectionPool(
+        settings.psycopg_url,
+        min_size=1,
+        max_size=5,
+        open=False,
+        kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row},
+    )
+    await pool.open(wait=True, timeout=30)
+    checkpointer = AsyncPostgresSaver(pool)  # type: ignore[arg-type]
+    await checkpointer.setup()
+    redis: Redis | None = Redis.from_url(settings.redis_url, socket_connect_timeout=1, socket_timeout=2)
+    try:
+        await redis.ping()  # type: ignore[union-attr]
+    except Exception:
+        await redis.aclose()  # type: ignore[union-attr]
+        redis = None
+    if validator is None:
+        expected_issuer = settings.oidc_public_issuer or settings.oidc_issuer
+        validator = TokenValidator(expected_issuer, settings.oidc_audience, JWKSCache(settings.oidc_issuer))
+    state = AppState(
+        settings=settings,
+        services=services,
+        gateway=Gateway(settings),
+        validator=validator,
+        events=RunEvents(redis, ttl_s=settings.sse_ttl_s),
+        redis=redis,
+        checkpoint_pool=pool,
+        checkpointer=checkpointer,
+    )
+    state.build_graph()
+    return state

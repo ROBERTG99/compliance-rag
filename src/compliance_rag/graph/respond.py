@@ -49,7 +49,7 @@ def build_response(state: dict[str, Any]) -> dict[str, Any]:
             "message": ABSTAIN_MESSAGE,
             "versions": [],
             "confidence": None,
-            "cost_usd": round(float(state.get("cost_usd", 0.0)), 6),
+            "cost_usd": None,  # cost would distinguish abstention causes; the real cost is in answers.cost_usd
         }
     verified = state["verified"]
     return {

@@ -327,3 +327,28 @@ async def test_max_tokens_keeps_verified_claims_as_partial_answer() -> None:
     )
     state = await run_graph(graph, question=Q, principal=ANALYST, as_of="2026-10-16")
     assert not state["abstained"] and state["verified"]["claims"][0]["text"] == GOOD_Q
+
+
+async def test_follow_up_ignores_history_of_another_principal() -> None:
+    d = deps([cand("a", ORION), cand("b", ATM)], score=0.9)
+    graph = build_graph(d, InMemorySaver())
+    first = await run_graph(
+        graph,
+        question="What is the daily spending limit on the Orion Prepaid Card?",
+        principal=ANALYST,
+        as_of="2026-10-16",
+    )
+    other: Principal = {
+        "sub": "legal@northwind.test",
+        "role": "legal",
+        "groups": ["legal", "compliance", "all"],
+    }
+    second = await run_graph(
+        graph,
+        question="And the ATM withdrawal cap?",
+        principal=other,
+        as_of="2026-10-16",
+        conversation_id=first["conversation_id"],
+        follow_up_of=first["run_id"],
+    )
+    assert "Orion" not in second["standalone_question"]

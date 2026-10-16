@@ -11,6 +11,7 @@ import os
 import uuid
 from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
+from typing import Any
 
 import psycopg
 import pytest
@@ -230,3 +231,97 @@ async def ingest_deps(
         await bm25.drop()
         await bm25.close()
         await pool.close()
+
+
+# ----------------------------------------------------------------------------- API environment
+API_DOCS = {"KYC-0042", "AML-0107", "CMP-0215"}
+
+
+def _api_document_ids() -> set[str]:
+    import json
+    from pathlib import Path
+
+    rows = [
+        json.loads(line)
+        for line in (Path(__file__).resolve().parents[1] / "evals/datasets/questions.v1.jsonl")
+        .read_text()
+        .splitlines()
+    ]
+    dev = [r for r in rows if r["split"] == "dev" and r["meta"]["category"] in {"single_hop", "acl_probe"}][
+        :24
+    ]
+    return API_DOCS | {g["document_id"] for r in dev for g in r["meta"]["gold"]}
+
+
+@dataclass
+class ApiEnv:
+    app: Any
+    settings: Any
+    oidc: Any
+
+    async def token(self, persona: str) -> str:
+        resp = await self.oidc.post("/dev/token", json={"persona": persona})
+        return str(resp.json()["access_token"])
+
+    async def client(self, persona: str | None = None) -> Any:
+        import httpx
+
+        headers = {"Authorization": f"Bearer {await self.token(persona)}"} if persona else {}
+        return httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=self.app), base_url="http://api", headers=headers
+        )
+
+
+@pytest.fixture(scope="session")
+async def api_env(
+    pg_admin_url: str, redis_url: str, opensearch_url: str, s3_config: S3Config
+) -> AsyncIterator[ApiEnv]:
+    import sys
+    from pathlib import Path
+
+    import httpx
+
+    from compliance_rag.api.app import create_app
+    from compliance_rag.api.state import build_state
+    from compliance_rag.auth.jwt import JWKSCache, TokenValidator
+    from compliance_rag.db.migrate import upgrade
+    from compliance_rag.ingest.seed import seed_corpus
+    from compliance_rag.settings import Settings
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps" / "dev-oidc"))
+    from dev_oidc.app import create_app as create_oidc
+
+    db = _create_database(pg_admin_url)
+    upgrade(db.url)
+    suffix = uuid.uuid4().hex[:8]
+    settings = Settings(
+        _env_file=None,
+        database_url=db.url,
+        redis_url=redis_url,
+        opensearch_url=opensearch_url,
+        opensearch_index=f"crag-api-{suffix}",
+        opensearch_alias=f"crag-api-{suffix}-alias",
+        s3_endpoint_url=s3_config.endpoint_url,
+        s3_access_key=s3_config.access_key,
+        s3_secret_key=s3_config.secret_key,
+        s3_bucket=f"crag-api-{suffix}",
+        oidc_issuer="http://localhost:8612",
+        oidc_public_issuer="http://localhost:8612",
+    )
+    oidc_app = create_oidc(public_url="http://localhost:8612")
+    oidc = httpx.AsyncClient(transport=httpx.ASGITransport(app=oidc_app), base_url="http://localhost:8612")
+    validator = TokenValidator(
+        "http://localhost:8612", "compliance-rag", JWKSCache("http://localhost:8612", client=oidc)
+    )
+    state = await build_state(settings, validator=validator)
+    await state.services.objects.ensure_bucket()
+    await state.services.bm25.init()
+    await seed_corpus(state.services.ingest_deps(), only=_api_document_ids(), log=lambda _m: None)
+    await state.reload()
+    app = create_app(settings, state=state)
+    try:
+        yield ApiEnv(app=app, settings=settings, oidc=oidc)
+    finally:
+        await state.close()
+        await oidc.aclose()
+        _drop_database(pg_admin_url, db)

@@ -189,7 +189,8 @@ def build_graph(deps: GraphDeps, checkpointer: Any | None = None) -> Any:
 
     @_node("condense_followup")
     async def condense_followup(state: GraphState) -> dict[str, Any]:
-        history = state.get("history") or []
+        # only the caller's own turns may feed the rewrite (the API also enforces conversation ownership)
+        history = [h for h in state.get("history") or [] if h.get("sub") == state["principal"]["sub"]]
         previous = next((h for h in reversed(history) if h["run_id"] == state.get("follow_up_of")), None)
         if previous is None and history:
             previous = history[-1]
@@ -462,7 +463,12 @@ def build_graph(deps: GraphDeps, checkpointer: Any | None = None) -> Any:
 
     def _history_entry(state: GraphState) -> dict[str, Any]:
         titles = sorted({c.get("title", "") for c in (state.get("context") or [])[:3] if c.get("title")})
-        return {"run_id": state["run_id"], "question": state["standalone_question"], "titles": titles}
+        return {
+            "run_id": state["run_id"],
+            "sub": state["principal"]["sub"],
+            "question": state["standalone_question"],
+            "titles": titles,
+        }
 
     @_node("respond")
     async def respond(state: GraphState) -> dict[str, Any]:
