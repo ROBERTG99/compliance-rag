@@ -6,14 +6,14 @@ import asyncio
 import uuid
 from collections.abc import AsyncIterator
 from datetime import date
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, Response
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from compliance_rag.api import runs
-from compliance_rag.api.deps import current_principal, get_state
+from compliance_rag.api.deps import ask_rate_limit, current_principal, get_state
 from compliance_rag.api.errors import not_found
 from compliance_rag.api.sse import TERMINAL, format_event
 from compliance_rag.api.state import AppState
@@ -26,7 +26,7 @@ PING_INTERVAL_S = 15.0
 
 class AskRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    question: str = Field(min_length=1, max_length=2000)
+    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
     as_of: date | None = None
     follow_up_of: str | None = None
     stream: bool = True
@@ -86,7 +86,7 @@ class RunDetail(AnswerResponse):
 async def ask(
     req: AskRequest,
     response: Response,
-    principal: Principal = Depends(current_principal),
+    principal: Principal = Depends(ask_rate_limit),
     state: AppState = Depends(get_state),
 ) -> Any:
     as_of = runs.check_as_of(principal, req.as_of)

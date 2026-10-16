@@ -307,6 +307,7 @@ async def api_env(
         s3_bucket=f"crag-api-{suffix}",
         oidc_issuer="http://localhost:8612",
         oidc_public_issuer="http://localhost:8612",
+        rate_limit_per_min=100_000,  # the shared session app; test_limits swaps in a 30/min limiter
     )
     oidc_app = create_oidc(public_url="http://localhost:8612")
     oidc = httpx.AsyncClient(transport=httpx.ASGITransport(app=oidc_app), base_url="http://localhost:8612")

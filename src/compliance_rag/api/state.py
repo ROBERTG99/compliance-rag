@@ -14,6 +14,7 @@ from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 from redis.asyncio import Redis
 
+from compliance_rag.api.limits import RateLimiter
 from compliance_rag.api.sse import RunEvents
 from compliance_rag.auth.jwt import JWKSCache, TokenValidator
 from compliance_rag.graph.build import GraphDeps, build_graph
@@ -34,6 +35,7 @@ class AppState:
     redis: Redis | None
     checkpoint_pool: AsyncConnectionPool
     checkpointer: AsyncPostgresSaver
+    limiter: RateLimiter = field(default_factory=lambda: RateLimiter(None, 30))
     arq: ArqRedis | None = None
     graph: Any = None
     background: set[asyncio.Task[Any]] = field(default_factory=set)
@@ -100,6 +102,7 @@ async def build_state(settings: Settings, *, validator: TokenValidator | None = 
         redis=redis,
         checkpoint_pool=pool,
         checkpointer=checkpointer,
+        limiter=RateLimiter(redis, settings.rate_limit_per_min),
     )
     if redis is not None:
         try:
