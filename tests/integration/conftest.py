@@ -46,7 +46,7 @@ def _wait_http(url: str, timeout_s: float = 120.0) -> None:
         try:
             if httpx.get(url, timeout=2.0).status_code < 500:
                 return
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             last = exc
         time.sleep(0.5)
     raise TimeoutError(f"{url} not ready: {last}")

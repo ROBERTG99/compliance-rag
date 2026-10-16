@@ -30,7 +30,7 @@ chore: configure commit attribution
 | T-08 | M0 | Walking skeleton in Docker (FR-8) | done | `docker compose up -d --wait --build` → 6 services healthy in 19 s; `curl -X POST localhost:8600/v1/ask` → FakeLLM answer; `pytest tests/integration/test_skeleton.py` → 1 passed |
 | T-09 | M1 | Settings and `.env.example` | done | `uv run pytest tests/unit/test_settings.py` → 4 passed; mypy clean |
 | T-10 | M1 | Core migrations (FR-3, FR-5) | done | `uv run pytest tests/integration/test_migrations.py` → 4 passed (testcontainers pgvector:pg16; upgrade + downgrade) |
-| T-11 | M1 | Ops migrations and audit chain (FR-12) | todo | |
+| T-11 | M1 | Ops migrations and audit chain (FR-12) | done | `uv run pytest tests/integration/test_audit.py` → 3 passed (UPDATE/DELETE rejected, tamper detected at seq 3, `crag audit verify` ok, 10 concurrent appends keep the chain) |
 | T-12 | M1 | Corpus generator (FR-1) | todo | |
 | T-13 | M1 | Renderers and injection documents (FR-1, FR-13) | todo | |
 | T-14 | M1 | Questions and judge labels | todo | |
