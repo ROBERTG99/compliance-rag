@@ -9,6 +9,7 @@ update-by-query calls, so a crash between stores is repaired by replaying the jo
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import time
 from collections.abc import Awaitable, Callable
@@ -223,10 +224,8 @@ class ParsedVersion:
 async def parse_version(deps: IngestDeps, version_id: str) -> ParsedVersion:
     version = await _load_version(deps.pool, version_id)
     blob = await deps.objects.get(version["s3_key"])
-    import asyncio
-
     text = await asyncio.to_thread(extract_text, blob, version["source_format"])
-    chunks = chunk_text(text)
+    chunks = await asyncio.to_thread(chunk_text, text)
     async with deps.pool.connection() as conn:
         await conn.execute(
             "UPDATE document_versions SET extracted_text = %s, status = 'indexing' WHERE id = %s",
@@ -391,7 +390,7 @@ async def ingest_document(deps: IngestDeps, job_id: str) -> JobResult:
             await _set_job(deps.pool, job_id, "parsing", error=None)
             parsed = await parse_version(deps, version_id)
             await _set_job(deps.pool, job_id, "embedding")
-            records = build_records(parsed, deps.embedder)
+            records = await asyncio.to_thread(build_records, parsed, deps.embedder)  # CPU / provider I/O
             chunk_count = len(records)
             await _set_job(deps.pool, job_id, "indexing", chunk_count=chunk_count)
             await write_indexes(deps, records)

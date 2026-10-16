@@ -443,7 +443,7 @@ def build_graph(deps: GraphDeps, checkpointer: Any | None = None) -> Any:
         claims = [VerifiedClaim.model_validate(c) for c in draft.get("claims", [])]
         by_id = {c["chunk_id"]: c for c in state["context"]}
         # defence in depth: every quote must still be in the context that was given to the model
-        claims = [
+        kept = [
             c
             for c in claims
             if all(
@@ -451,15 +451,20 @@ def build_graph(deps: GraphDeps, checkpointer: Any | None = None) -> Any:
                 for cit in c.citations
             )
         ]
-        if not claims:
+        for dropped in (c for c in claims if c not in kept):  # it already streamed: tell the client
+            await emit("claim_rejected", {"index": dropped.index, "reason": "retracted"})
+        if not kept:
             return {"abstained": True, "abstain_reason": "no_verified_claims"}
-        answer = final_answer(str(draft.get("answer", "")), claims)
+        answer = final_answer(str(draft.get("answer", "")), kept)
         if not check_output(answer, [c["text"] for c in state["context"]]).ok:
-            answer = " ".join(c.text for c in claims)
+            answer = " ".join(c.text for c in kept)
         verified = VerifiedAnswer(
-            claims=claims, answer=answer, rejected=draft.get("rejected", []), abstained=False
+            claims=kept, answer=answer, rejected=draft.get("rejected", []), abstained=False
         )
-        return {"verified": verified.model_dump()}
+        update: dict[str, Any] = {"verified": verified.model_dump()}
+        if draft.get("truncated"):  # max_tokens: the answer is partial
+            update["degraded"] = sorted({*state.get("degraded", []), "generation_truncated"})
+        return update
 
     def _history_entry(state: GraphState) -> dict[str, Any]:
         titles = sorted({c.get("title", "") for c in (state.get("context") or [])[:3] if c.get("title")})

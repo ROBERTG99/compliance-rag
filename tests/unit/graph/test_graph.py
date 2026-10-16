@@ -352,3 +352,15 @@ async def test_follow_up_ignores_history_of_another_principal() -> None:
         follow_up_of=first["run_id"],
     )
     assert "Orion" not in second["standalone_question"]
+
+
+async def test_truncated_answer_is_flagged_as_degraded() -> None:
+    from compliance_rag.llm.gateway import LLMMaxTokens
+
+    text = _claims_json((GOOD_Q, GOOD_Q), (GOOD_Q + " Extra", GOOD_Q))[:-60]
+    graph = build_graph(
+        deps([cand("a", ORION)], score=0.9, gateway=ScriptedGateway(text, LLMMaxTokens("cut"))),
+        InMemorySaver(),
+    )
+    state = await run_graph(graph, question=Q, principal=ANALYST, as_of="2026-10-16")
+    assert "generation_truncated" in state["degraded"]

@@ -30,3 +30,12 @@ async def test_seed_is_idempotent(ingest_deps: IngestDeps) -> None:
     open_versions = [v for v in versions if v[3] is None]
     assert {(v[0], v[1]) for v in open_versions} == {("KYC-0042", 3), ("CMP-0215", 2)}
     assert await ingest_deps.bm25.count() == first.chunks
+    import httpx
+
+    async with httpx.AsyncClient(base_url=ingest_deps.bm25.url) as client:
+        hidden = (
+            await client.post(
+                f"/{ingest_deps.bm25.alias}/_count", json={"query": {"term": {"visible": False}}}
+            )
+        ).json()["count"]
+    assert hidden == 0  # activation made every seeded chunk visible in OpenSearch too

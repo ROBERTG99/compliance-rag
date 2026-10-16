@@ -218,20 +218,27 @@ class BM25Index:
         raise OpenSearchError("update_by_query kept hitting version conflicts")
 
     async def set_visible_many(self, version_ids: list[str]) -> None:
-        """Make many versions visible in one call (bulk seed activation)."""
+        """Make many versions visible (bulk seed activation); conflicts are retried, failures raise."""
         for i in range(0, len(version_ids), 1000):
             body = {
                 "query": {"terms": {"version_id": version_ids[i : i + 1000]}},
                 "script": {"source": "ctx._source.visible = true", "lang": "painless"},
             }
-            resp = await self._req(
-                "POST",
-                f"/{self.alias}/_update_by_query",
-                params={"conflicts": "proceed", "refresh": "true"},
-                json=body,
-            )
-            if resp.json().get("failures"):
-                raise OpenSearchError("update_by_query failures while activating seed versions")
+            for attempt in range(3):
+                resp = await self._req(
+                    "POST",
+                    f"/{self.alias}/_update_by_query",
+                    params={"conflicts": "proceed", "refresh": "true"},
+                    json=body,
+                )
+                result = resp.json()
+                if result.get("failures"):
+                    raise OpenSearchError("update_by_query failures while activating seed versions")
+                if not result.get("version_conflicts"):
+                    break
+                await asyncio.sleep(0.2 * (attempt + 1))
+            else:
+                raise OpenSearchError("update_by_query kept hitting version conflicts")
 
     async def set_visible(self, version_id: str, visible: bool) -> None:
         await self._update_by_query(
