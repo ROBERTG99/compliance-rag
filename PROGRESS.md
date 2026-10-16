@@ -42,7 +42,7 @@ chore: configure commit attribution
 | T-20 | M2 | Hybrid retrieval and RRF (FR-7) | todo | |
 | T-21 | M2 | Rerankers (FR-7) | todo | |
 | T-22 | M2 | LLM gateway, FakeLLM, cassettes | todo | |
-| T-23 | M2 | Guards and PII redaction (FR-13) | todo | |
+| T-23 | M2 | Guards and PII redaction (FR-13) | in progress | `uv run pytest tests/unit/guard` → 15 passed (8 injection templates ≥ 0.7, filler/fact sentences < 0.7, 30 corpus canaries removed, output guard, PII redaction); PII spy on provider payloads pending gateway (T-22) |
 | T-24 | M2 | Citation verifier (FR-9) | todo | |
 | T-25 | M2 | Graph, abstention, follow-up (FR-8) | todo | |
 | T-26 | M3 | Dev OIDC and auth (FR-11) | todo | |
