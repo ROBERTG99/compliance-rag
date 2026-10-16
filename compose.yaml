@@ -1,0 +1,104 @@
+name: compliance-rag
+
+x-build-args: &build-args
+  HTTPS_PROXY: "${HTTPS_PROXY:-}"
+
+x-app-env: &app-env
+  DEMO_MODE: "${DEMO_MODE:-offline}"
+  LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+  CRAG_DATABASE_URL: postgresql://crag:crag@postgres:5432/crag
+  CRAG_REDIS_URL: redis://redis:6379/0
+  CRAG_OPENSEARCH_URL: http://opensearch:9200
+  CRAG_S3_ENDPOINT_URL: http://minio:9000
+  CRAG_S3_ACCESS_KEY: crag-dev-access
+  CRAG_S3_SECRET_KEY: crag-dev-secret-key
+  CRAG_S3_BUCKET: crag-raw
+  CRAG_QDRANT_URL: http://qdrant:6333
+  CRAG_OIDC_ISSUER: http://dev-oidc:8612
+  CRAG_OIDC_PUBLIC_ISSUER: http://localhost:8612
+  OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-}"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: crag
+      POSTGRES_PASSWORD: crag
+      POSTGRES_DB: crag
+    ports: ["127.0.0.1:8620:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crag -d crag"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    ports: ["127.0.0.1:8630:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  opensearch:
+    image: opensearchproject/opensearch:2.19.1
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+      bootstrap.memory_lock: "false"
+    ports: ["127.0.0.1:8640:9200"]
+    volumes: [osdata:/usr/share/opensearch/data]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+
+  minio:
+    build:
+      context: .
+      dockerfile: docker/minio.Dockerfile
+      network: host
+      args: *build-args
+    image: compliance-rag/minio:RELEASE.2025-04-22T22-12-26Z
+    environment:
+      MINIO_ROOT_USER: crag-dev-access
+      MINIO_ROOT_PASSWORD: crag-dev-secret-key
+    ports: ["127.0.0.1:8641:9000", "127.0.0.1:8642:9001"]
+    volumes: [miniodata:/data]
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      network: host
+      args: *build-args
+    image: compliance-rag/api:dev
+    environment: *app-env
+    ports: ["127.0.0.1:8610:8610"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      opensearch: { condition: service_healthy }
+      minio: { condition: service_healthy }
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      network: host
+      args: *build-args
+    image: compliance-rag/web:dev
+    ports: ["127.0.0.1:8600:8080"]
+    depends_on:
+      api: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  osdata:
+  miniodata:

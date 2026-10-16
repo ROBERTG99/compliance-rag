@@ -27,7 +27,7 @@ chore: configure commit attribution
 | T-05 | M0 | Hooks | done | `uv run pytest tests/harness` → 39 passed (guard staged in a temp file before swap) |
 | T-06 | M0 | Subagents and skills | done | `uv run pytest tests/harness/test_agents.py` → 3 passed (8 agents, 13 skills) |
 | T-07 | M0 | Repository integrations | done | `uv run pre-commit run --all-files` → ruff, ruff-format, prettier, gitleaks, markdownlint passed |
-| T-08 | M0 | Walking skeleton in Docker (FR-8) | todo | |
+| T-08 | M0 | Walking skeleton in Docker (FR-8) | done | `docker compose up -d --wait --build` → 6 services healthy in 19 s; `curl -X POST localhost:8600/v1/ask` → FakeLLM answer; `pytest tests/integration/test_skeleton.py` → 1 passed |
 | T-09 | M1 | Settings and `.env.example` | todo | |
 | T-10 | M1 | Core migrations (FR-3, FR-5) | todo | |
 | T-11 | M1 | Ops migrations and audit chain (FR-12) | todo | |
