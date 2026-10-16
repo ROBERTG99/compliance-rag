@@ -128,6 +128,7 @@ def opensearch_url() -> Iterator[str]:
             "DISABLE_SECURITY_PLUGIN": "true",
             "DISABLE_INSTALL_DEMO_CONFIG": "true",
             "OPENSEARCH_JAVA_OPTS": "-Xms512m -Xmx512m",
+            "cluster.routing.allocation.disk.threshold_enabled": "false",
         },
     )
     with container:

@@ -37,7 +37,7 @@ chore: configure commit attribution
 | T-15 | M2 | Loaders and chunker (FR-2) | done | `uv run pytest tests/unit/ingest/test_chunker.py` → 8 passed (4 formats respect article boundaries, Hypothesis offset round-trip 60 examples, long-article split, magic bytes) |
 | T-16 | M2 | Embedders (FR-4) | done | `uv run pytest tests/unit/embed tests/contract/providers` → 8 passed (LSA fit twice max diff < 1e-6, npz round-trip, Titan/OpenAI request+response shapes against fixtures) |
 | T-17 | M2 | Vector stores (FR-5) | done | `uv run pytest tests/integration/test_vector_stores.py` → 6 passed (pgvector + Qdrant: 300 nearer restricted chunks still yield 10 authorized hits, validity/visibility, 25 random group draws never leak) |
-| T-18 | M2 | OpenSearch BM25 (FR-6) | todo | |
+| T-18 | M2 | OpenSearch BM25 (FR-6) | done | `uv run pytest tests/integration/test_bm25.py tests/unit/retrieval` → 5 passed (Legal-only chunk matching every term absent for support); `crag search init` twice → created, already present |
 | T-19 | M2 | Ingestion worker (FR-3) | todo | |
 | T-20 | M2 | Hybrid retrieval and RRF (FR-7) | todo | |
 | T-21 | M2 | Rerankers (FR-7) | todo | |

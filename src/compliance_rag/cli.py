@@ -9,9 +9,11 @@ import typer
 
 from compliance_rag.settings import get_settings
 
-app = typer.Typer(help="compliance-rag operations CLI", no_args_is_help=True)
+app = typer.Typer(help="compliance-rag operations CLI", no_args_is_help=True, pretty_exceptions_enable=False)
 audit_app = typer.Typer(help="Audit log commands", no_args_is_help=True)
 app.add_typer(audit_app, name="audit")
+search_app = typer.Typer(help="OpenSearch index commands", no_args_is_help=True)
+app.add_typer(search_app, name="search")
 corpus_app = typer.Typer(help="Synthetic corpus commands", no_args_is_help=True)
 app.add_typer(corpus_app, name="corpus")
 
@@ -41,6 +43,26 @@ def audit_verify(database_url: str = typer.Option(None, help="Override CRAG_DATA
             raise typer.Exit(1)
 
     asyncio.run(_run())
+
+
+@search_app.command("init")
+def search_init(opensearch_url: str = typer.Option(None, help="Override CRAG_OPENSEARCH_URL")) -> None:
+    """Create the BM25 index and alias if missing (idempotent)."""
+    from compliance_rag.retrieval.bm25 import BM25Index
+
+    settings = get_settings()
+
+    async def _run() -> bool:
+        idx = BM25Index(
+            opensearch_url or settings.opensearch_url, settings.opensearch_index, settings.opensearch_alias
+        )
+        try:
+            return await idx.init()
+        finally:
+            await idx.close()
+
+    created = asyncio.run(_run())
+    typer.echo(f"index {settings.opensearch_index} ({'created' if created else 'already present'})")
 
 
 @corpus_app.command("generate")
