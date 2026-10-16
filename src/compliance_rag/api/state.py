@@ -6,6 +6,9 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
+from arq import ArqRedis
+from arq import create_pool as create_arq_pool
+from arq.connections import RedisSettings
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
@@ -31,6 +34,7 @@ class AppState:
     redis: Redis | None
     checkpoint_pool: AsyncConnectionPool
     checkpointer: AsyncPostgresSaver
+    arq: ArqRedis | None = None
     graph: Any = None
     background: set[asyncio.Task[Any]] = field(default_factory=set)
 
@@ -62,6 +66,8 @@ class AppState:
         await self.checkpoint_pool.close()
         if self.redis is not None:
             await self.redis.aclose()
+        if self.arq is not None:
+            await self.arq.aclose()
 
 
 async def build_state(settings: Settings, *, validator: TokenValidator | None = None) -> AppState:
@@ -95,5 +101,10 @@ async def build_state(settings: Settings, *, validator: TokenValidator | None = 
         checkpoint_pool=pool,
         checkpointer=checkpointer,
     )
+    if redis is not None:
+        try:
+            state.arq = await create_arq_pool(RedisSettings.from_dsn(settings.redis_url), retry=0)
+        except Exception:
+            state.arq = None
     state.build_graph()
     return state

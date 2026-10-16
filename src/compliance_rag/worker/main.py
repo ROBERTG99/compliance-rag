@@ -55,13 +55,39 @@ async def ingest_document(ctx: dict[str, Any], job_id: str) -> dict[str, Any]:
     }
 
 
+async def poll_s3_inbox(ctx: dict[str, Any]) -> dict[str, int]:
+    """Cron (every 30 s): register ``inbox/`` documents that have a sidecar ``.json`` and enqueue them."""
+    from compliance_rag.ingest.pipeline import content_sha256, idempotency_key
+    from compliance_rag.ingest.s3 import poll_inbox
+
+    services: Services = ctx["services"]
+    redis = ctx["redis"]
+
+    async def enqueue_job(job: Any) -> None:
+        async with services.pool.connection() as conn:
+            row = await (
+                await conn.execute(
+                    "SELECT content_sha256 FROM document_versions WHERE id = %s", (job.version_id,)
+                )
+            ).fetchone()
+        sha = str(row[0]) if row else content_sha256(job.job_id.encode())
+        await redis.enqueue_job(
+            "ingest_document",
+            job.job_id,
+            _job_id=idempotency_key("ingest", job.document_id, job.version, sha),
+        )
+
+    result = await poll_inbox(services.ingest_deps(), enqueue=enqueue_job)
+    return {"registered": result.registered, "failed": result.failed, "waiting": result.waiting}
+
+
 def redis_settings() -> RedisSettings:
     return RedisSettings.from_dsn(get_settings().redis_url)
 
 
 class WorkerSettings:
     functions: ClassVar[list[Any]] = [ingest_document]
-    cron_jobs: ClassVar[list[Any]] = []
+    cron_jobs: ClassVar[list[Any]] = [cron(poll_s3_inbox, second={0, 30}, run_at_startup=False, unique=True)]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = redis_settings()

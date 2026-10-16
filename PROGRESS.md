@@ -16,9 +16,9 @@
 |---|---|---|
 | M0 | "ship" (after fixes) | Guard rewritten per review (segment tokeniser, identity/force-push variants, dataset false positives). |
 | M1 | "ship" | Follow-ups applied (audit TRUNCATE trigger, float hashing, `make corpus` exports datasets, env.example both directions). Deferred items in `docs/KNOWN_LIMITATIONS.md`. |
-| M2 | **"fix first" — open** | ACL-audit blockers 1, 3, 5, 7 fixed in `8cb824a`. The reviewer blockers below are still open; fix them first in the next session, then re-run the reviewer on M2. |
+| M2 | "ship" (re-review after `e847e0f`, `6047fd5`, `8cb824a`) | All five reviewer blockers and ACL-audit items 1, 3, 5, 7 fixed and verified (35 M2 integration tests). |
 
-### Open M2 blockers (do these before continuing T-27)
+### M2 blockers (all fixed; kept for the record)
 
 1. **Verifier — partial-number quotes** (`src/compliance_rag/graph/verify.py`, `locate`): a quote ending inside a number ("…limit is EUR 1" vs chunk "EUR 1,000") passes with claim "…EUR 1." → reject matches whose span starts/ends inside a digit run (digits joined by `,`/`.`); add that regression test to `tests/unit/graph/test_verify_citations.py`.
 2. **Streamed claims vs final answer** (`graph/build.py` generate/verify nodes): build the final verified answer from the per-claim results (skip invalid claims instead of failing the whole `GeneratedAnswer` validation, e.g. quote < 12 chars, > 8 claims). On `refusal`/`max_tokens` claims may already have streamed: either buffer claims until the stream ends or emit an explicit retraction; test it. Also: report schema-invalid claims as their own reason (not `quote_not_found`), count `crag_claims_rejected_total` once, and keep citation `n` numbering identical between streamed and final claims.
@@ -94,7 +94,7 @@ chore: configure commit attribution
 | T-25 | M2 | Graph, abstention, follow-up (FR-8) | done | `uv run pytest tests/unit/graph/test_graph.py` → 8 passed (low score abstains with 0 LLM calls, only verified claims stream, follow-up via checkpointer, refusal, identical abstention bodies, claim stream parser); `uv run pytest tests/integration/test_graph_offline.py` → 10/10 dev questions answered offline with AsyncPostgresSaver, follow-up reloads history |
 | T-26 | M3 | Dev OIDC and auth (FR-11) | done | `uv run pytest tests/integration/test_auth.py` → 6 passed (wrong audience, expired, forged payload, foreign key, HS256 rejected; role caps groups; PKCE S256 single-use codes); `docker compose up dev-oidc` healthy, `/dev/token` mints RS256 |
 | T-27 | M3 | Ask and SSE (FR-10, FR-11) | done | `uv run pytest tests/integration/test_sse.py tests/integration/test_acl.py tests/integration/test_skeleton.py` → 9 passed (Last-Event-ID 4 replays 5..N, only verified text in tokens, as_of 2025-12-31 → KYC-0042 v2 superseded, owner-only runs, restricted vs unknown abstention identical minus run_id/conversation_id/latency, follow-up ownership, future as_of 422, 401 problem+json) |
-| T-28 | M3 | Documents and S3 inbox (FR-1) | todo | |
+| T-28 | M3 | Documents and S3 inbox (FR-1) | done | `uv run pytest tests/integration/test_documents_api.py` → 6 passed (same bytes → same job_id, raw in S3, 21 MB → 413, fake PDF/EXE → 415, bad id → 422, changed bytes/ACL → 409, analyst → 403, from-s3 + 404, library/versions/evidence ACL → 404, cursor paging, valid_at, inbox sidecar poll); full `tests/integration` → 50 passed |
 | T-29 | M3 | ACL sync, jobs, lag (FR-14, FR-11) | todo | |
 | T-30 | M3 | Feedback and audit (FR-12) | todo | |
 | T-31 | M3 | Limits and errors (NFR-6) | todo | |
