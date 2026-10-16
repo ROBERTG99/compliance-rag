@@ -23,7 +23,7 @@ chore: configure commit attribution
 | T-01 | M0 | Bootstrap and attribution evidence | done | `uv run pytest tests/harness/test_repo_files.py` → 1 passed |
 | T-02 | M0 | Python workspace and Makefile | done | `make check-fast` → ruff, mypy, 4 harness tests passed; socket guard test passes |
 | T-03 | M0 | Web scaffold | done | `pnpm -C web test` → 1 passed; `pnpm -C web build` → built |
-| T-04 | M0 | CLAUDE.md, AGENTS.md, settings, rules | todo | |
+| T-04 | M0 | CLAUDE.md, AGENTS.md, settings, rules | done | `uv run pytest tests/harness/test_settings.py` → 4 passed; CLAUDE.md 98 lines |
 | T-05 | M0 | Hooks | todo | |
 | T-06 | M0 | Subagents and skills | todo | |
 | T-07 | M0 | Repository integrations | todo | |
