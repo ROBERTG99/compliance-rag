@@ -336,14 +336,62 @@ async def iter_text(chunks: list[str]) -> AsyncIterator[str]:  # pragma: no cove
         yield c
 
 
+class RedactingBedrockRuntime:
+    """Wraps a ``bedrock-runtime`` client: redacts PII in Titan/Cohere request bodies, records usage."""
+
+    def __init__(self, client: Any) -> None:
+        self._client = client
+
+    def invoke_model(self, **kwargs: Any) -> Any:
+        body = json.loads(kwargs.get("body") or "{}")
+        if isinstance(body.get("inputText"), str):
+            body["inputText"] = redact(body["inputText"])
+        if isinstance(body.get("query"), str):
+            body["query"] = redact(body["query"])
+        if isinstance(body.get("documents"), list):
+            body["documents"] = [redact(d) if isinstance(d, str) else d for d in body["documents"]]
+        kwargs["body"] = json.dumps(body)
+        resp = self._client.invoke_model(**kwargs)
+        model = str(kwargs.get("modelId", "bedrock"))
+        LLM_TOKENS.labels(route="embed_or_rerank", model=model, direction="input").inc(
+            len(json.dumps(body)) // 4  # coarse estimate; Bedrock bills per token or search unit
+        )
+        return resp
+
+
+class RedactingOpenAI:
+    """Wraps an OpenAI client so ``embeddings.create`` never sends PII."""
+
+    def __init__(self, client: Any) -> None:
+        self._client = client
+        outer = self
+
+        class _Embeddings:
+            def create(self, **kwargs: Any) -> Any:
+                inputs = kwargs.get("input")
+                if isinstance(inputs, list):
+                    kwargs["input"] = [redact(t) if isinstance(t, str) else t for t in inputs]
+                elif isinstance(inputs, str):
+                    kwargs["input"] = redact(inputs)
+                resp = outer._client.embeddings.create(**kwargs)
+                usage = getattr(resp, "usage", None)
+                if usage is not None:
+                    LLM_TOKENS.labels(route="embed", model=str(kwargs.get("model")), direction="input").inc(
+                        int(getattr(usage, "prompt_tokens", 0) or 0)
+                    )
+                return resp
+
+        self.embeddings = _Embeddings()
+
+
 def bedrock_runtime_client() -> Any:
     import boto3
 
-    return boto3.client("bedrock-runtime", region_name=get_settings().aws_region)
+    return RedactingBedrockRuntime(boto3.client("bedrock-runtime", region_name=get_settings().aws_region))
 
 
 def openai_client() -> Any:
     import openai
 
     key = get_settings().openai_api_key
-    return openai.OpenAI(api_key=key.get_secret_value() if key else None)
+    return RedactingOpenAI(openai.OpenAI(api_key=key.get_secret_value() if key else None))

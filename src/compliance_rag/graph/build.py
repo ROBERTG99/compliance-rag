@@ -10,6 +10,7 @@ Events (SSE §4.5) are emitted through a context variable, never through checkpo
 
 from __future__ import annotations
 
+import asyncio
 import operator
 import time
 import uuid
@@ -273,8 +274,9 @@ def build_graph(deps: GraphDeps, checkpointer: Any | None = None) -> Any:
     @_node("rerank")
     async def rerank(state: GraphState) -> dict[str, Any]:
         top = state["fused"][: settings.leg_k]
-        reranked = deps.reranker.rerank(
-            state["standalone_question"], list(top), date.fromisoformat(state["as_of"])
+        # Cohere on Bedrock and provider embeddings (cosine fill) block: run them in a worker thread
+        reranked = await asyncio.to_thread(
+            deps.reranker.rerank, state["standalone_question"], list(top), date.fromisoformat(state["as_of"])
         )
         return {"reranked": reranked}
 

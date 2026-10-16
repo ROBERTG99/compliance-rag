@@ -118,3 +118,26 @@ async def test_updates_target_the_alias_and_report_failures(index: BM25Index) ->
             await broken.update_acl("CMP-0001", ["all"])
     finally:
         await broken.close()
+
+
+async def test_hits_carry_offsets_into_extracted_text(index: BM25Index) -> None:
+    rec = _rec(5, "Vendors must notify incidents within 24 hours.", ["all"], char_start=1200, char_end=1246)
+    await index.bulk_index([rec], refresh=True)
+    hit = (await index.search("vendors notify incidents", SUPPORT, AS_OF, k=5))[0]
+    assert (hit["char_start"], hit["char_end"]) == (1200, 1246)
+
+
+async def test_init_adds_new_mapping_fields_to_an_existing_index(opensearch_url: str, os_index: str) -> None:
+    import httpx
+
+    old = {"mappings": {"dynamic": "strict", "properties": {"chunk_id": {"type": "keyword"}}}}
+    async with httpx.AsyncClient(base_url=opensearch_url) as client:
+        assert (await client.put(f"/{os_index}", json=old)).status_code == 200
+        idx = BM25Index(opensearch_url, index=os_index, alias=f"{os_index}-alias")
+        try:
+            await idx.init()
+            props = (await client.get(f"/{os_index}/_mapping")).json()[os_index]["mappings"]["properties"]
+            assert {"char_start", "char_end", "acl_groups"} <= set(props)
+        finally:
+            await idx.drop()
+            await idx.close()

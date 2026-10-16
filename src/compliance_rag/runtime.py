@@ -58,11 +58,9 @@ async def build_services(
 ) -> Services:
     pool = await create_pool(settings.psycopg_url, min_size=1, max_size=pool_size)
     objects = object_store(settings)
+    # searches are bounded by the leg timeout (asyncio.wait_for); bulk/admin calls need a generous client timeout
     bm25 = BM25Index(
-        settings.opensearch_url,
-        settings.opensearch_index,
-        settings.opensearch_alias,
-        timeout_s=max(1.0, settings.leg_timeout_ms / 1000 * 4),
+        settings.opensearch_url, settings.opensearch_index, settings.opensearch_alias, timeout_s=60.0
     )
     use_qdrant = settings.vector_store == "qdrant" if with_qdrant is None else with_qdrant
     qdrant = (

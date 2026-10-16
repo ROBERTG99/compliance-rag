@@ -66,6 +66,9 @@ async def seed_corpus(
             fingerprint,
         )
     exclude = exclude or set()
+    # a crash from here on must not leave a stale "seeded" marker behind
+    async with deps.pool.connection() as conn:
+        await conn.execute("DELETE FROM index_meta WHERE key = 'seed'")
 
     # 1. register every version (raw file to S3, pending version, queued job) — idempotent
     sem = asyncio.Semaphore(8)
@@ -147,6 +150,7 @@ async def seed_corpus(
             (version_ids,),
         )
     await deps.bm25.set_visible_many(version_ids)
+    await deps.bm25.expunge_deletes()  # re-seeding rewrites documents; keep BM25 statistics reproducible
     if deps.qdrant is not None:
         await deps.qdrant.set_visible_many(version_ids)
     report = SeedReport(

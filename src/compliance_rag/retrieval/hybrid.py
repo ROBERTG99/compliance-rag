@@ -92,7 +92,8 @@ class HybridRetriever:
 
     async def _vector_leg(self, query: str, principal: Principal, as_of: date) -> list[Candidate]:
         assert self.vector is not None
-        embedding = self.embedder.embed_query(query)
+        # provider embedders (Titan/OpenAI) do network I/O and LSA is CPU-bound: keep both off the loop
+        embedding = await asyncio.to_thread(self.embedder.embed_query, query)
         return await self.vector.search(embedding, principal, as_of, self.leg_k)
 
     async def run_legs(self, query: str, principal: Principal, as_of: date) -> HybridResult:

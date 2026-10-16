@@ -1,10 +1,10 @@
 {
   "coef": [
-    7.468121,
-    6.66473,
-    9.077181,
-    4.975031,
-    -1.774604
+    7.467216,
+    6.664567,
+    9.076938,
+    4.974959,
+    -1.774454
   ],
   "dev_ids_sha256": "652a4f72bc7eb7fe225635fcc8611ff82f2d25c025eaed5203d26bfe73e3be28",
   "extra": {
@@ -21,7 +21,7 @@
     "heading_match",
     "freshness"
   ],
-  "intercept": -18.032734,
+  "intercept": -18.031896,
   "n_questions": 180,
   "n_samples": 9000,
   "notes": "Fitted by scripts/fit_reranker.py on the dev split of questions.v1.jsonl.",

@@ -201,3 +201,63 @@ async def test_fake_provider_requires_no_key(tmp_path: Path) -> None:
     )
     assert result.model == "fake" and result.cost_usd == 0.0
     assert result.parsed and result.parsed["claims"][0]["citations"][0]["chunk_id"] == "a" * 32
+
+
+def test_embedding_and_rerank_clients_redact_pii() -> None:
+    import io
+
+    from compliance_rag.llm.gateway import RedactingBedrockRuntime, RedactingOpenAI
+
+    seen: list[dict[str, Any]] = []
+
+    class Raw:
+        def invoke_model(self, **kwargs: Any) -> dict[str, Any]:
+            seen.append(json.loads(kwargs["body"]))
+            return {"body": io.BytesIO(b'{"embedding": [1.0], "inputTextTokenCount": 3}')}
+
+    client = RedactingBedrockRuntime(Raw())
+    client.invoke_model(
+        modelId="amazon.titan-embed-text-v2:0", body=json.dumps({"inputText": "mail jane@x.org"})
+    )
+    client.invoke_model(
+        modelId="cohere.rerank-v3-5:0",
+        body=json.dumps(
+            {"query": "call +44 20 7946 0958", "documents": ["IBAN DE89 3704 0044 0532 0130 00"]}
+        ),
+    )
+    payload = json.dumps(seen)
+    assert "jane@x.org" not in payload and "7946" not in payload and "DE89" not in payload
+
+    calls: list[dict[str, Any]] = []
+    fake = SimpleNamespace(
+        embeddings=SimpleNamespace(create=lambda **kw: calls.append(kw) or SimpleNamespace(data=[]))
+    )
+    RedactingOpenAI(fake).embeddings.create(model="m", input=["mail jane@x.org"], dimensions=4)
+    assert calls[0]["input"] == ["mail [EMAIL]"]
+
+
+async def test_vector_leg_embeds_off_the_event_loop() -> None:
+    import threading
+    from datetime import date
+
+    from compliance_rag.retrieval.hybrid import HybridRetriever
+
+    loop_thread = threading.get_ident()
+    used: list[int] = []
+
+    class SlowEmbedder:
+        def embed_query(self, text: str) -> Any:
+            import numpy as np
+
+            used.append(threading.get_ident())
+            return np.zeros(4, dtype="float32")
+
+    class Vec:
+        name = "pgvector"
+
+        async def search(self, *a: Any, **k: Any) -> list[Any]:
+            return []
+
+    r = HybridRetriever(None, Vec(), SlowEmbedder())
+    await r.run_legs("q", {"sub": "s", "role": "analyst", "groups": ["all"]}, date(2026, 10, 16))
+    assert used and used[0] != loop_thread

@@ -118,19 +118,20 @@ def injection_score(text: str) -> float:
 
 
 def guard_text(text: str, threshold: float = REMOVE_THRESHOLD) -> GuardResult:
-    keep: list[str] = []
+    """Blank out (same length) every sentence scoring at least ``threshold``.
+
+    Blanking instead of cutting keeps character offsets valid, so citations into a guarded chunk still
+    point at the right place in the extracted text.
+    """
+    chars = list(text)
     removed = 0
     max_score = 0.0
-    cursor = 0
     for s in split_sentences(text):
         score = score_sentence(s.text)
         max_score = max(max_score, score)
-        keep.append(text[cursor : s.start])
         if score >= threshold:
             removed += 1
-        else:
-            keep.append(s.text)
-        cursor = s.end
-    keep.append(text[cursor:])
-    cleaned = re.sub(r"[ \t]{2,}", " ", "".join(keep))
-    return GuardResult(text=cleaned if removed else text, removed=removed, max_score=max_score)
+            for i in range(s.start, s.end):
+                if chars[i] != "\n":
+                    chars[i] = " "
+    return GuardResult(text="".join(chars) if removed else text, removed=removed, max_score=max_score)

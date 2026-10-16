@@ -69,6 +69,10 @@ class BM25Index:
             if resp.status_code >= 400 and "resource_already_exists" not in resp.text:
                 raise OpenSearchError(resp.text[:300])
             created = True
+        else:  # add fields introduced since the index was created (allowed under "dynamic": "strict")
+            await self._req(
+                "PUT", f"/{self.index}/_mapping", json={"properties": index_body()["mappings"]["properties"]}
+            )
         if (await self.client.head(f"/_alias/{self.alias}")).status_code == 404:
             await self._req(
                 "POST", "/_aliases", json={"actions": [{"add": {"index": self.index, "alias": self.alias}}]}
@@ -81,6 +85,22 @@ class BM25Index:
 
     async def refresh(self) -> None:
         await self._req("POST", f"/{self.index}/_refresh")
+
+    async def expunge_deletes(self, attempts: int = 10) -> int:
+        """Merge to one segment until no deleted copies remain, so BM25 term statistics (which count
+        deleted documents) are reproducible after re-indexing. Returns the remaining deleted count."""
+        deleted = -1
+        for attempt in range(attempts):
+            await self._req(
+                "POST", f"/{self.index}/_forcemerge", params={"max_num_segments": "1"}, timeout=600.0
+            )
+            await self.refresh()
+            stats = (await self._req("GET", f"/{self.index}/_stats/docs")).json()
+            deleted = int(stats["_all"]["primaries"]["docs"]["deleted"])
+            if deleted == 0:
+                break
+            await asyncio.sleep(0.5 * (attempt + 1))
+        return deleted
 
     async def count(self) -> int:
         resp = await self._req("GET", f"/{self.alias}/_count")
@@ -107,6 +127,8 @@ class BM25Index:
                             "valid_to": r.valid_to.isoformat() if r.valid_to else None,
                             "visible": r.visible,
                             "injection_score": r.injection_score,
+                            "char_start": r.char_start,
+                            "char_end": r.char_end,
                         }
                     )
                 )
@@ -137,6 +159,8 @@ class BM25Index:
                 "valid_from",
                 "valid_to",
                 "injection_score",
+                "char_start",
+                "char_end",
             ],
             "query": {
                 "bool": {
@@ -169,6 +193,8 @@ class BM25Index:
                     title=s["title"],
                     section_path=s["section_path"],
                     injection_score=float(s.get("injection_score") or 0.0),
+                    char_start=int(s.get("char_start") or 0),
+                    char_end=int(s.get("char_end") or 0),
                 )
             )
         return out
