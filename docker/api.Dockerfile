@@ -9,6 +9,7 @@ COPY pyproject.toml uv.lock README.md ./
 COPY third_party ./third_party
 RUN uv sync --frozen --no-dev --no-install-project --no-editable
 COPY src ./src
+COPY data ./data
 RUN uv sync --frozen --no-dev --no-editable
 
 FROM python:3.12-slim AS runtime
@@ -19,8 +20,6 @@ COPY --from=build /opt/venv /opt/venv
 COPY alembic.ini ./
 COPY migrations ./migrations
 COPY prompts ./prompts
-COPY data/generator ./data/generator
-COPY data/__init__.py ./data/__init__.py
 COPY evals ./evals
 COPY scripts ./scripts
 USER 10001
