@@ -57,7 +57,8 @@ class BM25Index:
 
     async def ping(self) -> bool:
         try:
-            return (await self.client.get("/_cluster/health")).status_code == 200
+            # readiness and warm-up must not inherit the 60 s bulk-indexing timeout
+            return (await self.client.get("/_cluster/health", timeout=2.0)).status_code == 200
         except httpx.HTTPError:
             return False
 

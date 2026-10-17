@@ -79,3 +79,31 @@ async def test_rejected_upload_does_not_replace_the_stored_raw_file(ingest_deps:
     with pytest.raises(VersionConflict):
         await register_upload(ingest_deps, _meta(policy, v2, policy.acl_groups), blob + b"\nedited", "admin")
     assert await ingest_deps.objects.get(key) == before == blob
+
+
+async def test_activation_and_upload_are_audited_once(ingest_deps: IngestDeps) -> None:
+    from compliance_rag.db.audit import verify_chain
+    from compliance_rag.ingest.pipeline import ingest_document
+
+    policy = _kyc0042()
+    v2 = policy.versions[1]
+    job = await register_upload(
+        ingest_deps,
+        _meta(policy, v2, policy.acl_groups),
+        render_version(policy, v2),
+        "admin",
+        actor_role="content_admin",
+    )
+    assert (await ingest_document(ingest_deps, job.job_id)).status == "done"
+    await activate_in_postgres(ingest_deps.pool, job.version_id)  # a replay adds nothing
+    async with ingest_deps.pool.connection() as conn:
+        rows = await (
+            await conn.execute(
+                "SELECT action, actor_role FROM audit WHERE target = %s ORDER BY seq", ("KYC-0042@2",)
+            )
+        ).fetchall()
+        assert [tuple(r) for r in rows] == [
+            ("document_upload", "content_admin"),
+            ("version_activate", "system"),
+        ]
+        assert (await verify_chain(conn)).ok

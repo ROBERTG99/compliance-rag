@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import structlog
 from fastapi import FastAPI
 
 from compliance_rag import __version__
@@ -13,6 +15,9 @@ from compliance_rag.api.openapi import install_openapi
 from compliance_rag.api.routes import admin, ask, documents, evals, feedback, health
 from compliance_rag.api.state import AppState, build_state
 from compliance_rag.settings import Settings, get_settings
+
+log = structlog.get_logger(__name__)
+WARM_UP_TIMEOUT_S = 60.0
 
 
 def create_app(settings: Settings | None = None, *, state: AppState | None = None) -> FastAPI:
@@ -23,7 +28,11 @@ def create_app(settings: Settings | None = None, *, state: AppState | None = Non
         owned = state is None
         app.state.crag = state or await build_state(settings)  # refuses to start on EmbedderMismatch
         if owned:
-            await app.state.crag.warm_up()  # before readiness: cold caches would 503 the first asks
+            # before readiness: cold caches would 503 the first asks; bounded so a hung store cannot block start-up
+            try:
+                await asyncio.wait_for(app.state.crag.warm_up(), timeout=WARM_UP_TIMEOUT_S)
+            except TimeoutError:
+                log.warning("warm_up_timeout", seconds=WARM_UP_TIMEOUT_S)
         try:
             yield
         finally:

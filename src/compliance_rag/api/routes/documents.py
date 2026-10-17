@@ -73,22 +73,14 @@ async def _register(
     except ValueError as exc:
         raise Problem(422, "Unprocessable Content", str(exc), "validation") from exc
     try:
-        job = await register_upload(state.services.ingest_deps(), doc_meta, blob, principal["sub"])
+        job = await register_upload(
+            state.services.ingest_deps(), doc_meta, blob, principal["sub"], actor_role=principal["role"]
+        )
     except (ConnectionError, OSError) as exc:
         raise Problem(
             503, "Service Unavailable", "object storage is unavailable", "storage_unavailable", retryable=True
         ) from exc
     await _enqueue(state, job, hashlib.sha256(blob).hexdigest())
-    if job.created:
-        async with state.services.pool.connection() as conn:
-            await append_audit(
-                conn,
-                actor_sub=principal["sub"],
-                actor_role=principal["role"],
-                action="document_upload",
-                target=f"{job.document_id}@{job.version}",
-                details={"job_id": job.job_id, "format": source_format, "size_bytes": len(blob)},
-            )
     return UploadAccepted(job_id=job.job_id, document_id=job.document_id, version=job.version)
 
 

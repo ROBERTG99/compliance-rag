@@ -19,6 +19,7 @@ from typing import Any
 
 from psycopg_pool import AsyncConnectionPool
 
+from compliance_rag.db.audit import append_audit
 from compliance_rag.embed.base import Embedder
 from compliance_rag.guard.context_guard import injection_score
 from compliance_rag.ingest.chunker import Chunk, chunk_text
@@ -100,7 +101,7 @@ def raw_key(document_id: str, version: int, fmt: str) -> str:
 
 
 async def register_upload(
-    deps: IngestDeps, meta: DocumentMeta, blob: bytes, requested_by: str
+    deps: IngestDeps, meta: DocumentMeta, blob: bytes, requested_by: str, actor_role: str | None = None
 ) -> RegisteredJob:
     """Store the raw file and create the pending version + queued job. Identical bytes → same job."""
     if meta.source_format not in FORMATS:
@@ -181,6 +182,15 @@ async def register_upload(
         )
         jrow = await cur.fetchone()
         assert jrow is not None
+        if actor_role is not None and jrow[1]:  # the upload audit row commits with the registration
+            await append_audit(
+                conn,
+                actor_sub=requested_by,
+                actor_role=actor_role,
+                action="document_upload",
+                target=f"{meta.document_id}@{meta.version}",
+                details={"job_id": str(jrow[0]), "format": meta.source_format, "size_bytes": len(blob)},
+            )
     return RegisteredJob(str(jrow[0]), meta.document_id, meta.version, version_id, created=bool(jrow[1]))
 
 
@@ -290,12 +300,12 @@ async def activate_in_postgres(pool: AsyncConnectionPool, version_id: str) -> Ac
     """Make the version active and close the one it supersedes, atomically (replay-safe)."""
     async with pool.connection() as conn, conn.transaction():
         cur = await conn.execute(
-            "SELECT document_id, valid_from, valid_to FROM document_versions WHERE id = %s FOR UPDATE",
+            "SELECT document_id, valid_from, valid_to, status, version FROM document_versions WHERE id = %s FOR UPDATE",
             (version_id,),
         )
         row = await cur.fetchone()
         assert row is not None
-        document_id, valid_from, own_valid_to = row
+        document_id, valid_from, own_valid_to, previous_status, version = row
         await conn.execute("SELECT 1 FROM documents WHERE document_id = %s FOR UPDATE", (document_id,))
         # the version this one supersedes: latest active version that starts earlier
         cur = await conn.execute(
@@ -334,6 +344,20 @@ async def activate_in_postgres(pool: AsyncConnectionPool, version_id: str) -> Ac
                WHERE version_id = %s""",  # noqa: S608 - constant SQL fragment
             (new_valid_to, document_id, version_id),
         )
+        if previous_status != "active":  # replays of an activated version add no audit row
+            await append_audit(
+                conn,
+                actor_sub="worker",
+                actor_role="system",
+                action="version_activate",
+                target=f"{document_id}@{version}",
+                details={
+                    "version_id": version_id,
+                    "valid_from": valid_from.isoformat(),
+                    "valid_to": new_valid_to.isoformat() if new_valid_to else None,
+                    "closed_version_id": closed_id,
+                },
+            )
     return Activation(
         version_id, new_valid_to, closed_id, valid_from if closed_id else None, str(document_id)
     )

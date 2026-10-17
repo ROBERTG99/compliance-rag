@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
+from compliance_rag.db.audit import append_audit
 from compliance_rag.embed.lsa import LocalLSAEmbedder
 from compliance_rag.embed.registry import read_index_meta, save_embedder, write_index_meta
 from compliance_rag.ingest.pipeline import (
@@ -148,6 +149,14 @@ async def seed_corpus(
                       chunk_count = (SELECT count(*) FROM chunks c WHERE c.version_id = j.version_id)
                WHERE j.version_id = ANY(%s::uuid[]) AND j.status <> 'done'""",
             (version_ids,),
+        )
+        await append_audit(  # one row for the bulk activation (per-version rows come from the pipeline)
+            conn,
+            actor_sub="seed",
+            actor_role="system",
+            action="version_activate",
+            target="seed",
+            details={"versions": len(version_ids), "fingerprint": fingerprint},
         )
     await deps.bm25.set_visible_many(version_ids)
     await deps.bm25.expunge_deletes()  # re-seeding rewrites documents; keep BM25 statistics reproducible
