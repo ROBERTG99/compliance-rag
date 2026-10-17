@@ -5,7 +5,11 @@ import { AskPage } from "./routes/ask/AskPage";
 import { Callback } from "./routes/Callback";
 import { EvidencePage } from "./routes/evidence/EvidencePage";
 import { NotFound } from "./routes/NotFound";
-import { Placeholder } from "./routes/Placeholder";
+import { EvaluationPage } from "./routes/evaluation/EvaluationPage";
+import { FeedbackPage } from "./routes/feedback/FeedbackPage";
+import { JobsPage } from "./routes/jobs/JobsPage";
+import { DocumentPage } from "./routes/library/DocumentPage";
+import { LibraryPage } from "./routes/library/LibraryPage";
 
 export default function App() {
   return (
@@ -32,7 +36,15 @@ export default function App() {
           path="library"
           element={
             <RequireAuth>
-              <Placeholder title="Document library" />
+              <LibraryPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="library/:documentId"
+          element={
+            <RequireAuth>
+              <DocumentPage />
             </RequireAuth>
           }
         />
@@ -40,7 +52,7 @@ export default function App() {
           path="evaluation"
           element={
             <RequireAuth>
-              <Placeholder title="Evaluation" />
+              <EvaluationPage />
             </RequireAuth>
           }
         />
@@ -48,7 +60,7 @@ export default function App() {
           path="jobs"
           element={
             <RequireAuth admin>
-              <Placeholder title="Ingestion jobs" />
+              <JobsPage />
             </RequireAuth>
           }
         />
@@ -56,7 +68,7 @@ export default function App() {
           path="feedback"
           element={
             <RequireAuth admin>
-              <Placeholder title="Feedback review" />
+              <FeedbackPage />
             </RequireAuth>
           }
         />
