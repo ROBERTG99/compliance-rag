@@ -20,11 +20,13 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from opentelemetry.trace import SpanKind, Status, StatusCode
 
 from compliance_rag.guard.pii import redact
 from compliance_rag.llm.cassette import CassetteStore, cassette_key
 from compliance_rag.llm.fake import FakeLLM
 from compliance_rag.obs.metrics import LLM_COST, LLM_TOKENS
+from compliance_rag.obs.tracing import tracer
 from compliance_rag.settings import Settings, get_settings
 
 ROUTING_FILE = Path(__file__).with_name("routing.yaml")
@@ -183,7 +185,30 @@ class Gateway:
 
     # -- public API ----------------------------------------------------------------------------
     async def stream(self, req: LLMRequest, on_text: Callable[[str], Any] | None = None) -> LLMResult:
-        """Run a request; ``on_text`` receives text deltas as they arrive (provider) or once (fake)."""
+        """Run a request; ``on_text`` receives text deltas as they arrive (provider) or once (fake).
+
+        One ``gen_ai.<route>`` span per call with the GenAI semantic-convention attributes (never prompt text).
+        """
+        with tracer.start_as_current_span(f"gen_ai.{req.route}", kind=SpanKind.CLIENT) as span:
+            span.set_attribute("gen_ai.operation.name", "chat")
+            span.set_attribute("gen_ai.system", "anthropic" if self.provider != "fake" else "fake")
+            span.set_attribute("app.route", req.route)
+            span.set_attribute("app.prompt", req.prompt_name)
+            span.set_attribute("app.prompt_version", str(req.prompt_version))
+            try:
+                result = await self._stream(req, on_text)
+            except Exception as exc:
+                span.set_status(Status(StatusCode.ERROR, type(exc).__name__))
+                raise
+            span.set_attribute("gen_ai.request.model", result.model)
+            span.set_attribute("gen_ai.response.finish_reasons", [result.stop_reason])
+            span.set_attribute("gen_ai.usage.input_tokens", result.input_tokens)
+            span.set_attribute("gen_ai.usage.output_tokens", result.output_tokens)
+            span.set_attribute("app.cost_usd", result.cost_usd)
+            span.set_attribute("app.from_cassette", result.from_cassette)
+            return result
+
+    async def _stream(self, req: LLMRequest, on_text: Callable[[str], Any] | None = None) -> LLMResult:
         route = route_config(req.route)
         started = time.perf_counter()
         model = "fake" if self.provider == "fake" else self.model_for(route)

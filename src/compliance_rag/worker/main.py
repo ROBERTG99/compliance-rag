@@ -9,6 +9,8 @@ from arq.connections import RedisSettings
 from arq.worker import Retry
 
 from compliance_rag.ingest import pipeline
+from compliance_rag.obs.logging import configure_logging
+from compliance_rag.obs.tracing import instrument_libraries, setup_tracing, traced_job
 from compliance_rag.runtime import Services, build_services
 from compliance_rag.settings import get_settings
 
@@ -17,6 +19,9 @@ WORKER_METRICS_PORT = 8611
 
 async def startup(ctx: dict[str, Any]) -> None:
     settings = get_settings()
+    configure_logging(settings.log_level, service="worker")
+    setup_tracing("worker", settings.otel_exporter_otlp_endpoint)
+    instrument_libraries()
     services = await build_services(settings)
     await services.objects.ensure_bucket()
     ctx["services"] = services
@@ -34,6 +39,7 @@ async def shutdown(ctx: dict[str, Any]) -> None:
         await services.close()
 
 
+@traced_job
 async def ingest_document(ctx: dict[str, Any], job_id: str) -> dict[str, Any]:
     services: Services = ctx["services"]
     if not getattr(services.embedder, "fitted", True):
@@ -55,6 +61,7 @@ async def ingest_document(ctx: dict[str, Any], job_id: str) -> dict[str, Any]:
     }
 
 
+@traced_job
 async def reindex_all(ctx: dict[str, Any], reembed: bool = False) -> dict[str, Any]:
     """Rewrite OpenSearch (and Qdrant when configured) from Postgres; ``reembed`` recomputes embeddings."""
     from compliance_rag.ingest.reindex import reindex
@@ -66,6 +73,7 @@ async def reindex_all(ctx: dict[str, Any], reembed: bool = False) -> dict[str, A
     return {"chunks": report.chunks, "qdrant": report.qdrant, "seconds": round(report.seconds, 1)}
 
 
+@traced_job
 async def poll_s3_inbox(ctx: dict[str, Any]) -> dict[str, int]:
     """Cron (every 30 s): register ``inbox/`` documents that have a sidecar ``.json`` and enqueue them."""
     from compliance_rag.ingest.pipeline import content_sha256, idempotency_key
@@ -92,6 +100,7 @@ async def poll_s3_inbox(ctx: dict[str, Any]) -> dict[str, int]:
     return {"registered": result.registered, "failed": result.failed, "waiting": result.waiting}
 
 
+@traced_job
 async def sync_acl(ctx: dict[str, Any], job_id: str) -> bool:
     from compliance_rag.worker.acl import sync_acl as do_sync
 
@@ -104,6 +113,7 @@ async def sync_acl(ctx: dict[str, Any], job_id: str) -> bool:
     return True
 
 
+@traced_job
 async def reconcile_acl(ctx: dict[str, Any]) -> int:
     """Cron (every minute): finish ACL syncs whose enqueue was lost or whose retries ran out."""
     from compliance_rag.worker.acl import reconcile_acl_sync
@@ -112,6 +122,7 @@ async def reconcile_acl(ctx: dict[str, Any]) -> int:
     return await reconcile_acl_sync(services.ingest_deps())
 
 
+@traced_job
 async def refresh_lag_metric(ctx: dict[str, Any]) -> dict[str, float | int]:
     """Cron (every 15 s): export ingestion lag to Prometheus."""
     from compliance_rag.obs.metrics import INGESTION_LAG

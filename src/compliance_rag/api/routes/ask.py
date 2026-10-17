@@ -16,6 +16,7 @@ from compliance_rag.api.deps import ask_rate_limit, current_principal, get_state
 from compliance_rag.api.errors import not_found
 from compliance_rag.api.sse import TERMINAL, format_event
 from compliance_rag.api.state import AppState
+from compliance_rag.obs.logging import bind_run
 from compliance_rag.obs.metrics import ASK_REQUESTS
 from compliance_rag.retrieval.types import Principal
 from compliance_rag.validation import IsoDate, no_nul
@@ -106,6 +107,7 @@ async def ask(
     follow_up_of = str(req.follow_up_of) if req.follow_up_of is not None else None
     conversation_id = await runs.resolve_conversation(state, principal, follow_up_of)
     run_id = str(uuid.uuid4())
+    bind_run(run_id)  # the run's background task copies this context: its log lines carry the run id
     if not req.stream:
         ASK_REQUESTS.labels(mode="sync").inc()
         return await runs.execute(

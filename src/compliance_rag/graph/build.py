@@ -21,6 +21,7 @@ from datetime import date
 from typing import Annotated, Any, Protocol
 
 from langgraph.graph import END, START, StateGraph
+from opentelemetry.trace import Status, StatusCode
 from pydantic import ValidationError
 
 from compliance_rag.graph.respond import build_response
@@ -32,7 +33,8 @@ from compliance_rag.guard.output_guard import check_output
 from compliance_rag.llm.gateway import Gateway, LLMError, LLMMaxTokens, LLMRefusal, LLMRequest, LLMResult
 from compliance_rag.llm.prompts import load_prompt
 from compliance_rag.obs.metrics import ABSTENTIONS, CLAIMS_REJECTED, CLAIMS_VERIFIED, TTFT_SECONDS
-from compliance_rag.obs.steps import StepRecord, make_step
+from compliance_rag.obs.steps import StepRecord, make_step, number_steps
+from compliance_rag.obs.tracing import tracer
 from compliance_rag.retrieval.hybrid import HybridResult
 from compliance_rag.retrieval.types import Candidate, Principal
 from compliance_rag.settings import Settings
@@ -119,12 +121,19 @@ def _node(
         async def wrapper(state: GraphState) -> dict[str, Any]:
             await emit("node", {"node": name, "status": "started", "latency_ms": 0})
             started = time.perf_counter()
-            try:
-                update = await fn(state)
-            except Exception as exc:
-                latency = (time.perf_counter() - started) * 1000
-                await emit("node", {"node": name, "status": "error", "latency_ms": round(latency, 1)})
-                raise exc
+            with tracer.start_as_current_span(f"graph.{name}") as span:
+                span.set_attribute("app.node", name)
+                span.set_attribute("app.run_id", state["run_id"])
+                span.set_attribute("app.role", state["principal"]["role"])
+                try:
+                    update = await fn(state)
+                except Exception as exc:
+                    latency = (time.perf_counter() - started) * 1000
+                    span.set_status(Status(StatusCode.ERROR, type(exc).__name__))
+                    await emit("node", {"node": name, "status": "error", "latency_ms": round(latency, 1)})
+                    raise exc
+                if update.get("abstain_reason"):
+                    span.set_attribute("app.abstain_reason", str(update["abstain_reason"]))
             latency = (time.perf_counter() - started) * 1000
             extra_steps: list[StepRecord] = update.pop("_steps", [])
             step = make_step(state["run_id"], name, latency_ms=latency)
@@ -560,7 +569,7 @@ async def run_graph(
         EMIT.reset(token)
         RUN_STARTED.reset(started_token)
     out = dict(state)
-    out["steps"] = [s for s in out.get("steps", []) if s["run_id"] == run_id]
+    out["steps"] = number_steps([s for s in out.get("steps", []) if s["run_id"] == run_id])
     out["latency_ms"] = (time.perf_counter() - started) * 1000
     return out
 

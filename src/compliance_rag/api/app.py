@@ -10,11 +10,14 @@ import structlog
 from fastapi import FastAPI
 
 from compliance_rag import __version__
+from compliance_rag.api.correlation import CorrelationId
 from compliance_rag.api.errors import install_error_handlers
 from compliance_rag.api.limits import BodyLimit
 from compliance_rag.api.openapi import install_openapi
 from compliance_rag.api.routes import admin, ask, documents, evals, feedback, health
 from compliance_rag.api.state import AppState, build_state
+from compliance_rag.obs.logging import configure_logging
+from compliance_rag.obs.tracing import instrument_app, instrument_libraries, setup_tracing
 from compliance_rag.settings import Settings, get_settings
 
 log = structlog.get_logger(__name__)
@@ -23,6 +26,9 @@ WARM_UP_TIMEOUT_S = 60.0
 
 def create_app(settings: Settings | None = None, *, state: AppState | None = None) -> FastAPI:
     settings = settings or get_settings()
+    configure_logging(settings.log_level, service="api")
+    setup_tracing("api", settings.otel_exporter_otlp_endpoint)
+    instrument_libraries()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -55,7 +61,9 @@ def create_app(settings: Settings | None = None, *, state: AppState | None = Non
         default_limit=1024 * 1024,
         limits={"/v1/documents": settings.max_upload_bytes + 64 * 1024},
     )
+    app.add_middleware(CorrelationId)  # outermost: every log line of the request carries the id
     install_openapi(app)
+    instrument_app(app)
     app.include_router(health.router)
     app.include_router(ask.router)
     app.include_router(documents.router)
