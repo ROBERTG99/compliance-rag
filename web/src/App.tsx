@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import { RequireAuth } from "./components/RequireAuth";
 import { Shell } from "./components/Shell";
+import { AskPage } from "./routes/ask/AskPage";
 import { Callback } from "./routes/Callback";
 import { NotFound } from "./routes/NotFound";
 import { Placeholder } from "./routes/Placeholder";
@@ -13,7 +14,7 @@ export default function App() {
           index
           element={
             <RequireAuth>
-              <Placeholder title="Ask a policy question" />
+              <AskPage />
             </RequireAuth>
           }
         />
