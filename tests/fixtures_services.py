@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import uuid
 from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
 
@@ -272,10 +273,15 @@ class ApiEnv:
         )
 
 
-@pytest.fixture(scope="session")
-async def api_env(
-    pg_admin_url: str, redis_url: str, opensearch_url: str, s3_config: S3Config
+@asynccontextmanager
+async def make_api_env(
+    pg_admin_url: str,
+    redis_url: str,
+    opensearch_url: str,
+    s3_config: S3Config,
+    only: set[str] | None = None,
 ) -> AsyncIterator[ApiEnv]:
+    """A migrated database, its own index and bucket, the seeded subset and an in-process dev-oidc."""
     import sys
     from pathlib import Path
 
@@ -317,7 +323,11 @@ async def api_env(
     state = await build_state(settings, validator=validator)
     await state.services.objects.ensure_bucket()
     await state.services.bm25.init()
-    await seed_corpus(state.services.ingest_deps(), only=_api_document_ids(), log=lambda _m: None)
+    await seed_corpus(
+        state.services.ingest_deps(),
+        only=only if only is not None else _api_document_ids(),
+        log=lambda _m: None,
+    )
     await state.reload()
     app = create_app(settings, state=state)
     try:
@@ -326,3 +336,11 @@ async def api_env(
         await state.close()
         await oidc.aclose()
         _drop_database(pg_admin_url, db)
+
+
+@pytest.fixture(scope="session")
+async def api_env(
+    pg_admin_url: str, redis_url: str, opensearch_url: str, s3_config: S3Config
+) -> AsyncIterator[ApiEnv]:
+    async with make_api_env(pg_admin_url, redis_url, opensearch_url, s3_config) as env:
+        yield env
