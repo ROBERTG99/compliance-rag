@@ -33,7 +33,9 @@ _DIRECTIVE = re.compile(
     r"summari[sz]e nothing|must answer|always include|new rule)\b",
     re.I,
 )
-_HIDDEN = re.compile("[​‌‍⁠⁦-⁩‪-‮﻿]")
+_HIDDEN = re.compile(
+    "[\u200b\u200c\u200d\u2060\u2066-\u2069\u202a-\u202e\ufeff]"
+)  # zero-width, bidi controls and BOM, written as escapes
 _URL = re.compile(r"https?://\S+", re.I)
 _SECRETISH = re.compile(r"\b(system prompt|hidden prompt|maintenance mode|unlimited)\b", re.I)
 

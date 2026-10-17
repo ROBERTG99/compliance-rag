@@ -45,11 +45,21 @@
     "markdownlint-cli2": "^0.23.3",
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.10",
-    "promptfoo": "^0.124.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.5"
+  },
+  "pnpm": {
+    "overrides": {
+      "smol-toml": ">=1.9.0",
+      "katex": ">=0.18.2"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-vfj7-8cjw-p6xm"
+      ]
+    }
   }
 }

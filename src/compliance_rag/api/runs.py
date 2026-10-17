@@ -118,6 +118,18 @@ async def execute(
     )
     final = build_response(graph_state)
     await persist(state, principal, question, follow_up_of, final, graph_state)
+    # ids, outcome and numbers only: never the question, the answer or document text
+    log.info(
+        "run_finished",
+        run_id=run_id,
+        role=principal["role"],
+        abstained=final["abstained"],
+        abstain_reason=graph_state.get("abstain_reason"),
+        claims=len(final.get("claims") or []),
+        degraded=final.get("degraded") or [],
+        latency_ms=round(float(graph_state.get("latency_ms") or 0.0), 1),
+        cost_usd=float(graph_state.get("cost_usd") or 0.0),
+    )
     return final
 
 

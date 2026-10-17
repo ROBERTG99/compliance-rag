@@ -7,5 +7,18 @@
   },
   "devDependencies": {
     "promptfoo": "0.123.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "basic-ftp": ">=6.2.1",
+      "simple-git": ">=4.0.1",
+      "@simple-git/argv-parser": ">=2.0.1",
+      "smol-toml": ">=1.9.0"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-86w9-cpqp-85rv"
+      ]
+    }
   }
 }
