@@ -180,3 +180,8 @@ def hallucinated_case(row: dict[str, Any], output: dict[str, Any]) -> tuple[int,
 
 def retrieval_ms(row: dict[str, Any], output: dict[str, Any]) -> float:
     return float(output["retrieval_ms"])
+
+
+def degraded(row: dict[str, Any], output: dict[str, Any]) -> float:
+    """1.0 when a retrieval leg failed or timed out for this case (reported, not gated)."""
+    return 1.0 if output.get("degraded") else 0.0

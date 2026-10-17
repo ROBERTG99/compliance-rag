@@ -91,7 +91,9 @@ class RetrievalTarget(_Base):
         as_of = date.fromisoformat(inp.get("as_of") or date.today().isoformat())
         started = time.perf_counter()
         result = await self.system.retriever.retrieve(inp["question"], principal, as_of)
-        ranked = self.system.reranker.rerank(inp["question"], list(result.fused), as_of)
+        # same cut as the graph's rerank node: only the top leg_k fused candidates are reranked
+        top = list(result.fused)[: self.settings.leg_k]
+        ranked = self.system.reranker.rerank(inp["question"], top, as_of)
         elapsed = (time.perf_counter() - started) * 1000
         return {
             "retrieved": [

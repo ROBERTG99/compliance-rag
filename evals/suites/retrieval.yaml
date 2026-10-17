@@ -3,7 +3,8 @@ name: retrieval
 description: Recall, MRR and latency of retrieval alone, with the persona's ACL and as_of.
 dataset: evals/datasets/questions.v1.jsonl
 target: compliance_rag.evals.target:RetrievalTarget
-concurrency: 4
+# one question at a time: retrieval_p95 is per-request latency (step records); load is make bench
+concurrency: 1
 metrics:
   - name: recall@10
     fn: compliance_rag.evals.metrics:recall_at_10
@@ -21,3 +22,7 @@ metrics:
     aggregate: p95
     unit: ms
     threshold: {max: 300}
+  - name: degraded_rate
+    fn: compliance_rag.evals.metrics:degraded
+    gate: false
+    description: share of cases where a retrieval leg failed or timed out (reported, not gated)

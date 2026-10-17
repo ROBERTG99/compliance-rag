@@ -114,3 +114,10 @@ def test_citation_precision_and_hallucination() -> None:
     assert hallucinated_citations(
         out, {"a": "It must not be older than 90 days.", "b": "something else"}
     ) == (1, 2)
+
+
+def test_degraded_marks_cases_where_a_leg_failed() -> None:
+    from compliance_rag.evals.metrics import degraded
+
+    assert degraded({}, {"degraded": ["bm25"]}) == 1.0
+    assert degraded({}, {"degraded": []}) == 0.0
