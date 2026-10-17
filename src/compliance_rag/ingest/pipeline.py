@@ -118,7 +118,8 @@ async def register_upload(
         if row:
             return RegisteredJob(str(row[0]), meta.document_id, meta.version, str(row[1]), created=False)
     s3_key = raw_key(meta.document_id, meta.version, meta.source_format)
-    await deps.objects.put(s3_key, blob)
+    # the documents upsert below row-locks the document, so concurrent uploads are serialised and the raw
+    # object is written only after the ACL and version checks pass (a 409 never replaces stored bytes)
     async with deps.pool.connection() as conn, conn.transaction():
         await conn.execute(
             """INSERT INTO documents (document_id, title, domain, owner) VALUES (%s, %s, %s, %s)
@@ -152,6 +153,7 @@ async def register_upload(
         if existing:
             version_id = str(existing[0])
         else:
+            await deps.objects.put(s3_key, blob)
             cur = await conn.execute(
                 """INSERT INTO document_versions (document_id, version, content_sha256, source_format, s3_key,
                        size_bytes, valid_from, valid_to, status)
@@ -281,6 +283,7 @@ class Activation:
     valid_to: date | None
     closed_version_id: str | None
     closed_valid_to: date | None
+    document_id: str = ""
 
 
 async def activate_in_postgres(pool: AsyncConnectionPool, version_id: str) -> Activation:
@@ -324,16 +327,46 @@ async def activate_in_postgres(pool: AsyncConnectionPool, version_id: str) -> Ac
                       activated_at = COALESCE(activated_at, now()) WHERE id = %s""",
             (new_valid_to, version_id),
         )
+        # the chunks were built with the ACL read at parse time; an ACL change since then (serialised with
+        # this transaction by the documents row lock) must reach them before they become visible
         await conn.execute(
-            "UPDATE chunks SET visible = true, valid_to = %s WHERE version_id = %s",
-            (new_valid_to, version_id),
+            f"""UPDATE chunks SET visible = true, valid_to = %s, acl_groups = ({_CURRENT_ACL})
+               WHERE version_id = %s""",  # noqa: S608 - constant SQL fragment
+            (new_valid_to, document_id, version_id),
         )
-    return Activation(version_id, new_valid_to, closed_id, valid_from if closed_id else None)
+    return Activation(
+        version_id, new_valid_to, closed_id, valid_from if closed_id else None, str(document_id)
+    )
+
+
+_CURRENT_ACL = "SELECT coalesce(array_agg(group_name ORDER BY group_name), '{}') FROM document_acl WHERE document_id = %s"
+
+
+async def _current_acl(pool: AsyncConnectionPool, document_id: str) -> list[str]:
+    async with pool.connection() as conn:
+        row = await (await conn.execute(_CURRENT_ACL, (document_id,))).fetchone()
+    return list(row[0]) if row else []
+
+
+async def _sync_document_acl(deps: IngestDeps, document_id: str) -> None:
+    """Push the document's current ACL to the search indexes until it stops changing under us."""
+    groups = await _current_acl(deps.pool, document_id)
+    for _ in range(3):
+        await deps.bm25.update_acl(document_id, groups)
+        if deps.qdrant:
+            await deps.qdrant.update_acl(document_id, groups)
+        latest = await _current_acl(deps.pool, document_id)
+        if latest == groups:
+            return
+        groups = latest
+    raise RuntimeError(f"ACL of {document_id} kept changing during activation; the job will be retried")
 
 
 async def sync_activation(deps: IngestDeps, act: Activation) -> None:
     """Idempotently mirror the Postgres activation into OpenSearch and Qdrant."""
     await deps.bm25.refresh()  # update-by-query only sees refreshed documents
+    if act.document_id:
+        await _sync_document_acl(deps, act.document_id)  # before the version becomes visible
     if act.closed_version_id and act.closed_valid_to:
         await deps.bm25.close_version(act.closed_version_id, act.closed_valid_to)
         if deps.qdrant:
@@ -351,7 +384,7 @@ async def _current_activation(pool: AsyncConnectionPool, version_id: str) -> Act
     """Rebuild the activation facts from Postgres (used when replaying an ``activating`` job)."""
     async with pool.connection() as conn:
         cur = await conn.execute(
-            """SELECT v.valid_to, p.id, p.valid_to FROM document_versions v
+            """SELECT v.valid_to, p.id, p.valid_to, v.document_id FROM document_versions v
                LEFT JOIN LATERAL (SELECT id, valid_to FROM document_versions p
                                   WHERE p.document_id = v.document_id AND p.valid_to = v.valid_from
                                   AND p.status = 'active' LIMIT 1) p ON true
@@ -360,7 +393,7 @@ async def _current_activation(pool: AsyncConnectionPool, version_id: str) -> Act
         )
         row = await cur.fetchone()
     assert row is not None
-    return Activation(version_id, row[0], str(row[1]) if row[1] else None, row[2])
+    return Activation(version_id, row[0], str(row[1]) if row[1] else None, row[2], str(row[3]))
 
 
 @dataclass(frozen=True)

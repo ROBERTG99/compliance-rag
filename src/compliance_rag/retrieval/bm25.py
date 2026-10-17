@@ -251,6 +251,7 @@ class BM25Index:
         )
 
     async def update_acl(self, document_id: str, groups: list[str]) -> None:
+        await self.refresh()  # bulk-indexed documents are invisible to update-by-query until refreshed
         await self._update_by_query(
             {"document_id": document_id}, "ctx._source.acl_groups = params.g", {"g": groups}
         )
