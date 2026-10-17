@@ -212,3 +212,37 @@ test("feedback posts a rating and reason for the run", async () => {
     reason: "correct",
   });
 });
+
+test("the answer survives opening the evidence and coming back", async () => {
+  const stream = controlledStream();
+  mockFetch((url) => {
+    if (url === "/v1/ask")
+      return { status: 202, body: { run_id: "r1", events_url: "/v1/runs/r1/events" } };
+    if (url === "/v1/runs/r1/events") return stream.response;
+    return {
+      status: 200,
+      body: {
+        ...FINAL.versions[0],
+        chunk_id: "c".repeat(32),
+        text: "x",
+        section_path: "s",
+        char_start: 0,
+        char_end: 1,
+        current_version: 3,
+      },
+    };
+  });
+  renderApp("/");
+  const user = userEvent.setup();
+  await ask(user);
+  stream.push(sse(1, "final", FINAL));
+  stream.close();
+  await screen.findByText(/KYC-0042 v3/);
+  await user.click(screen.getByRole("link", { name: /citation 1/i }));
+  await screen.findByText("Evidence");
+  await user.click(screen.getByRole("link", { name: "Ask" }));
+  expect(
+    await screen.findByText(/older than 90 days at the date of onboarding/),
+  ).toBeInTheDocument();
+  expect(screen.getByLabelText(/question/i)).toHaveValue(QUESTION);
+});

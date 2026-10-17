@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { ApiError } from "../../api/client";
 import type { AnswerResponse, Claim } from "../../api/types";
@@ -8,7 +8,7 @@ import { EmptyState, ErrorState, Skeleton } from "../../components/States";
 import { today } from "../../lib/dates";
 import { Feedback } from "./Feedback";
 import type { RunState } from "./run";
-import { useAskRun } from "./useAskRun";
+import { useAskRunContext } from "./context";
 
 const NODE_LABELS: Record<string, string> = {
   resolve_principal: "access",
@@ -26,9 +26,8 @@ const NODE_LABELS: Record<string, string> = {
 
 export function AskPage() {
   const { principal } = useAuth();
-  const [question, setQuestion] = useState("");
-  const [asOf, setAsOf] = useState(today);
-  const { state, requestError, ask, retry } = useAskRun();
+  const { state, requestError, ask, retry, question, setQuestion, asOf, setAsOf } =
+    useAskRunContext();
 
   const submit = (e: FormEvent) => {
     e.preventDefault();

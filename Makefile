@@ -90,8 +90,8 @@ test-docker: ## The full test suite inside containers
 	$(COMPOSE_TEST) --profile qdrant run --rm --build tests; rc=$$?; \
 	  $(COMPOSE_TEST) --profile qdrant rm -sf tests >/dev/null 2>&1; exit $$rc
 
-e2e: stack-ready ## Playwright end-to-end tests against the running stack
-	$(PNPM) -C web exec playwright test
+e2e: stack-ready ## Playwright end-to-end tests (with axe) against the running stack
+	NODE_PATH=$(CURDIR)/web/node_modules $(PNPM) -C web exec playwright test --project=e2e
 
 bench: stack-ready ## Performance tests with budgets
 	$(PY) pytest tests/perf -q -p no:cacheprovider
@@ -146,7 +146,7 @@ verify-clean: ## make verify in a fresh clone in a temporary folder
 docs: ## Regenerate diagrams, OpenAPI, frontend types and screenshots
 	$(PY) python scripts/export_openapi.py docs/openapi.json
 	$(PNPM) -C web gen:api
-	$(PNPM) -C web exec playwright test --project=screenshots
+	NODE_PATH=$(CURDIR)/web/node_modules $(PNPM) -C web exec playwright test --project=screenshots
 
 clean: ## Remove containers, volumes, caches and build outputs
 	-$(COMPOSE) --profile qdrant --profile observability --profile langfuse down -v --remove-orphans
