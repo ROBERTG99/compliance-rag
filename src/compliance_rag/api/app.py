@@ -11,6 +11,7 @@ from fastapi import FastAPI
 
 from compliance_rag import __version__
 from compliance_rag.api.errors import install_error_handlers
+from compliance_rag.api.limits import BodyLimit
 from compliance_rag.api.openapi import install_openapi
 from compliance_rag.api.routes import admin, ask, documents, evals, feedback, health
 from compliance_rag.api.state import AppState, build_state
@@ -48,6 +49,12 @@ def create_app(settings: Settings | None = None, *, state: AppState | None = Non
     if state is not None:
         app.state.crag = state  # tests drive the app without running the lifespan
     install_error_handlers(app)
+    # 1 MiB for JSON bodies; uploads get the configured limit plus room for the multipart envelope
+    app.add_middleware(
+        BodyLimit,
+        default_limit=1024 * 1024,
+        limits={"/v1/documents": settings.max_upload_bytes + 64 * 1024},
+    )
     install_openapi(app)
     app.include_router(health.router)
     app.include_router(ask.router)

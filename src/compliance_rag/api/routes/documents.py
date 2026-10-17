@@ -150,10 +150,13 @@ async def import_from_s3(
     if fmt is None:
         raise Problem(415, "Unsupported Media Type", "unsupported file extension", "unsupported_document")
     try:
+        # HEAD first: an oversized object is refused without downloading it into memory
+        if await state.services.objects.size(req.key) > state.settings.max_upload_bytes:
+            raise Problem(413, "Content Too Large", "object exceeds the upload limit", "upload_too_large")
         blob = await state.services.objects.get(req.key)
     except ObjectNotFound as exc:
         raise not_found("object") from exc
-    if len(blob) > state.settings.max_upload_bytes:
+    if len(blob) > state.settings.max_upload_bytes:  # replaced between HEAD and GET
         raise Problem(413, "Content Too Large", "object exceeds the upload limit", "upload_too_large")
     return await _register(state, principal, req.metadata, blob, fmt)
 

@@ -13,6 +13,7 @@ class ObjectStore(Protocol):
     async def put(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None: ...
     async def get(self, key: str) -> bytes: ...
     async def exists(self, key: str) -> bool: ...
+    async def size(self, key: str) -> int: ...
     async def list(self, prefix: str) -> list[str]: ...
     async def delete(self, key: str) -> None: ...
 
@@ -74,6 +75,19 @@ class S3ObjectStore:
                 raise ObjectNotFound(key) from exc
 
         return await asyncio.to_thread(_get)
+
+    async def size(self, key: str) -> int:
+        """Object size from a HEAD request (no download); ObjectNotFound when missing."""
+
+        def _size() -> int:
+            try:
+                return int(self.client.head_object(Bucket=self.bucket, Key=key)["ContentLength"])
+            except self.client.exceptions.ClientError as exc:
+                if exc.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
+                    raise ObjectNotFound(key) from exc
+                raise
+
+        return await asyncio.to_thread(_size)
 
     async def exists(self, key: str) -> bool:
         def _head() -> bool:

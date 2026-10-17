@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import time
 import uuid
@@ -10,6 +11,8 @@ from dataclasses import dataclass
 import structlog
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
+from starlette.exceptions import HTTPException
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from compliance_rag.obs.metrics import RATELIMIT_BYPASS
 
@@ -54,3 +57,60 @@ class RateLimiter:
             log.warning("ratelimit_bypass", error=type(exc).__name__)
             return Decision(True, bypassed=True)
         return Decision(True)
+
+
+class BodyLimit:
+    """ASGI guard: refuse request bodies over the limit before they are buffered or spooled (NFR-6).
+
+    ``Content-Length`` is checked up front; chunked bodies are counted while they stream in and abort with
+    413 as soon as they pass the limit (raised as an HTTPException, which FastAPI's body parsing re-raises).
+    """
+
+    def __init__(self, app: ASGIApp, default_limit: int, limits: dict[str, int]) -> None:
+        self.app, self.default_limit, self.limits = app, default_limit, limits
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or scope["method"] not in {"POST", "PUT", "PATCH"}:
+            await self.app(scope, receive, send)
+            return
+        limit = self.limits.get(scope["path"], self.default_limit)
+        declared = dict(scope["headers"]).get(b"content-length")
+        if declared is not None and declared.isdigit() and int(declared) > limit:
+            await _too_large(scope, send, limit)
+            return
+        seen = 0
+
+        async def counted() -> Message:
+            nonlocal seen
+            message = await receive()
+            if message["type"] == "http.request":
+                seen += len(message.get("body", b""))
+                if seen > limit:
+                    raise HTTPException(413, "Content Too Large")
+            return message
+
+        await self.app(scope, counted, send)
+
+
+async def _too_large(scope: Scope, send: Send, limit: int) -> None:
+    body = json.dumps(
+        {
+            "type": "https://compliance-rag.example/problems/upload_too_large",
+            "title": "Content Too Large",
+            "status": 413,
+            "instance": scope["path"],
+            "detail": f"request bodies are limited to {limit} bytes here",
+            "code": "upload_too_large",
+        }
+    ).encode()
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 413,
+            "headers": [
+                (b"content-type", b"application/problem+json"),
+                (b"content-length", str(len(body)).encode()),
+            ],
+        }
+    )
+    await send({"type": "http.response.body", "body": body})

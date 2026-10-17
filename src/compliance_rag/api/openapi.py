@@ -16,7 +16,7 @@ _DESCRIPTIONS = {
     403: "Role not allowed (admin routes only)",
     404: "Not found or not authorized (indistinguishable)",
     409: "Version or ACL conflict",
-    413: "Upload larger than 20 MB",
+    413: "Body too large (uploads 20 MB, JSON 1 MiB)",
     415: "Unsupported or mismatched file type",
     422: "Validation error",
     429: "Rate limit exceeded (30 asks per minute per user)",
@@ -77,8 +77,8 @@ def build_openapi(app: FastAPI) -> dict[str, Any]:
                 op["security"] = [{"bearerAuth": []}]
             statuses = list(ERRORS.get((method, path), [401, 422] if path.startswith("/v1/") else []))
             if "requestBody" in op:
-                statuses.append(400)  # undecodable bodies are rejected before validation
-            for status in sorted(statuses):
+                statuses += [400, 413]  # undecodable or oversized bodies are rejected before validation
+            for status in sorted(set(statuses)):
                 responses[str(status)] = _problem_response(status)
     return spec
 

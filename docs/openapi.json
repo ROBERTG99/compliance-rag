@@ -1712,6 +1712,16 @@
             },
             "description": "Not found or not authorized (indistinguishable)"
           },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Body too large (uploads 20 MB, JSON 1 MiB)"
+          },
           "422": {
             "content": {
               "application/problem+json": {
@@ -2080,7 +2090,7 @@
                 }
               }
             },
-            "description": "Upload larger than 20 MB"
+            "description": "Body too large (uploads 20 MB, JSON 1 MiB)"
           },
           "415": {
             "content": {
@@ -2294,6 +2304,16 @@
             },
             "description": "Version or ACL conflict"
           },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Body too large (uploads 20 MB, JSON 1 MiB)"
+          },
           "422": {
             "content": {
               "application/problem+json": {
@@ -2406,7 +2426,7 @@
                 }
               }
             },
-            "description": "Upload larger than 20 MB"
+            "description": "Body too large (uploads 20 MB, JSON 1 MiB)"
           },
           "415": {
             "content": {
@@ -2744,6 +2764,16 @@
             },
             "description": "Not found or not authorized (indistinguishable)"
           },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Body too large (uploads 20 MB, JSON 1 MiB)"
+          },
           "422": {
             "content": {
               "application/problem+json": {
@@ -2849,6 +2879,16 @@
               }
             },
             "description": "Not found or not authorized (indistinguishable)"
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Body too large (uploads 20 MB, JSON 1 MiB)"
           },
           "422": {
             "content": {

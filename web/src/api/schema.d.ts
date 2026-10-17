@@ -988,6 +988,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Body too large (uploads 20 MB, JSON 1 MiB) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Validation error */
             422: {
                 headers: {
@@ -1177,7 +1186,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Upload larger than 20 MB */
+            /** @description Body too large (uploads 20 MB, JSON 1 MiB) */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -1337,6 +1346,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Body too large (uploads 20 MB, JSON 1 MiB) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Validation error */
             422: {
                 headers: {
@@ -1417,7 +1435,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description Upload larger than 20 MB */
+            /** @description Body too large (uploads 20 MB, JSON 1 MiB) */
             413: {
                 headers: {
                     [name: string]: unknown;
@@ -1619,6 +1637,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Body too large (uploads 20 MB, JSON 1 MiB) */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
             /** @description Validation error */
             422: {
                 headers: {
@@ -1685,6 +1712,15 @@ export interface operations {
             };
             /** @description Not found or not authorized (indistinguishable) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Body too large (uploads 20 MB, JSON 1 MiB) */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };

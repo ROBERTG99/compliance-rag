@@ -98,3 +98,57 @@ async def test_queue_is_recreated_after_redis_comes_back(api_env: ApiEnv) -> Non
         if state.arq is not original and state.arq is not None:
             await state.arq.aclose()
         state.arq = original
+
+
+async def test_oversized_bodies_are_refused_before_they_are_buffered(api_env: ApiEnv) -> None:
+    limit = 20 * 1024 * 1024
+
+    async def chunks():  # type: ignore[no-untyped-def]  # chunked transfer: no Content-Length up front
+        yield (
+            b'--b\r\nContent-Disposition: form-data; name="file"; filename="x.md"\r\n'
+            b"Content-Type: text/markdown\r\n\r\n"
+        )
+        for _ in range(22):
+            yield b"0" * (1024 * 1024)
+
+    async with await api_env.client("admin") as admin:
+        claimed = await admin.post(
+            "/v1/documents",
+            content=b"x",
+            headers={"Content-Type": "multipart/form-data; boundary=b", "Content-Length": str(limit * 5)},
+        )
+        streamed = await admin.post(
+            "/v1/documents", content=chunks(), headers={"Content-Type": "multipart/form-data; boundary=b"}
+        )
+    async with await api_env.client("analyst") as analyst:
+        big_json = await analyst.post(
+            "/v1/ask",
+            content=b'{"question": "' + b"x" * (2 * 1024 * 1024) + b'"}',
+            headers={"Content-Type": "application/json"},
+        )
+    for resp in (claimed, streamed, big_json):
+        assert resp.status_code == 413, resp.text
+        assert resp.headers["content-type"].startswith("application/problem+json")
+
+
+async def test_s3_import_checks_the_size_before_downloading(api_env: ApiEnv) -> None:
+    state = api_env.app.state.crag
+    await state.services.objects.put("inbox/huge.md", b"#" * (20 * 1024 * 1024 + 1))
+    async with await api_env.client("admin") as admin:
+        resp = await admin.post(
+            "/v1/documents:from-s3",
+            json={
+                "key": "inbox/huge.md",
+                "metadata": {
+                    "document_id": "LIM-0002",
+                    "version": 1,
+                    "title": "Huge",
+                    "domain": "kyc",
+                    "owner": "Compliance",
+                    "valid_from": "2026-01-01",
+                    "acl_groups": ["all"],
+                },
+            },
+        )
+    assert resp.status_code == 413
+    assert await state.services.objects.size("inbox/huge.md") == 20 * 1024 * 1024 + 1
