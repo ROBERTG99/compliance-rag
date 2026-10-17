@@ -17,6 +17,7 @@ from compliance_rag.api.state import AppState
 from compliance_rag.db.audit import append_audit
 from compliance_rag.evals.splits import SplitRegistryUnavailable, in_test_split
 from compliance_rag.retrieval.types import Principal
+from compliance_rag.validation import SafeText
 
 router = APIRouter(prefix="/v1", tags=["feedback"])
 
@@ -34,7 +35,7 @@ class FeedbackRequest(BaseModel):
     run_id: uuid.UUID
     rating: Rating
     reason: Reason
-    comment: str | None = Field(default=None, max_length=1000)
+    comment: SafeText | None = Field(default=None, max_length=1000)
 
 
 class FeedbackItem(BaseModel):
@@ -50,8 +51,8 @@ class FeedbackItem(BaseModel):
 class TriageRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal["triaged", "added_to_dev_set"]
-    # accepted so the rule is explicit: anything but the dev split is refused with 422
-    split: Literal["dev", "test"] = "dev"
+    # triage only ever targets the dev split; "test" is a schema violation (422)
+    split: Literal["dev"] = "dev"
 
 
 class TriageItem(FeedbackItem):
@@ -189,10 +190,6 @@ async def triage_feedback(
     principal: Principal = Depends(require_role("content_admin")),
     state: AppState = Depends(get_state),
 ) -> dict[str, Any]:
-    if req.split != "dev":
-        raise Problem(
-            422, "Unprocessable Content", "feedback is triaged into the dev split only", "test_split_triage"
-        )
     async with state.services.pool.connection() as conn, conn.transaction():
         cur = await conn.execute(
             f"""SELECT {_COLUMNS}, a.question FROM feedback f JOIN answers a ON a.run_id = f.run_id

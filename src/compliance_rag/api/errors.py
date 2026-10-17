@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.routing import Match
 
 from compliance_rag.auth.jwt import AuthError
 from compliance_rag.ingest.loaders import UnsupportedDocument
@@ -64,6 +65,16 @@ def not_found(what: str = "resource") -> Problem:
     return Problem(404, "Not Found", f"{what} not found")
 
 
+def allowed_methods(request: Request) -> str:
+    """Every method served at this path; Starlette's own 405 lists only the first matching route's."""
+    methods: set[str] = set()
+    for route in request.app.router.routes:
+        match, _ = route.matches({**request.scope, "method": "GET"})
+        if match != Match.NONE:
+            methods |= set(getattr(route, "methods", None) or ())
+    return ", ".join(sorted(methods))
+
+
 def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(Problem)
     async def _problem(request: Request, exc: Problem) -> JSONResponse:
@@ -89,9 +100,10 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(StarletteHTTPException)
     async def _http(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-        return problem_response(
-            request, exc.status_code, str(exc.detail), None, None, headers=dict(exc.headers or {})
-        )
+        headers = dict(exc.headers or {})
+        if exc.status_code == 405:
+            headers["Allow"] = allowed_methods(request)
+        return problem_response(request, exc.status_code, str(exc.detail), None, None, headers=headers)
 
     @app.exception_handler(RetrievalUnavailable)
     async def _retrieval(request: Request, exc: RetrievalUnavailable) -> JSONResponse:

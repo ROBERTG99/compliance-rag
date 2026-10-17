@@ -6,17 +6,26 @@ import base64
 from datetime import date
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Path, Query, Request, Response, UploadFile
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from compliance_rag.api.deps import current_principal, get_state, require_role
 from compliance_rag.api.errors import Problem, not_found
+from compliance_rag.api.schemas import ChunkOut, DocumentDetail, DocumentPage
 from compliance_rag.api.state import AppState
 from compliance_rag.db.audit import append_audit
 from compliance_rag.ingest.objectstore import ObjectNotFound
 from compliance_rag.ingest.pipeline import RegisteredJob, idempotency_key, register_upload
 from compliance_rag.ingest.s3 import DocumentMetadata, format_for
 from compliance_rag.retrieval.types import Principal
+from compliance_rag.validation import (
+    DOCUMENT_ID_PATTERN,
+    GROUP_LIST_PATTERN,
+    Domain,
+    Group,
+    IsoDate,
+    SafeText,
+)
 
 router = APIRouter(prefix="/v1", tags=["documents"])
 
@@ -29,7 +38,7 @@ class UploadAccepted(BaseModel):
 
 class FromS3Request(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    key: str = Field(min_length=1, max_length=512)
+    key: SafeText = Field(min_length=1, max_length=512)
     metadata: DocumentMetadata
 
 
@@ -87,14 +96,16 @@ async def _register(
 async def upload_document(
     request: Request,
     file: UploadFile = File(...),
-    document_id: str = Form(...),
-    version: int = Form(...),
-    title: str = Form(...),
-    domain: str = Form(...),
-    owner: str = Form(...),
-    valid_from: date = Form(...),
-    valid_to: date | None = Form(None),
-    acl_groups: str = Form(..., description="comma-separated: all, compliance, legal, support"),
+    document_id: str = Form(..., pattern=DOCUMENT_ID_PATTERN),
+    version: int = Form(..., ge=1),
+    title: SafeText = Form(..., min_length=1, max_length=300),
+    domain: Domain = Form(...),
+    owner: SafeText = Form(..., min_length=1, max_length=120),
+    valid_from: IsoDate = Form(...),
+    valid_to: IsoDate | None = Form(None),
+    acl_groups: str = Form(
+        ..., pattern=GROUP_LIST_PATTERN, description="comma-separated: all, compliance, legal, support"
+    ),
     principal: Principal = Depends(require_role("content_admin")),
     state: AppState = Depends(get_state),
 ) -> UploadAccepted:
@@ -158,17 +169,20 @@ def _cursor_decode(cursor: str | None) -> str:
     if not cursor:
         return ""
     try:
-        return base64.urlsafe_b64decode(cursor.encode()).decode()
+        after = base64.urlsafe_b64decode(cursor.encode()).decode()
+        if "\x00" in after:
+            raise ValueError("NUL in cursor")
+        return after
     except Exception as exc:
         raise Problem(422, "Unprocessable Content", "invalid cursor", "validation") from exc
 
 
-@router.get("/documents")
+@router.get("/documents", response_model=DocumentPage, response_model_exclude_unset=True)
 async def list_documents(
-    group: str | None = None,
-    domain: str | None = None,
-    valid_at: date | None = None,
-    q: str | None = Query(None, max_length=200),
+    group: Group | None = None,
+    domain: Domain | None = None,
+    valid_at: IsoDate | None = None,
+    q: SafeText | None = Query(None, max_length=200),
     cursor: str | None = None,
     limit: int = Query(50, ge=1, le=200),
     principal: Principal = Depends(current_principal),
@@ -247,9 +261,11 @@ async def _authorized_document(state: AppState, principal: Principal, document_i
     return tuple(row)
 
 
-@router.get("/documents/{document_id}")
+@router.get("/documents/{document_id}", response_model=DocumentDetail, response_model_exclude_unset=True)
 async def get_document(
-    document_id: str, principal: Principal = Depends(current_principal), state: AppState = Depends(get_state)
+    document_id: str = Path(pattern=DOCUMENT_ID_PATTERN),
+    principal: Principal = Depends(current_principal),
+    state: AppState = Depends(get_state),
 ) -> dict[str, Any]:
     doc = await _authorized_document(state, principal, document_id)
     async with state.services.pool.connection() as conn:
@@ -290,7 +306,7 @@ async def get_document(
     return result
 
 
-@router.get("/chunks/{chunk_id}")
+@router.get("/chunks/{chunk_id}", response_model=ChunkOut)
 async def get_chunk(
     chunk_id: str,
     response: Response,

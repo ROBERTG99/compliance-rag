@@ -9,7 +9,8 @@ from fastapi import FastAPI
 
 from compliance_rag import __version__
 from compliance_rag.api.errors import install_error_handlers
-from compliance_rag.api.routes import admin, ask, documents, feedback, health
+from compliance_rag.api.openapi import install_openapi
+from compliance_rag.api.routes import admin, ask, documents, evals, feedback, health
 from compliance_rag.api.state import AppState, build_state
 from compliance_rag.settings import Settings, get_settings
 
@@ -36,9 +37,11 @@ def create_app(settings: Settings | None = None, *, state: AppState | None = Non
     if state is not None:
         app.state.crag = state  # tests drive the app without running the lifespan
     install_error_handlers(app)
+    install_openapi(app)
     app.include_router(health.router)
     app.include_router(ask.router)
     app.include_router(documents.router)
     app.include_router(admin.router)
     app.include_router(feedback.router)
+    app.include_router(evals.router)
     return app

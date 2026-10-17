@@ -9,18 +9,21 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from compliance_rag.api.deps import current_principal, get_state
+from compliance_rag.api.schemas import Health, Me, Ready
 from compliance_rag.api.state import AppState
 from compliance_rag.retrieval.types import Principal
 
 router = APIRouter(tags=["health"])
 
 
-@router.get("/healthz")
+@router.get("/healthz", response_model=Health)
 async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@router.get("/readyz")
+@router.get(
+    "/readyz", response_model=Ready, responses={503: {"model": Ready, "description": "Postgres unavailable"}}
+)
 async def readyz(state: AppState = Depends(get_state)) -> Response:
     checks: dict[str, str] = {}
     try:
@@ -45,6 +48,6 @@ async def metrics() -> Response:
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
-@router.get("/v1/me")
+@router.get("/v1/me", response_model=Me)
 async def me(principal: Principal = Depends(current_principal)) -> dict[str, Any]:
     return dict(principal)

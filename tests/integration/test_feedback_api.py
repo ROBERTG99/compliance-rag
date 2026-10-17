@@ -103,7 +103,7 @@ async def test_triage_into_dev_split_only(api_env: ApiEnv) -> None:
         invalid = await admin.patch(f"/v1/feedback/{ids['dev']}", json={"status": "deleted"})
     assert triaged.status_code == 200 and triaged.json()["status"] == "triaged"
     assert added.status_code == 200 and added.json()["status"] == "added_to_dev_set"
-    assert to_test.status_code == 422 and to_test.json()["code"] == "test_split_triage"
+    assert to_test.status_code == 422  # the contract only admits split "dev"
     # a question from the held-out test split can never be copied into the dev set
     assert leak.status_code == 422 and leak.json()["code"] == "test_split_triage"
     assert missing.status_code == 404 and invalid.status_code == 422

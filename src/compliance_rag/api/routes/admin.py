@@ -2,21 +2,22 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from compliance_rag.api.deps import get_state, require_role
 from compliance_rag.api.errors import Problem, not_found
+from compliance_rag.api.schemas import AclAccepted, IndexLag, JobPage
 from compliance_rag.api.state import AppState
 from compliance_rag.db.audit import append_audit
 from compliance_rag.retrieval.types import Principal
+from compliance_rag.validation import DOCUMENT_ID_PATTERN, Group, JobKind, JobStatus
 from compliance_rag.worker.acl import UnknownDocument, change_acl, index_lag
 
 router = APIRouter(prefix="/v1", tags=["admin"])
-Group = Literal["all", "compliance", "legal", "support"]
 
 
 class AclRequest(BaseModel):
@@ -24,10 +25,10 @@ class AclRequest(BaseModel):
     groups: list[Group] = Field(min_length=1)
 
 
-@router.put("/documents/{document_id}/acl", status_code=202)
+@router.put("/documents/{document_id}/acl", status_code=202, response_model=AclAccepted)
 async def put_acl(
-    document_id: str,
     req: AclRequest,
+    document_id: str = Path(pattern=DOCUMENT_ID_PATTERN),
     principal: Principal = Depends(require_role("content_admin")),
     state: AppState = Depends(get_state),
 ) -> JSONResponse:
@@ -61,10 +62,10 @@ async def put_acl(
     )
 
 
-@router.get("/ingestion-jobs")
+@router.get("/ingestion-jobs", response_model=JobPage)
 async def list_jobs(
-    status: str | None = None,
-    kind: str | None = None,
+    status: JobStatus | None = None,
+    kind: JobKind | None = None,
     limit: int = Query(50, ge=1, le=500),
     principal: Principal = Depends(require_role("content_admin")),
     state: AppState = Depends(get_state),
@@ -106,7 +107,7 @@ async def list_jobs(
     return {"items": items}
 
 
-@router.get("/index/lag")
+@router.get("/index/lag", response_model=IndexLag)
 async def get_index_lag(
     principal: Principal = Depends(require_role("content_admin")), state: AppState = Depends(get_state)
 ) -> dict[str, Any]:

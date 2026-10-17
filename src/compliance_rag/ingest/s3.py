@@ -10,28 +10,27 @@ import inspect
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from compliance_rag.ingest.pipeline import DocumentMeta, IngestDeps, RegisteredJob, register_upload
+from compliance_rag.validation import DOCUMENT_ID_PATTERN, Domain, Group, IsoDate, SafeText
 
 INBOX = "inbox/"
 FORMAT_BY_EXT = {"pdf": "pdf", "docx": "docx", "html": "html", "htm": "html", "md": "md", "markdown": "md"}
-DOMAINS = {"kyc", "aml", "limits", "retention", "complaints", "vendors"}
 
 
 class DocumentMetadata(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    document_id: str = Field(pattern=r"^[A-Z]{2,4}-[0-9]{4}$")
+    document_id: str = Field(pattern=DOCUMENT_ID_PATTERN)
     version: int = Field(ge=1)
-    title: str = Field(min_length=1, max_length=300)
-    domain: str
-    owner: str = Field(min_length=1, max_length=120)
-    valid_from: date
-    valid_to: date | None = None
-    acl_groups: list[str] = Field(min_length=1)
+    title: SafeText = Field(min_length=1, max_length=300)
+    domain: Domain
+    owner: SafeText = Field(min_length=1, max_length=120)
+    valid_from: IsoDate
+    valid_to: IsoDate | None = None
+    acl_groups: list[Group] = Field(min_length=1)
 
     @field_validator("acl_groups", mode="before")
     @classmethod
@@ -42,17 +41,8 @@ class DocumentMetadata(BaseModel):
 
     @field_validator("acl_groups")
     @classmethod
-    def _groups(cls, value: list[str]) -> list[str]:
-        if not set(value) <= {"all", "compliance", "legal", "support"}:
-            raise ValueError("acl_groups must be a subset of all, compliance, legal, support")
+    def _groups(cls, value: list[Group]) -> list[Group]:
         return sorted(set(value))
-
-    @field_validator("domain")
-    @classmethod
-    def _domain(cls, value: str) -> str:
-        if value not in DOMAINS:
-            raise ValueError(f"domain must be one of {sorted(DOMAINS)}")
-        return value
 
     def to_meta(self, source_format: str) -> DocumentMeta:
         if self.valid_to is not None and self.valid_to <= self.valid_from:
@@ -65,7 +55,7 @@ class DocumentMetadata(BaseModel):
             self.owner,
             self.valid_from,
             source_format,
-            self.acl_groups,
+            [str(g) for g in self.acl_groups],
             self.valid_to,
         )
 

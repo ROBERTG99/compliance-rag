@@ -5,12 +5,11 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections.abc import AsyncIterator
-from datetime import date
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, Response
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import AfterValidator, BaseModel, ConfigDict, StrictBool, StringConstraints
 
 from compliance_rag.api import runs
 from compliance_rag.api.deps import ask_rate_limit, current_principal, get_state
@@ -19,6 +18,7 @@ from compliance_rag.api.sse import TERMINAL, format_event
 from compliance_rag.api.state import AppState
 from compliance_rag.obs.metrics import ASK_REQUESTS
 from compliance_rag.retrieval.types import Principal
+from compliance_rag.validation import IsoDate, no_nul
 
 router = APIRouter(prefix="/v1", tags=["ask"])
 PING_INTERVAL_S = 15.0
@@ -26,10 +26,12 @@ PING_INTERVAL_S = 15.0
 
 class AskRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    question: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
-    as_of: date | None = None
-    follow_up_of: str | None = None
-    stream: bool = True
+    question: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000), AfterValidator(no_nul)
+    ]
+    as_of: IsoDate | None = None
+    follow_up_of: uuid.UUID | None = None
+    stream: StrictBool = True
 
 
 class AskAccepted(BaseModel):
@@ -90,7 +92,8 @@ async def ask(
     state: AppState = Depends(get_state),
 ) -> Any:
     as_of = runs.check_as_of(principal, req.as_of)
-    conversation_id = await runs.resolve_conversation(state, principal, req.follow_up_of)
+    follow_up_of = str(req.follow_up_of) if req.follow_up_of is not None else None
+    conversation_id = await runs.resolve_conversation(state, principal, follow_up_of)
     run_id = str(uuid.uuid4())
     if not req.stream:
         ASK_REQUESTS.labels(mode="sync").inc()
@@ -101,7 +104,7 @@ async def ask(
             conversation_id=conversation_id,
             question=req.question,
             as_of=as_of,
-            follow_up_of=req.follow_up_of,
+            follow_up_of=follow_up_of,
         )
     await state.events.set_owner(run_id, principal["sub"])
     task = asyncio.create_task(
@@ -112,7 +115,7 @@ async def ask(
             conversation_id=conversation_id,
             question=req.question,
             as_of=as_of,
-            follow_up_of=req.follow_up_of,
+            follow_up_of=follow_up_of,
         )
     )
     state.background.add(task)
