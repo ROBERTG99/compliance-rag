@@ -4,6 +4,7 @@
 
 - Switch `third_party/evalgate/` to `evalgate @ git+https://github.com/ROBERTG99/evalgate@v0.1.0` once that tag is published (the repository currently has no tag).
 - Maintainer review of 40 questions from `evals/datasets/questions.v1.jsonl` (labels are by construction).
+- Live evals (`make eval-live`, `make record-fixtures`): need `CRAG_LLM_PROVIDER=anthropic` (or bedrock) and credentials; never run in this build (no key). The budget stop is tested offline (`tests/unit/evals/test_budget.py`); the live judge must reach agreement ≥ 0.8 with `make calibrate-judge` against a live `judge` before its numbers are used.
 - Provider fixtures for Titan/OpenAI embeddings and Cohere rerank are synthetic (documented response shapes); re-record with `make record-fixtures` when keys are available.
 
 ## Resume here (handoff, 2026-10-17)
@@ -116,7 +117,7 @@ chore: configure commit attribution
 | T-39 | M5 | evalgate suites and offline gate | done | `make eval` → rag PASS, retrieval PASS on the test split (120 cases each): recall@10 0.920, MRR@10 0.943, key-fact 0.886, citation precision 1.000, hallucinated 0, ACL leakage 0, stale 0, abstention 0.933, retrieval p95 ≈ 100 ms (`evals/REPORT.md`, FakeLLM); baseline written once with `--write-baseline`, second run passes `evalgate check` against it; `make calibrate-judge` → agreement 1.000 on 80 labels; `uv run pytest tests/unit/evals tests/unit/evalgate` pass. |
 | T-40 | M5 | Ablation | done | `uv run pytest tests/unit/evals/test_ablation.py tests/integration/test_reindex.py` → 5 passed (five configurations; Qdrant rebuilt from Postgres keeps ACL/validity/visibility, idempotent; re-embed reproduces the LSA fingerprint); `make eval-ablation` (test split, 120 cases) → bm25 0.812/0.825/15 ms, vector-pgvector 0.733/0.664/65 ms, vector-qdrant 0.744/0.676/28 ms, hybrid 0.818/0.751/73 ms, hybrid+rerank 0.920/0.943/101 ms (recall@10/MRR@10/p95) in `evals/REPORT.md`. |
 | T-41 | M5 | Red-team (FR-13) | todo | |
-| T-42 | M5 | Judge calibration and live evals | in progress | Rubric `evals/rubrics/answer.yaml` and offline calibration (FakeJudge agreement 1.000 on 80 labels, `tests/unit/evalgate`) done; `scripts/eval_live.py` with budget stop still to do. |
+| T-42 | M5 | Judge calibration and live evals | done | `make calibrate-judge` → agreement 1.000 on 80 labels (min 0.8, FakeJudge offline); `uv run pytest tests/unit/evals/test_budget.py` → 4 passed (stops before the next question would pass the budget, unknown cost charged at the estimate, a costlier-than-estimated question raises the next estimate, offline/no-key refused); `uv run python scripts/eval_live.py` with `CRAG_LLM_PROVIDER=fake` → refused with exit 2. Live run: Needs the maintainer. |
 | T-43 | M6 | Tracing, logs, step records | todo | |
 | T-44 | M6 | Metrics, dashboard, alerts | todo | |
 | T-45 | M6 | Threat model and scans (FR-11, FR-13) | todo | |
