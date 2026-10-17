@@ -17,7 +17,7 @@ import numpy as np
 import numpy.typing as npt
 import structlog
 
-from compliance_rag.obs.metrics import ACL_POSTCHECK_VIOLATIONS, RETRIEVAL_SECONDS
+from compliance_rag.obs.metrics import ACL_POSTCHECK_VIOLATIONS, RETRIEVAL_SECONDS, STALE_INDEX_HITS
 from compliance_rag.retrieval.filters import AccessFilter
 from compliance_rag.retrieval.fusion import rrf_fuse
 from compliance_rag.retrieval.types import Candidate, Principal
@@ -76,6 +76,7 @@ class HybridRetriever:
         rrf_k: int = 60,
         leg_k: int = 50,
         timeout_ms: int = 250,
+        authority: Any | None = None,
     ) -> None:
         self.bm25 = bm25
         self.vector = vector
@@ -83,6 +84,8 @@ class HybridRetriever:
         self.rrf_k = rrf_k
         self.leg_k = leg_k
         self.timeout_s = timeout_ms / 1000
+        # Postgres is the source of truth for ACL/visibility/validity; index copies can lag (ACL sync, activation)
+        self.authority = authority
 
     async def _timed(self, leg: str, coro: Any) -> tuple[list[Candidate], float]:
         started = time.perf_counter()
@@ -129,10 +132,39 @@ class HybridRetriever:
                 log.warning("retrieval_leg_failed", leg=name, error=type(res).__name__)
             else:
                 out[name], timings[name] = res
+        await self._recheck(out, degraded, principal, as_of)
         if len(degraded) == len(legs):
             raise RetrievalUnavailable(f"all retrieval legs failed: {', '.join(degraded)}")
         timings["legs"] = (time.perf_counter() - started) * 1000
         return HybridResult(out["bm25"], out["vector"], [], sorted(degraded), timings)
+
+    def _index_legs(self, out: dict[str, list[Candidate]]) -> list[str]:
+        legs = [n for n in ("bm25", "vector") if out[n]]
+        # pgvector reads the authoritative rows itself; OpenSearch and Qdrant hold copies
+        return [n for n in legs if not (n == "vector" and getattr(self.vector, "name", "") == "pgvector")]
+
+    async def _recheck(
+        self, out: dict[str, list[Candidate]], degraded: list[str], principal: Principal, as_of: date
+    ) -> None:
+        if self.authority is None:
+            return
+        legs = self._index_legs(out)
+        ids = sorted({c["chunk_id"] for n in legs for c in out[n]})
+        if not ids:
+            return
+        try:
+            allowed = await self.authority.authorized(ids, principal, as_of)
+        except Exception as exc:  # cannot confirm → serve nothing from the index copies (fail closed)
+            log.warning("retrieval_recheck_failed", error=type(exc).__name__)
+            for n in legs:
+                out[n] = []
+                degraded.append(n)
+            return
+        for n in legs:
+            kept = [c for c in out[n] if c["chunk_id"] in allowed]
+            if len(kept) != len(out[n]):
+                STALE_INDEX_HITS.labels(leg=n).inc(len(out[n]) - len(kept))
+            out[n] = kept
 
     def fuse(self, result: HybridResult, principal: Principal, as_of: date) -> HybridResult:
         """RRF-fuse the legs and drop (and count) any hit the principal should never see."""

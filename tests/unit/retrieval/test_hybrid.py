@@ -135,3 +135,50 @@ async def test_zero_query_embedding_skips_vector_leg() -> None:
     result = await r.retrieve("cafeteria menu", SUPPORT, AS_OF)
     assert [c["chunk_id"] for c in result.fused] == ["a"]
     assert result.degraded == [] and result.n_vector == 0
+
+
+async def test_index_hits_are_rechecked_against_the_authoritative_store() -> None:
+    """A stale OpenSearch/Qdrant copy (e.g. an ACL revocation not yet synced) must never be served."""
+    from compliance_rag.obs.metrics import STALE_INDEX_HITS
+
+    class Authority:
+        def __init__(self) -> None:
+            self.asked: list[list[str]] = []
+
+        async def authorized(self, chunk_ids: list[str], principal: Principal, as_of: date) -> set[str]:
+            self.asked.append(sorted(chunk_ids))
+            return {"a"}  # "stale" lost access in Postgres
+
+    authority = Authority()
+    before = STALE_INDEX_HITS.labels(leg="bm25")._value.get()
+    r = HybridRetriever(
+        bm25=FakeBM25([cand("a", bm25=3.0), cand("stale", bm25=2.0)]),
+        vector=FakeVector([cand("b", cosine=0.9)]),  # pgvector reads Postgres itself: not re-checked
+        embedder=FakeEmbedder(),
+        rrf_k=60,
+        leg_k=50,
+        timeout_ms=250,
+        authority=authority,
+    )
+    result = await r.retrieve("q", SUPPORT, AS_OF)
+    assert sorted(c["chunk_id"] for c in result.fused) == ["a", "b"]
+    assert authority.asked == [["a", "stale"]]
+    assert STALE_INDEX_HITS.labels(leg="bm25")._value.get() == before + 1
+
+
+async def test_authority_failure_fails_closed_for_index_legs() -> None:
+    class Down:
+        async def authorized(self, chunk_ids: list[str], principal: Principal, as_of: date) -> set[str]:
+            raise ConnectionError("postgres down")
+
+    r = HybridRetriever(
+        bm25=FakeBM25([cand("a", bm25=3.0)]),
+        vector=FakeVector([cand("b", cosine=0.9)]),
+        embedder=FakeEmbedder(),
+        rrf_k=60,
+        leg_k=50,
+        timeout_ms=250,
+        authority=Down(),
+    )
+    result = await r.retrieve("q", SUPPORT, AS_OF)
+    assert result.degraded == ["bm25"] and [c["chunk_id"] for c in result.fused] == ["b"]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import structlog
 from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -12,12 +13,12 @@ from compliance_rag.api.deps import get_state, require_role
 from compliance_rag.api.errors import Problem, not_found
 from compliance_rag.api.schemas import AclAccepted, IndexLag, JobPage
 from compliance_rag.api.state import AppState
-from compliance_rag.db.audit import append_audit
 from compliance_rag.retrieval.types import Principal
 from compliance_rag.validation import DOCUMENT_ID_PATTERN, Group, JobKind, JobStatus
 from compliance_rag.worker.acl import UnknownDocument, change_acl, index_lag
 
 router = APIRouter(prefix="/v1", tags=["admin"])
+log = structlog.get_logger(__name__)
 
 
 class AclRequest(BaseModel):
@@ -34,23 +35,17 @@ async def put_acl(
 ) -> JSONResponse:
     try:
         change = await change_acl(
-            state.services.ingest_deps(), document_id, list(req.groups), principal["sub"]
+            state.services.ingest_deps(), document_id, list(req.groups), principal["sub"], principal["role"]
         )
     except UnknownDocument as exc:
         raise not_found("document") from exc
     except ValueError as exc:
         raise Problem(422, "Unprocessable Content", str(exc), "validation") from exc
     if not change.indexes_synced and state.arq is not None:
-        await state.arq.enqueue_job("sync_acl", change.job_id, _job_id=f"acl:{change.job_id}")
-    async with state.services.pool.connection() as conn:
-        await append_audit(
-            conn,
-            actor_sub=principal["sub"],
-            actor_role=principal["role"],
-            action="acl_change",
-            target=document_id,
-            details={"from": change.previous, "to": change.groups, "job_id": change.job_id},
-        )
+        try:
+            await state.arq.enqueue_job("sync_acl", change.job_id, _job_id=f"acl:{change.job_id}")
+        except Exception as exc:  # committed and audited; the reconcile cron retries unfinished syncs
+            log.warning("acl_sync_enqueue_failed", job_id=change.job_id, error=type(exc).__name__)
     return JSONResponse(
         {
             "job_id": change.job_id,

@@ -59,6 +59,7 @@ class AppState:
             rrf_k=self.settings.rrf_k,
             leg_k=self.settings.leg_k,
             timeout_ms=self.settings.leg_timeout_ms,
+            authority=s.pg,
         )
         self.retriever = retriever
         reranker = create_reranker(self.settings.reranker, embedder=s.embedder)

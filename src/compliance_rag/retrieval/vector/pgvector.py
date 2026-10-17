@@ -29,6 +29,8 @@ JOIN documents d ON d.document_id = h.document_id
 ORDER BY h.distance, h.chunk_id
 """  # noqa: S608
 
+AUTHORIZED_SQL = f"SELECT c.chunk_id FROM chunks c WHERE c.chunk_id = ANY(%(ids)s) AND {AccessFilter.SQL}"  # noqa: S608
+
 UPSERT_SQL = """
 INSERT INTO chunks (chunk_id, version_id, document_id, ordinal, section_path, text, char_start, char_end,
                     token_count, injection_score, acl_groups, valid_from, valid_to, visible, embedding)
@@ -125,3 +127,10 @@ class PgVectorStore:
     async def delete_version(self, version_id: str) -> None:
         async with self.pool.connection() as conn:
             await conn.execute("DELETE FROM chunks WHERE version_id = %s", (version_id,))
+
+    async def authorized(self, chunk_ids: list[str], principal: Principal, as_of: date) -> set[str]:
+        """The subset of ``chunk_ids`` the principal may read at ``as_of`` according to Postgres."""
+        params = {**AccessFilter.for_principal(principal, as_of).sql_params(), "ids": list(chunk_ids)}
+        async with self.pool.connection() as conn:
+            rows = await (await conn.execute(AUTHORIZED_SQL, params)).fetchall()
+        return {str(r[0]) for r in rows}

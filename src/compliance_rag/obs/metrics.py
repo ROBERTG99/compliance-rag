@@ -31,3 +31,8 @@ RATELIMIT_BYPASS = Counter(
     "crag_ratelimit_bypass_total", "Requests allowed because the rate limiter was unavailable"
 )
 ASK_REQUESTS = Counter("crag_ask_requests_total", "Ask requests", ["mode"])
+STALE_INDEX_HITS = Counter(
+    "crag_stale_index_hits_total",
+    "Index hits dropped because Postgres (authoritative ACL/visibility/validity) no longer allows them",
+    ["leg"],
+)

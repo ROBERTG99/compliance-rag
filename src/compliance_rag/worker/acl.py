@@ -7,6 +7,7 @@ import hashlib
 import uuid
 from dataclasses import dataclass
 
+from compliance_rag.db.audit import append_audit
 from compliance_rag.ingest.pipeline import IngestDeps
 
 VALID_GROUPS = {"all", "compliance", "legal", "support"}
@@ -25,7 +26,9 @@ class AclChange:
     indexes_synced: bool
 
 
-async def change_acl(deps: IngestDeps, document_id: str, groups: list[str], actor: str) -> AclChange:
+async def change_acl(
+    deps: IngestDeps, document_id: str, groups: list[str], actor: str, actor_role: str = "content_admin"
+) -> AclChange:
     groups = sorted(set(groups))
     if not groups or not set(groups) <= VALID_GROUPS:
         raise ValueError("groups must be a non-empty subset of all, compliance, legal, support")
@@ -56,7 +59,16 @@ async def change_acl(deps: IngestDeps, document_id: str, groups: list[str], acto
                 (key, document_id, actor),
             )
         ).fetchone()
-    assert job is not None
+        assert job is not None
+        # audited with the change itself: a failure after commit cannot leave an unaudited ACL change
+        await append_audit(
+            conn,
+            actor_sub=actor,
+            actor_role=actor_role,
+            action="acl_change",
+            target=document_id,
+            details={"from": list(prev[0] if prev else []), "to": groups, "job_id": str(job[0])},
+        )
     synced = await sync_acl(deps, str(job[0]))
     return AclChange(str(job[0]), document_id, groups, list(prev[0] if prev else []), synced)
 
@@ -116,3 +128,19 @@ async def index_lag(deps: IngestDeps) -> dict[str, float | int]:
         "pending": int(row[2]),
         "oldest_pending_s": round(float(row[3]), 3),
     }
+
+
+async def reconcile_acl_sync(deps: IngestDeps, min_age_s: float = 10.0) -> int:
+    """Re-run unfinished ACL syncs (lost enqueue, exhausted retries). Returns how many are now in sync."""
+    async with deps.pool.connection() as conn:
+        rows = await (
+            await conn.execute(
+                """SELECT id FROM ingestion_jobs WHERE kind = 'acl_sync' AND status <> 'done'
+                   AND enqueued_at < now() - make_interval(secs => %s) ORDER BY enqueued_at LIMIT 50""",
+                (min_age_s,),
+            )
+        ).fetchall()
+    synced = 0
+    for (job_id,) in rows:
+        synced += int(await sync_acl(deps, str(job_id)))
+    return synced
