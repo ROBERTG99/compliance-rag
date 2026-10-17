@@ -7,6 +7,7 @@ import uuid
 from datetime import date
 from typing import Any
 
+import structlog
 from psycopg.types.json import Jsonb
 
 from compliance_rag.api.errors import Problem, not_found
@@ -18,6 +19,8 @@ from compliance_rag.llm.gateway import GenerationUnavailable
 from compliance_rag.obs.metrics import ASK_REQUESTS
 from compliance_rag.retrieval.hybrid import RetrievalUnavailable
 from compliance_rag.retrieval.types import Principal
+
+log = structlog.get_logger(__name__)
 
 
 async def resolve_conversation(state: AppState, principal: Principal, follow_up_of: str | None) -> str:
@@ -165,5 +168,7 @@ async def stream_run(
             "error",
             {"code": "generation_unavailable", "message": "generation is unavailable", "retryable": True},
         )
-    except Exception:
+    except Exception as exc:
+        # type and run only: messages can echo question or document text
+        log.error("stream_run_failed", run_id=run_id, error_type=type(exc).__name__)
         await emit("error", {"code": "internal", "message": "internal error", "retryable": False})

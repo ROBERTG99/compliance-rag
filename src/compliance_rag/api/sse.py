@@ -9,13 +9,17 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from collections import defaultdict
 from typing import Any
 
+import structlog
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 
 Event = tuple[int, str, dict[str, Any]]
 TERMINAL = {"final", "error"}
+log = structlog.get_logger(__name__)
 
 
 def format_event(seq: int, event: str, data: dict[str, Any]) -> str:
@@ -23,21 +27,38 @@ def format_event(seq: int, event: str, data: dict[str, Any]) -> str:
 
 
 class MemoryEvents:
-    def __init__(self) -> None:
+    """Process-local fallback; entries are evicted ``ttl_s`` after the run was registered."""
+
+    def __init__(self, ttl_s: int = 300) -> None:
+        self.ttl_s = ttl_s
         self.events: dict[str, list[Event]] = defaultdict(list)
         self.owners: dict[str, str] = {}
+        self.created: dict[str, float] = {}
         self.cond = asyncio.Condition()
 
+    def _sweep(self) -> None:
+        cutoff = time.monotonic() - self.ttl_s
+        for run_id in [r for r, at in self.created.items() if at < cutoff]:
+            self.created.pop(run_id, None)
+            self.owners.pop(run_id, None)
+            self.events.pop(run_id, None)
+
     async def set_owner(self, run_id: str, sub: str) -> None:
+        self._sweep()
         self.owners[run_id] = sub
+        self.created.setdefault(run_id, time.monotonic())
 
     async def owner(self, run_id: str) -> str | None:
+        self._sweep()
         return self.owners.get(run_id)
 
-    async def append(self, run_id: str, event: str, data: dict[str, Any]) -> int:
+    async def append(self, run_id: str, event: str, data: dict[str, Any], after_seq: int = 0) -> int:
         async with self.cond:
-            seq = len(self.events[run_id]) + 1
-            self.events[run_id].append((seq, event, data))
+            self.created.setdefault(run_id, time.monotonic())
+            log = self.events[run_id]
+            # continue the numbering of a run that started in Redis, so client cursors stay valid
+            seq = max(after_seq, log[-1][0] if log else 0) + 1
+            log.append((seq, event, data))
             self.cond.notify_all()
         return seq
 
@@ -54,13 +75,23 @@ class MemoryEvents:
 
 
 class RunEvents:
-    """Redis Streams with an in-memory fallback."""
+    """Redis Streams with an in-memory fallback.
+
+    Healthy runs live only in Redis (owner and events expire after ``ttl_s``). A run moves to memory
+    when Redis fails; its numbering continues from the last Redis sequence so a client's
+    ``Last-Event-ID`` still points at the right place.
+    """
+
+    # XREAD blocks in slices shorter than the client's 2 s socket timeout
+    BLOCK_SLICE_S = 1.5
 
     def __init__(self, redis: Redis | None, ttl_s: int = 300) -> None:
         self.redis = redis
         self.ttl_s = ttl_s
-        self.memory = MemoryEvents()
+        self.memory = MemoryEvents(ttl_s)
         self._memory_runs: set[str] = set()
+        self._owners: dict[str, str] = {}  # only until the run moves to memory or ends (bounded by sweep)
+        self._last_seq: dict[str, int] = {}
 
     @staticmethod
     def _key(run_id: str) -> str:
@@ -69,24 +100,32 @@ class RunEvents:
     def _use_memory(self, run_id: str) -> bool:
         return self.redis is None or run_id in self._memory_runs
 
+    async def _to_memory(self, run_id: str, exc: BaseException) -> None:
+        if run_id not in self._memory_runs:
+            log.warning("run_events_memory_fallback", error=type(exc).__name__)
+            self._memory_runs.add(run_id)
+            owner = self._owners.pop(run_id, None)
+            if owner is not None:
+                await self.memory.set_owner(run_id, owner)
+
     async def set_owner(self, run_id: str, sub: str) -> None:
-        await self.memory.set_owner(run_id, sub)
         if self.redis is None:
             self._memory_runs.add(run_id)
+            await self.memory.set_owner(run_id, sub)
             return
+        self._owners[run_id] = sub
         try:
             await self.redis.set(f"{self._key(run_id)}:owner", sub, ex=self.ttl_s)
-        except Exception:
-            self._memory_runs.add(run_id)
+        except (RedisError, OSError) as exc:
+            await self._to_memory(run_id, exc)
 
     async def owner(self, run_id: str) -> str | None:
         if not self._use_memory(run_id):
             try:
                 value = await self.redis.get(f"{self._key(run_id)}:owner")  # type: ignore[union-attr]
-                if value is not None:
-                    return value.decode() if isinstance(value, bytes) else str(value)
-            except Exception:  # Redis unavailable: fall back to the in-process copy
-                self._memory_runs.add(run_id)
+                return None if value is None else value.decode() if isinstance(value, bytes) else str(value)
+            except (RedisError, OSError) as exc:
+                await self._to_memory(run_id, exc)
         return await self.memory.owner(run_id)
 
     async def append(self, run_id: str, event: str, data: dict[str, Any]) -> int:
@@ -101,19 +140,34 @@ class RunEvents:
                 if seq == 1:
                     for k in (key, f"{key}:seq", f"{key}:owner"):
                         await self.redis.expire(k, self.ttl_s)
+                self._last_seq[run_id] = seq
+                if event in TERMINAL:
+                    self._owners.pop(run_id, None)
+                    self._last_seq.pop(run_id, None)
                 return seq
-            except Exception:
-                self._memory_runs.add(run_id)
-        return await self.memory.append(run_id, event, data)
+            except (RedisError, OSError) as exc:
+                await self._to_memory(run_id, exc)
+        return await self.memory.append(run_id, event, data, after_seq=self._last_seq.pop(run_id, 0))
 
     async def read(self, run_id: str, after: int, timeout_s: float = 15.0) -> list[Event]:
-        if self._use_memory(run_id):
-            return await self.memory.read(run_id, after, timeout_s)
+        if not self._use_memory(run_id):
+            try:
+                return await self._read_redis(run_id, after, timeout_s)
+            except (RedisError, OSError) as exc:
+                await self._to_memory(run_id, exc)
+        return await self.memory.read(run_id, after, timeout_s)
+
+    async def _read_redis(self, run_id: str, after: int, timeout_s: float) -> list[Event]:
         assert self.redis is not None
         key = self._key(run_id)
         rows = await self.redis.xrange(key, min=f"0-{after + 1}", max="+")
-        if not rows:
-            resp = await self.redis.xread({key: f"0-{after}"}, block=int(timeout_s * 1000), count=500)
+        deadline = time.monotonic() + timeout_s
+        while not rows:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return []
+            block_ms = max(1, int(min(remaining, self.BLOCK_SLICE_S) * 1000))
+            resp = await self.redis.xread({key: f"0-{after}"}, block=block_ms, count=500)
             rows = [r for _, entries in resp for r in entries] if resp else []
         out: list[Event] = []
         for entry_id, fields in rows:
