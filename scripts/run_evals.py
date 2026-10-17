@@ -78,6 +78,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--render-only", action="store_true", help="re-render from latest.json")
     args = parser.parse_args(argv)
     baseline = _load(REPORTS / "baseline.json")
+    from compliance_rag.settings import get_settings
+
+    provider = get_settings().llm_provider
+    if provider != "fake" and not args.render_only:
+        # REPORT.md is the offline report; live runs have their own budgeted script
+        print(
+            f"make eval is offline only (CRAG_LLM_PROVIDER={provider}); use `make eval-live`", file=sys.stderr
+        )
+        return 2
 
     previous = None
     if args.render_only:
@@ -97,8 +106,10 @@ def main(argv: list[str] | None = None) -> int:
             baseline = slim_baseline(reports)
             _write(REPORTS / "baseline.json", baseline)
 
-    failures = gate(reports, baseline)
-    if args.render_only or (args.split == "test" and not args.limit):
+    full_test = args.render_only or (args.split == "test" and not args.limit)
+    # thresholds always apply; the baseline only compares like with like (the full test split)
+    failures = gate(reports, baseline if full_test else None)
+    if full_test:
         publish(reports, failures, previous)
         print("wrote evals/REPORT.md and evals/reports/latest.json")
     for failure in failures:

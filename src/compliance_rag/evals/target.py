@@ -95,8 +95,8 @@ class RetrievalTarget(_Base):
     async def __call__(self, row: dict[str, Any]) -> dict[str, Any]:
         assert self.system is not None
         inp = row["input"]
-        principal = persona_principal(inp.get("persona", "analyst"))
-        as_of = date.fromisoformat(inp.get("as_of") or date.today().isoformat())
+        principal = persona_principal(inp["persona"])
+        as_of = date.fromisoformat(inp["as_of"])
         started = time.perf_counter()
         result = await self.system.retriever.retrieve(inp["question"], principal, as_of)
         # same cut as the graph's rerank node: only the top leg_k fused candidates are reranked

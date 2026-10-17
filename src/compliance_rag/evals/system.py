@@ -63,6 +63,7 @@ async def build_system(
         rrf_k=settings.rrf_k,
         leg_k=settings.leg_k,
         timeout_ms=settings.leg_timeout_ms,
+        authority=services.pg,  # as in the API: index hits are re-checked against Postgres
     )
     reranker: Reranker = (
         create_reranker(settings.reranker, embedder=services.embedder) if rerank else IdentityReranker()
@@ -75,13 +76,13 @@ async def build_system(
 
 async def answer_row(system: System, row_input: dict[str, Any]) -> dict[str, Any]:
     """Run one eval question through the graph; returns the response plus the top-10 ranked chunks."""
-    principal = persona_principal(row_input.get("persona", "analyst"))
+    principal = persona_principal(row_input["persona"])  # every row names its persona and date
     started = time.perf_counter()
     state = await run_graph(
         system.graph,
         question=row_input["question"],
         principal=principal,
-        as_of=row_input.get("as_of") or date.today().isoformat(),
+        as_of=row_input["as_of"],
     )
     response = build_response(state)
     ranked = state.get("reranked") or []
@@ -104,6 +105,8 @@ async def answer_row(system: System, row_input: dict[str, Any]) -> dict[str, Any
         "context_ids": [c["chunk_id"] for c in state.get("context") or []],
         "abstain_reason": state.get("abstain_reason"),
         "retrieval_ms": retrieval_ms,
+        # what the run cost even when it abstained (the response hides cost on abstentions)
+        "llm_cost_usd": float(state.get("cost_usd") or 0.0),
         "total_ms": (time.perf_counter() - started) * 1000,
         "steps": state["steps"],
     }

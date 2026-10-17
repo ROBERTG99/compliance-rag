@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
@@ -70,10 +71,19 @@ def route_config(name: str) -> Route:
     return Route(name, r["model_setting"], r["effort"], int(r["max_tokens"]), float(r["timeout_s"]))
 
 
+_BEDROCK_ID = re.compile(r"^(?:(?:us|eu|apac|global)\.)?(?:anthropic\.)?(?P<name>.+?)(?:-v\d+:\d+)?$")
+
+
+def _price_key(model: str) -> str:
+    """Bedrock ids (`us.anthropic.claude-opus-5-5-v1:0`) and plain ids share one price entry."""
+    match = _BEDROCK_ID.match(model)
+    return match.group("name") if match else model
+
+
 def estimate_cost(
     model: str, input_tokens: int, output_tokens: int, cache_read: int = 0, cache_write: int = 0
 ) -> float:
-    price = _routing()["pricing"].get(model.removeprefix("anthropic."))
+    price = _routing()["pricing"].get(_price_key(model))
     if not price:
         return 0.0
     uncached = max(0, input_tokens)

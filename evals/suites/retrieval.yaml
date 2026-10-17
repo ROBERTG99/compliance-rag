@@ -21,7 +21,8 @@ metrics:
     fn: compliance_rag.evals.metrics:retrieval_ms
     aggregate: p95
     unit: ms
-    threshold: {max: 300}
+    threshold: {max: 300, exclusive: true}
+    description: legs + fusion + rerank per question, sequential single client (load is `make bench`)
   - name: degraded_rate
     fn: compliance_rag.evals.metrics:degraded
     gate: false

@@ -45,7 +45,7 @@ async def test_injected_instruction_does_not_change_the_answer() -> None:
     assert state["removed_sentences"] == 1
 
 
-async def test_case_fails_with_guard_context_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_without_guard_context_the_fact_is_lost(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(graph_build, "guard_text", lambda text: GuardResult(text, 0, 0.0))
     state = await _ask()
     # the output guard still stops the canary, but the hijacked claim is lost: no correct answer

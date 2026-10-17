@@ -29,7 +29,9 @@ export function EvaluationPage() {
   const r = report.data;
   const ablation = (r.ablation ?? []) as Row[];
   const metricKeys = ablation.length
-    ? Object.keys(ablation[0]).filter((k) => k !== "config" && typeof ablation[0][k] === "number")
+    ? Object.keys(ablation[0]).filter(
+        (k) => k !== "config" && k !== "n" && typeof ablation[0][k] === "number",
+      )
     : [];
 
   return (

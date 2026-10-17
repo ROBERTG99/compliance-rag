@@ -46,3 +46,25 @@ def test_offline_configuration_is_refused() -> None:
     assert refuse_offline("fake", has_key=False) is not None
     assert refuse_offline("anthropic", has_key=False) is not None
     assert refuse_offline("anthropic", has_key=True) is None
+
+
+def test_unpriced_model_is_refused() -> None:
+    from scripts.eval_live import refuse_unpriced
+
+    assert refuse_unpriced(0.0) is not None
+    assert refuse_unpriced(0.05) is None
+
+
+async def test_the_run_cost_is_charged_even_when_the_answer_hides_it() -> None:
+    class AbstainingTarget:
+        async def __call__(self, row: dict[str, Any]) -> dict[str, Any]:
+            return {"abstained": True, "cost_usd": None, "llm_cost_usd": 0.04}
+
+    run = await run_live(ROWS, AbstainingTarget(), Budget(0.1), estimate_usd=0.01)
+    assert run.spent_usd == pytest.approx(0.08) and len(run.cases) == 2
+
+
+def test_live_key_fact_bar_is_stricter_than_offline() -> None:
+    from scripts.eval_live import LIVE_THRESHOLDS
+
+    assert LIVE_THRESHOLDS["key_fact_accuracy"] == {"min": 0.90}

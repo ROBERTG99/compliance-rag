@@ -63,13 +63,24 @@ async def run_live(
             run.stopped = True
             break
         output = await target(row)
-        cost = output.get("cost_usd")
+        # the run's own cost (also on abstentions, whose response hides it), else the response's, else the estimate
+        cost = output.get("llm_cost_usd", output.get("cost_usd"))
         actual = float(cost) if cost is not None else estimate_usd
         budget.charge(actual)
         next_cost = max(next_cost, actual)
         run.cases.append({"id": row["id"], "output": output})
     run.spent_usd = budget.spent_usd
     return run
+
+
+# §11: live runs are held to a stricter key-fact bar; Ragas faithfulness (live only) is not wired
+LIVE_THRESHOLDS: dict[str, dict[str, float]] = {"key_fact_accuracy": {"min": 0.90}}
+
+
+def refuse_unpriced(per_question_usd: float) -> str | None:
+    if per_question_usd <= 0:
+        return "the configured models have no price in llm/routing.yaml: the budget could not stop the run"
+    return None
 
 
 def refuse_offline(provider: str, *, has_key: bool) -> str | None:
@@ -105,6 +116,10 @@ async def amain(split: str, limit: int | None) -> int:
     rows, sha = load_rows(suite.dataset, split)
     rows = rows[:limit] if limit else rows
     per_question = estimate_per_question(settings)
+    reason = refuse_unpriced(per_question)
+    if reason:
+        print(f"eval-live: {reason}", file=sys.stderr)
+        return 2
     print(
         f"estimated cost: {len(rows)} questions × ${per_question:.4f} ≈ ${len(rows) * per_question:.2f}; "
         f"budget ${settings.live_eval_budget_usd:.2f}"
@@ -119,16 +134,23 @@ async def amain(split: str, limit: int | None) -> int:
     finally:
         await target.close()
     by_id = {r["id"]: r for r in rows}
-    metrics = {}
+    from evalgate.suite import Threshold
+
+    metrics: dict[str, Any] = {}
     for spec in suite.metrics:
         fn = resolve(spec.fn)
         value, n = aggregate(spec, [fn(by_id[c["id"]], c["output"]) for c in run.cases])
+        threshold = (
+            Threshold(**LIVE_THRESHOLDS[spec.name]) if spec.name in LIVE_THRESHOLDS else spec.threshold
+        )
         metrics[spec.name] = {
             "value": value,
             "n": n,
             "unit": spec.unit,
-            "threshold": spec.threshold and spec.threshold.describe(),
+            "threshold": threshold.describe() if threshold else None,
+            "passed": None if value is None or threshold is None else threshold.holds(value),
         }
+    metrics["ragas_faithfulness"] = {"value": None, "threshold": "≥ 0.9", "passed": None, "note": "not run"}
     report = {
         "schema": "crag.live.v1",
         "split": split,

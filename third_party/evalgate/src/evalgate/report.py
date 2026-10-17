@@ -29,7 +29,7 @@ def render_markdown(reports: list[dict[str, Any]], *, title: str, preface: str =
         ]
         for key, value in sorted(r.get("target", {}).items()):
             lines.append(f"- {key}: {value}")
-        lines += ["", "| Metric | Value | Threshold | Cases | Gate | Result |", "|---|---|---|---|---|---|"]
+        lines += ["", "| Metric | Value | Threshold | n | Gate | Result |", "|---|---|---|---|---|---|"]
         for name, m in r["metrics"].items():
             gate = "hard" if m["hard"] else ("yes" if m["gate"] else "no")
             result = "pass" if m["passed"] else "**fail**"

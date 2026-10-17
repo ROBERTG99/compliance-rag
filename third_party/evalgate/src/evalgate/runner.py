@@ -44,7 +44,8 @@ def aggregate(spec: MetricSpec, scores: list[Any]) -> tuple[float | None, int]:
     if spec.aggregate == "ratio":
         num = sum(float(s[0]) for s in present)
         den = sum(float(s[1]) for s in present)
-        return (num / den if den else 0.0), int(den)
+        # nothing to count (e.g. no citations at all) is "no applicable cases", never a vacuous 0
+        return (num / den if den else None), int(den)
     values = [float(s) for s in present]
     if spec.aggregate == "max":
         return max(values), len(values)

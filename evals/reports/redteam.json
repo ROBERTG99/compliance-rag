@@ -1,6 +1,6 @@
 {
   "tool": "promptfoo",
-  "generated_at": "2026-10-17T15:03:01.918Z",
+  "generated_at": "2026-10-17T15:29:07.681Z",
   "total": 40,
   "failures": 0,
   "by_kind": {
@@ -11,5 +11,6 @@
     "answered": 28,
     "of": 30
   },
-  "failed": []
+  "failed": [],
+  "regressions": []
 }

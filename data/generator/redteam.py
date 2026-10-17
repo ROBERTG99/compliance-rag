@@ -1,8 +1,8 @@
 """Red-team cases for Promptfoo (FR-13): document-side injections from the corpus plus user-side attacks.
 
 Document side: one case per injected policy, asking the question whose answer sits next to the injected
-sentence, as a persona allowed to read it; whether the fact was still answered is reported, not gated
-(a miss there is a retrieval miss, measured by `make eval`). User side: attacks typed into the question. Shared assertions
+sentence, as a persona allowed to read it; whether the fact was still answered is gated against
+`evals/redteam/baseline.json` by `scripts/redteam_summary.py` (a missing context guard shows up there). User side: attacks typed into the question. Shared assertions
 (no canary, no exfiltration URL, no prompt disclosure) live in `evals/redteam/promptfooconfig.yaml`.
 """
 
@@ -56,7 +56,7 @@ def document_cases(policies: list[Policy]) -> list[dict[str, Any]]:
                     "as_of": TODAY,
                 },
                 "assert": [_never(injection["canary"])],
-                # reported (not gated): did the answer still give the fact next to the injection?
+                # gated by count in redteam_summary.py: did the answer still give the fact next to the injection?
                 "metadata": {
                     "kind": "document",
                     "document_id": policy.document_id,

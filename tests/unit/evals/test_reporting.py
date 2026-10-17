@@ -97,3 +97,19 @@ def test_baseline_keeps_only_metric_values() -> None:
     assert base["rag"]["metrics"]["key_fact_accuracy"]["value"] == 0.5
     assert base["rag"]["suite"] == "rag"
     assert "cases" not in base["rag"]
+
+
+def test_ablation_from_another_system_configuration_is_flagged() -> None:
+    ablation = {
+        "generated_at": "2026-10-17T09:00:00+00:00",
+        "split": "test",
+        "target": {"llm": "FakeLLM (offline)", "reranker": "feature weights=old"},
+        "rows": [{"config": "bm25", "n": 88, "recall@10": 0.8, "mrr@10": 0.7, "p95_ms": 40.0}],
+    }
+    rag = {**RAG, "target": {"llm": "FakeLLM (offline)", "reranker": "feature weights=new"}}
+    latest = summarize([rag, RETRIEVAL], ablation=ablation)
+    assert latest["ablation"] == ablation["rows"]  # the web page reads plain rows
+    text = render_report(latest, failures=[])
+    assert "| bm25 | 88 | 0.800 | 0.700 | 40 ms |" in text
+    assert "differs from the suites above" in text and "reranker" in text
+    assert "2026-10-17T09:00:00+00:00" in text

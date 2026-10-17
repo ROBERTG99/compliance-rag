@@ -80,24 +80,41 @@ async def reindex(
     bm25: bool = True,
     qdrant: bool = True,
     reembed: bool = False,
+    recreate: bool = False,
     log: Callable[[str], None] = print,
 ) -> ReindexReport:
+    """``recreate`` drops the OpenSearch index and the Qdrant collection first, so entries whose chunk no
+    longer exists in Postgres disappear (searches fail until the rebuild finishes)."""
     started = time.perf_counter()
     records = await _load(deps)
     log(f"loaded {len(records)} chunks from Postgres")
     if reembed and records:
         texts = [f"{r.section_path}\n{r.text}" for r in records]
-        if isinstance(deps.embedder, LocalLSAEmbedder):
-            await asyncio.to_thread(deps.embedder.fit, texts)
-            await save_embedder(deps.pool, deps.objects, deps.embedder)
-            log(f"refitted LSA embedder {deps.embedder.fingerprint()}")
+        lsa = deps.embedder if isinstance(deps.embedder, LocalLSAEmbedder) else None
+        refit = lsa is not None
+        if lsa is not None:
+            await asyncio.to_thread(lsa.fit, texts)
         vectors = await asyncio.to_thread(deps.embedder.embed_documents, texts)
         for record, vector in zip(records, vectors, strict=True):
             record.embedding = np.asarray(vector, dtype=np.float32)
         for i in range(0, len(records), BATCH):
             await deps.pg.upsert(records[i : i + BATCH])
         log("re-embedded every chunk in Postgres")
+        if refit:  # registered only once the vectors it produced are stored
+            await save_embedder(deps.pool, deps.objects, deps.embedder)
+            log(
+                f"registered LSA embedder {deps.embedder.fingerprint()}; restart the API and worker to load it"
+            )
     use_qdrant = qdrant and deps.qdrant is not None
+    if recreate:
+        if bm25:
+            await deps.bm25.drop()
+            await deps.bm25.init()
+        if use_qdrant:
+            assert deps.qdrant is not None
+            if await deps.qdrant.client.collection_exists(deps.qdrant.collection):
+                await deps.qdrant.drop_collection()
+            await deps.qdrant.ensure_collection()
     for i in range(0, len(records), BATCH):
         batch = records[i : i + BATCH]
         if bm25:

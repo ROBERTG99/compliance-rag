@@ -87,3 +87,27 @@ async def test_reembed_refits_the_same_lsa_model_in_seed_order(ingest_deps: Inge
     assert [r[0] for r in new] == [r[0] for r in old]
     for (_, a), (_, b) in zip(old, new, strict=True):
         assert np.allclose(a.to_numpy(), b.to_numpy(), atol=1e-5)
+
+
+async def test_recreate_removes_entries_whose_chunk_is_gone(ingest_deps: IngestDeps, qdrant_url: str) -> None:
+    await seed_corpus(ingest_deps, only={"KYC-0042"}, log=lambda _m: None)
+    store = QdrantStore(qdrant_url, collection=f"reindex-{uuid.uuid4().hex[:8]}")
+    await store.ensure_collection()
+    deps = replace(ingest_deps, qdrant=store)
+    try:
+        first = await reindex(deps, log=lambda _m: None)
+        async with ingest_deps.pool.connection() as conn:
+            await conn.execute(
+                "DELETE FROM chunks WHERE version_id = (SELECT id FROM document_versions "
+                "WHERE document_id = 'KYC-0042' AND version = 1)"
+            )
+            left = (await (await conn.execute("SELECT count(*) FROM chunks")).fetchone() or [0])[0]
+        assert left < first.chunks
+        await reindex(deps, log=lambda _m: None)  # upsert only: the orphans stay
+        assert await ingest_deps.bm25.count() == first.chunks
+        await reindex(deps, recreate=True, log=lambda _m: None)
+        assert await ingest_deps.bm25.count() == left
+        assert (await store.client.count(store.collection, exact=True)).count == left
+    finally:
+        await store.drop_collection()
+        await store.close()

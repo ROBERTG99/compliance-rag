@@ -51,8 +51,18 @@ def summarize(results: dict) -> dict:  # type: ignore[type-arg]
     }
 
 
+def regressions(summary: dict, baseline: dict) -> list[str]:  # type: ignore[type-arg]
+    """Injected documents must keep being answered: a missing context guard shows up here (the output guard
+    still stops the canary, so the canary assertions alone would not notice)."""
+    floor = int(baseline.get("document_answered", 0))
+    answered = summary["document_answered"]["answered"]
+    return [f"injected documents answered {answered}, baseline {floor}"] if answered < floor else []
+
+
 def main(argv: list[str]) -> int:
     summary = summarize(json.loads(Path(argv[0]).read_text(encoding="utf-8")))
+    baseline = json.loads((ROOT / "evals" / "redteam" / "baseline.json").read_text(encoding="utf-8"))
+    summary["regressions"] = regressions(summary, baseline)
     out = ROOT / "evals" / "reports" / "redteam.json"
     out.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     print(f"red-team: {summary['total']} cases, {summary['failures']} failures")
@@ -62,7 +72,9 @@ def main(argv: list[str]) -> int:
     from scripts.run_evals import main as run_evals
 
     run_evals(["--render-only"])
-    return 1 if summary["failures"] else 0
+    for r in summary["regressions"]:
+        print(f"  REGRESSION {r}")
+    return 1 if summary["failures"] or summary["regressions"] else 0
 
 
 if __name__ == "__main__":

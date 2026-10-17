@@ -87,16 +87,25 @@ def seed(
 def reindex(
     reembed: bool = typer.Option(False, help="Recompute embeddings first (refits the LSA embedder)"),
     bm25: bool = typer.Option(True, "--bm25/--no-bm25", help="Rewrite the OpenSearch index"),
-    qdrant: bool = typer.Option(
-        False, help="Also rewrite Qdrant (profile qdrant); on when CRAG_VECTOR_STORE=qdrant"
+    qdrant: bool | None = typer.Option(
+        None, "--qdrant/--no-qdrant", help="Rewrite Qdrant (default: when configured or reachable)"
     ),
+    recreate: bool = typer.Option(False, help="Drop and recreate the indexes first (removes orphans)"),
 ) -> None:
     """Rebuild the search indexes (and optionally the embeddings) from Postgres."""
+    import httpx
+
     from compliance_rag.ingest.reindex import reindex as do_reindex
     from compliance_rag.runtime import build_services
 
     settings = get_settings()
-    use_qdrant = qdrant or settings.vector_store == "qdrant"
+    use_qdrant = qdrant
+    if use_qdrant is None:
+        try:
+            reachable = httpx.get(f"{settings.qdrant_url}/readyz", timeout=2).status_code == 200
+        except httpx.HTTPError:
+            reachable = False
+        use_qdrant = settings.vector_store == "qdrant" or reachable
 
     async def _run() -> None:
         services = await build_services(settings, with_qdrant=use_qdrant)
@@ -106,7 +115,12 @@ def reindex(
             if services.qdrant is not None:
                 await services.qdrant.ensure_collection()
             report = await do_reindex(
-                services.ingest_deps(), bm25=bm25, qdrant=use_qdrant, reembed=reembed, log=typer.echo
+                services.ingest_deps(),
+                bm25=bm25,
+                qdrant=use_qdrant,
+                reembed=reembed,
+                recreate=recreate,
+                log=typer.echo,
             )
             typer.echo(f"reindexed {report.chunks} chunks in {report.seconds:.1f}s")
         finally:

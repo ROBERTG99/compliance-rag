@@ -261,3 +261,17 @@ async def test_vector_leg_embeds_off_the_event_loop() -> None:
     r = HybridRetriever(None, Vec(), SlowEmbedder())
     await r.run_legs("q", {"sub": "s", "role": "analyst", "groups": ["all"]}, date(2026, 10, 16))
     assert used and used[0] != loop_thread
+
+
+def test_prices_resolve_for_bedrock_and_region_prefixed_model_ids() -> None:
+    from compliance_rag.llm.gateway import estimate_cost
+
+    plain = estimate_cost("claude-opus-5-5", 1_000_000, 0)
+    assert plain > 0
+    for model_id in (
+        "anthropic.claude-opus-5-5",
+        "us.anthropic.claude-opus-5-5-v1:0",
+        "eu.anthropic.claude-opus-5-5",
+    ):
+        assert estimate_cost(model_id, 1_000_000, 0) == plain, model_id
+    assert estimate_cost("some-unknown-model", 1_000_000, 0) == 0.0

@@ -135,9 +135,11 @@ def stale_citations(
     total = stale = 0
     for v in output.get("versions", []):
         total += 1
-        valid_from, valid_to = truth.validity.get(
-            (v["document_id"], int(v["version"])), (v["valid_from"], v["valid_to"])
-        )
+        window = truth.validity.get((v["document_id"], int(v["version"])))
+        if window is None:  # a version the corpus never had: never trust the output's own dates
+            stale += 1
+            continue
+        valid_from, valid_to = window
         if not (valid_from <= as_of and (valid_to is None or as_of < valid_to)):
             stale += 1
     return stale, total

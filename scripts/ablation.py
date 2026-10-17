@@ -5,7 +5,7 @@
 Runs the retrieval suite once per configuration (BM25, vector-pgvector, vector-qdrant, hybrid,
 hybrid+rerank), writes `evals/reports/ablation.json` and re-renders `evals/REPORT.md` and
 `evals/reports/latest.json` from the latest `make eval` run. Qdrant is filled from Postgres first when its
-point count differs (`crag reindex --no-bm25 --qdrant`).
+collection is rebuilt from Postgres first, so it holds exactly what pgvector holds.
 """
 
 from __future__ import annotations
@@ -34,8 +34,8 @@ CONFIGS = (
     Config("bm25", {"bm25": True, "vector": False, "rerank": False}),
     Config("vector-pgvector", {"bm25": False, "vector": True, "vector_store": "pgvector", "rerank": False}),
     Config("vector-qdrant", {"bm25": False, "vector": True, "vector_store": "qdrant", "rerank": False}),
-    Config("hybrid", {"bm25": True, "vector": True, "rerank": False}),
-    Config("hybrid+rerank", {"bm25": True, "vector": True, "rerank": True}),
+    Config("hybrid", {"bm25": True, "vector": True, "vector_store": "pgvector", "rerank": False}),
+    Config("hybrid+rerank", {"bm25": True, "vector": True, "vector_store": "pgvector", "rerank": True}),
 )
 
 RunFn = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
@@ -45,6 +45,7 @@ def ablation_row(name: str, report: dict[str, Any]) -> dict[str, Any]:
     m = report["metrics"]
     return {
         "config": name,
+        "n": m["recall@10"]["n"],
         "recall@10": m["recall@10"]["value"],
         "mrr@10": m["mrr@10"]["value"],
         "p95_ms": m["retrieval_p95"]["value"],
@@ -52,18 +53,26 @@ def ablation_row(name: str, report: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def run_ablation(run: RunFn, log: Callable[[str], None] = lambda _m: None) -> list[dict[str, Any]]:
+async def run_ablation(run: RunFn, log: Callable[[str], None] = lambda _m: None) -> dict[str, Any]:
+    """Rows per configuration plus the provenance of the run (split, time, the full system's target)."""
     rows = []
+    report: dict[str, Any] = {}
     for config in CONFIGS:
         report = await run(config.system)
         if report.get("errors"):
             raise RuntimeError(f"{config.name}: {report['errors']} case(s) raised errors")
         rows.append(ablation_row(config.name, report))
         log(f"{config.name}: recall@10 {rows[-1]['recall@10']:.3f}, p95 {rows[-1]['p95_ms']:.0f} ms")
-    return rows
+    return {
+        "generated_at": report.get("generated_at"),
+        "split": report.get("split"),
+        "target": report.get("target", {}),  # hybrid+rerank: the served configuration
+        "rows": rows,
+    }
 
 
-async def ensure_qdrant(log: Callable[[str], None]) -> None:
+async def fresh_qdrant(log: Callable[[str], None]) -> None:
+    """Rebuild the Qdrant collection from Postgres every time: no stale vectors, payloads or orphans."""
     from compliance_rag.ingest.reindex import reindex
     from compliance_rag.runtime import build_services
     from compliance_rag.settings import get_settings
@@ -71,14 +80,10 @@ async def ensure_qdrant(log: Callable[[str], None]) -> None:
     services = await build_services(get_settings(), with_qdrant=True)
     try:
         assert services.qdrant is not None
+        if await services.qdrant.client.collection_exists(services.qdrant.collection):
+            await services.qdrant.drop_collection()
         await services.qdrant.ensure_collection()
-        async with services.pool.connection() as conn:
-            row = await (await conn.execute("SELECT count(*) FROM chunks")).fetchone()
-        expected = int(row[0]) if row else 0
-        have = (await services.qdrant.client.count(services.qdrant.collection, exact=True)).count
-        if have != expected:
-            log(f"qdrant has {have} of {expected} chunks: filling it from Postgres")
-            await reindex(services.ingest_deps(), bm25=False, qdrant=True, log=log)
+        await reindex(services.ingest_deps(), bm25=False, qdrant=True, log=log)
     finally:
         await services.close()
 
@@ -99,8 +104,8 @@ def suite_runner(split: str, limit: int | None) -> RunFn:
     return run
 
 
-async def amain(split: str, limit: int | None) -> list[dict[str, Any]]:
-    await ensure_qdrant(print)
+async def amain(split: str, limit: int | None) -> dict[str, Any]:
+    await fresh_qdrant(print)
     return await run_ablation(suite_runner(split, limit), print)
 
 
@@ -109,12 +114,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--split", default="test", choices=["dev", "test"])
     parser.add_argument("--limit", type=int, default=0, help="first N cases (smoke runs; not published)")
     args = parser.parse_args(argv)
-    rows = asyncio.run(amain(args.split, args.limit or None))
+    result = asyncio.run(amain(args.split, args.limit or None))
     if args.split != "test" or args.limit:
-        print(json.dumps(rows, indent=2))
+        print(json.dumps(result["rows"], indent=2))
         return 0
     REPORTS.mkdir(parents=True, exist_ok=True)
-    (REPORTS / "ablation.json").write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
+    (REPORTS / "ablation.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     from scripts.run_evals import main as run_evals
 
     return run_evals(["--render-only"])
