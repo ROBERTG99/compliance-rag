@@ -74,6 +74,16 @@ async def reindex_all(ctx: dict[str, Any], reembed: bool = False) -> dict[str, A
 
 
 @traced_job
+async def purge_expired(ctx: dict[str, Any]) -> dict[str, int]:
+    """Cron (daily, 03:10 UTC): retention for answers, feedback and finished jobs (BUILD.md §5)."""
+    from compliance_rag.worker.retention import purge_expired as purge
+
+    services: Services = ctx["services"]
+    report = await purge(services.pool)
+    return {"answers": report.answers, "feedback": report.feedback, "jobs": report.jobs}
+
+
+@traced_job
 async def poll_s3_inbox(ctx: dict[str, Any]) -> dict[str, int]:
     """Cron (every 30 s): register ``inbox/`` documents that have a sidecar ``.json`` and enqueue them."""
     from compliance_rag.ingest.pipeline import content_sha256, idempotency_key
@@ -145,6 +155,7 @@ class WorkerSettings:
         cron(poll_s3_inbox, second={0, 30}, run_at_startup=False, unique=True),
         cron(refresh_lag_metric, second={0, 15, 30, 45}, run_at_startup=True, unique=True),
         cron(reconcile_acl, second={20}, run_at_startup=True, unique=True),
+        cron(purge_expired, hour={3}, minute={10}, second={0}, run_at_startup=False, unique=True),
     ]
     on_startup = startup
     on_shutdown = shutdown

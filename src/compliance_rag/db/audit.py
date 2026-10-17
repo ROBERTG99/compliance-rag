@@ -18,7 +18,14 @@ GENESIS = "0" * 64
 _LOCK_KEY = 0x0A0D17  # advisory lock id for audit appends
 
 AuditAction = Literal[
-    "ask", "evidence_view", "document_upload", "version_activate", "acl_change", "feedback", "feedback_triage"
+    "ask",
+    "evidence_view",
+    "document_upload",
+    "version_activate",
+    "acl_change",
+    "feedback",
+    "feedback_triage",
+    "purge_expired",
 ]
 
 
