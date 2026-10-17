@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-17T15:28:13+00:00",
+  "generated_at": "2026-10-17T22:14:33+00:00",
   "split": "test",
   "llm": "FakeLLM (offline)",
   "passed": true,
@@ -12,12 +12,12 @@
     "acl_leakage": 0.0,
     "stale_version_citation_rate": 0.0,
     "abstention_accuracy": 0.9333333333333333,
-    "retrieval_p95_ms": 97.773,
+    "retrieval_p95_ms": 59.068000000000005,
     "degraded_rate": 0.0,
     "retrieval.recall@10": 0.9204545454545454,
     "retrieval.mrr@10": 0.9431818181818182,
     "retrieval.acl_leakage": 0.0,
-    "retrieval.retrieval_p95_ms": 95.03777000008995,
+    "retrieval.retrieval_p95_ms": 59.83768499982034,
     "retrieval.degraded_rate": 0.0
   },
   "ablation": [
@@ -138,8 +138,8 @@
       "suite": "rag",
       "description": "Full graph per question against the seeded stack; thresholds from BUILD.md §11.",
       "split": "test",
-      "generated_at": "2026-10-17T15:28:04+00:00",
-      "duration_s": 12.6,
+      "generated_at": "2026-10-17T22:14:25+00:00",
+      "duration_s": 8.0,
       "dataset": {
         "path": "evals/datasets/questions.v1.jsonl",
         "sha256": "3474f7519c05c7c2c5a8bddcbfefc40ee6fb99cc5fd68028c01fd5196d6ba78b",
@@ -275,7 +275,7 @@
           "description": ""
         },
         "retrieval_p95": {
-          "value": 97.773,
+          "value": 59.068000000000005,
           "n": 120,
           "unit": "ms",
           "threshold": {
@@ -310,8 +310,8 @@
       "suite": "retrieval",
       "description": "Recall, MRR and latency of retrieval alone, with the persona's ACL and as_of.",
       "split": "test",
-      "generated_at": "2026-10-17T15:28:13+00:00",
-      "duration_s": 8.6,
+      "generated_at": "2026-10-17T22:14:33+00:00",
+      "duration_s": 5.4,
       "dataset": {
         "path": "evals/datasets/questions.v1.jsonl",
         "sha256": "3474f7519c05c7c2c5a8bddcbfefc40ee6fb99cc5fd68028c01fd5196d6ba78b",
@@ -372,7 +372,7 @@
           "description": ""
         },
         "retrieval_p95": {
-          "value": 95.03777000008995,
+          "value": 59.83768499982034,
           "n": 120,
           "unit": "ms",
           "threshold": {

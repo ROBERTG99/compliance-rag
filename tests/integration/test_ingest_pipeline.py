@@ -160,3 +160,33 @@ async def test_reupload_with_different_acl_is_rejected(ingest_deps: IngestDeps) 
     )
     with pytest.raises(AclConflict):
         await register_upload(ingest_deps, narrowed, render_version(policy, v3), "admin")
+
+
+async def test_reupload_after_job_retention_does_not_reindex_an_active_version(
+    ingest_deps: IngestDeps,
+) -> None:
+    """Retention deletes finished jobs (and with them the idempotency key); identical bytes must stay a no-op."""
+    policy = _kyc0042()
+    v3 = policy.versions[2]
+    meta, blob = _meta(policy, v3, date(2026, 3, 1)), render_version(policy, v3)
+    first = await register_upload(ingest_deps, meta, blob, "admin")
+    assert (await ingest_document(ingest_deps, first.job_id)).status == "done"
+    async with ingest_deps.pool.connection() as conn:
+        await conn.execute(
+            "DELETE FROM ingestion_jobs WHERE id = %s", (first.job_id,)
+        )  # purged after 30 days
+
+    again = await register_upload(ingest_deps, meta, blob, "admin")
+    assert not again.created  # nothing to enqueue
+    async with ingest_deps.pool.connection() as conn:
+        status = await (
+            await conn.execute("SELECT status FROM ingestion_jobs WHERE id = %s", (again.job_id,))
+        ).fetchone()
+        hidden = await (
+            await conn.execute(
+                "SELECT count(*) FROM chunks WHERE version_id = %s AND NOT visible", (again.version_id,)
+            )
+        ).fetchone()
+    assert status is not None and status[0] == "done"
+    assert hidden is not None and hidden[0] == 0  # the version in force stays searchable
+    assert 3 in (await _versions_of_hits(ingest_deps, date(2026, 10, 16)))[0]

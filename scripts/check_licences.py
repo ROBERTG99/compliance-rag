@@ -12,8 +12,8 @@ import subprocess
 import sys
 
 ALLOWED = re.compile(
-    r"MIT|BSD|Apache|ISC|PSF|Python Software Foundation|MPL|Mozilla Public|LGPL|ZPL|Unlicense|0BSD|CC0|Zlib|OFL|"
-    r"DFSG approved|HPND",
+    r"\b(?:MIT|BSD|Apache|ISC|ISCL|PSF|Python Software Foundation|MPL|Mozilla Public|LGPL|ZPL|Unlicense|0BSD|"
+    r"CC0|Zlib|OFL|DFSG approved|HPND)\b",
     re.I,
 )
 DENIED = re.compile(r"(?<!L)GPL|AGPL|SSPL|Commons Clause|BUSL", re.I)

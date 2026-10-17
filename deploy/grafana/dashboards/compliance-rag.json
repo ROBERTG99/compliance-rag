@@ -16,7 +16,7 @@
     {
       "id": 1,
       "type": "stat",
-      "title": "ACL post-check violations (must be 0)",
+      "title": "ACL post-check violations in the time range (must be 0)",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -49,7 +49,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(crag_acl_postcheck_violations_total) or vector(0)"
+          "expr": "sum(increase(crag_acl_postcheck_violations_total[$__range])) or vector(0)"
         }
       ]
     },

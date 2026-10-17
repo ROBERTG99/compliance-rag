@@ -6,6 +6,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg.types.json import Jsonb
 
 from compliance_rag.db.pool import create_pool
@@ -15,13 +16,13 @@ pytestmark = pytest.mark.integration
 NOW = datetime(2026, 10, 16, 3, 0, tzinfo=UTC)
 
 
-async def _answer(conn, days: int, follow_up_of: str | None = None) -> str:  # type: ignore[no-untyped-def]
+async def _answer(conn, days: int, follow_up_of: str | None = None, conversation: str | None = None) -> str:  # type: ignore[no-untyped-def]
     run_id = str(uuid.uuid4())
     await conn.execute(
         """INSERT INTO answers (run_id, conversation_id, follow_up_of, user_sub, groups, question, as_of,
                response, abstained, steps, cost_usd, latency_ms, created_at)
            VALUES (%s, %s, %s, 'analyst@northwind.test', '{compliance}', 'q', '2026-10-16', %s, false, %s, 0, 1, %s)""",
-        (run_id, str(uuid.uuid4()), follow_up_of, Jsonb({}), Jsonb([]), NOW - timedelta(days=days)),
+        (run_id, conversation or run_id, follow_up_of, Jsonb({}), Jsonb([]), NOW - timedelta(days=days)),
     )
     return run_id
 
@@ -57,6 +58,22 @@ async def test_purge_keeps_what_is_still_in_its_retention_window(migrated_db) ->
                         None if status == "queued" else NOW - timedelta(days=days),
                     ),
                 )
+            # LangGraph keeps the graph state (question, context chunk text) per conversation (thread)
+            await AsyncPostgresSaver(pool).setup()  # type: ignore[arg-type]
+            for thread in (old, recent):
+                await conn.execute(
+                    "INSERT INTO checkpoints (thread_id, checkpoint_id, checkpoint) VALUES (%s, '1', '{}')",
+                    (thread,),
+                )
+                await conn.execute(
+                    "INSERT INTO checkpoint_blobs (thread_id, channel, version, type) VALUES (%s, 'context', '1', 'json')",
+                    (thread,),
+                )
+                await conn.execute(
+                    "INSERT INTO checkpoint_writes (thread_id, checkpoint_id, task_id, idx, channel, blob) "
+                    "VALUES (%s, '1', 't', 0, 'context', '\\x00')",
+                    (thread,),
+                )
             audit_before = (await (await conn.execute("SELECT count(*) FROM audit")).fetchone() or [0])[0]
 
         report = await purge_expired(pool, now=NOW)
@@ -72,6 +89,13 @@ async def test_purge_keeps_what_is_still_in_its_retention_window(migrated_db) ->
         assert follow is not None and follow[0] is None  # the follow-up survives, unlinked
         assert report.answers == 2 and report.feedback == 1
         assert report.jobs == 2  # finished more than 30 days ago; queued work is never purged
+        async with pool.connection() as conn:
+            for table in ("checkpoints", "checkpoint_blobs", "checkpoint_writes"):
+                threads = {
+                    r[0] for r in await (await conn.execute(f"SELECT thread_id FROM {table}")).fetchall()
+                }
+                assert threads == {recent}, table  # the purged conversation's graph state is gone too
+        assert report.conversations == 2  # `old` and `ancient_feedback` have no answer left
         assert (
             audit_after == audit_before + 1
         )  # one audit row records the purge; nothing is removed from audit

@@ -6,12 +6,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Response
 from fastapi.responses import JSONResponse, PlainTextResponse
-from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, generate_latest, multiprocess
 
 from compliance_rag.api.deps import current_principal, get_state
 from compliance_rag.api.schemas import Health, Me, Ready
 from compliance_rag.api.state import AppState
 from compliance_rag.retrieval.types import Principal
+from compliance_rag.settings import get_settings
 
 router = APIRouter(tags=["health"])
 
@@ -45,6 +46,11 @@ async def readyz(state: AppState = Depends(get_state)) -> Response:
 
 @router.get("/metrics", response_class=PlainTextResponse)
 async def metrics() -> Response:
+    # several uvicorn workers: each scrape must sum every process, not report the one that answered
+    if get_settings().prometheus_multiproc_dir:
+        registry = CollectorRegistry()
+        multiprocess.MultiProcessCollector(registry)  # type: ignore[no-untyped-call]
+        return Response(generate_latest(registry), media_type=CONTENT_TYPE_LATEST)
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 

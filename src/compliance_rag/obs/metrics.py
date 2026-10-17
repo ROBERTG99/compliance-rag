@@ -25,7 +25,10 @@ ACL_POSTCHECK_VIOLATIONS = Counter(
     "Retrieval hits outside the principal's groups or validity (must stay 0)",
 )
 INGESTION_LAG = Gauge(
-    "crag_ingestion_lag_seconds", "Ingestion lag (p95 of recent jobs and age of oldest pending)", ["stat"]
+    "crag_ingestion_lag_seconds",
+    "Ingestion lag (p95 of recent jobs and age of oldest pending)",
+    ["stat"],
+    multiprocess_mode="max",  # set by the (single-process) worker; max across processes elsewhere
 )
 RATELIMIT_BYPASS = Counter(
     "crag_ratelimit_bypass_total", "Requests allowed because the rate limiter was unavailable"

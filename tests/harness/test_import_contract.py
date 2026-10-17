@@ -19,6 +19,6 @@ def test_only_gateway_imports_provider_sdks() -> None:
 
 def test_import_linter_contract_passes() -> None:
     proc = subprocess.run(
-        ["uv", "run", "lint-imports"], cwd=ROOT, capture_output=True, text=True, check=False
+        ["uv", "run", "lint-imports", "--no-cache"], cwd=ROOT, capture_output=True, text=True, check=False
     )
     assert proc.returncode == 0, proc.stdout[-2000:]

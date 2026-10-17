@@ -2,7 +2,7 @@
 # (Docker Hub mirror has no minio/minio, quay.io is blocked). See docs/DECISIONS.md.
 # Dev-only S3 stand-in. The last source release is rebuilt with a current Go toolchain and current
 # golang.org/x modules so the binary does not carry their published vulnerabilities.
-FROM golang:1.27.2 AS build
+FROM golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 AS build
 ARG HTTPS_PROXY
 ARG MINIO_VERSION=RELEASE.2025-10-15T17-29-55Z
 ENV CGO_ENABLED=0 GOFLAGS=-trimpath GOTOOLCHAIN=local

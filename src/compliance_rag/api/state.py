@@ -43,6 +43,7 @@ class AppState:
     arq: ArqRedis | None = None
     graph: Any = None
     retriever: HybridRetriever | None = None
+    reranker: Any = None  # the graph's reranker (warmed at start-up)
     background: set[asyncio.Task[Any]] = field(default_factory=set)
 
     def build_graph(self) -> None:
@@ -59,6 +60,7 @@ class AppState:
         )
         self.retriever = retriever
         reranker = create_reranker(self.settings.reranker, embedder=s.embedder)
+        self.reranker = reranker
         self.graph = build_graph(
             GraphDeps(retriever, reranker, self.gateway, self.settings), self.checkpointer
         )
@@ -82,7 +84,7 @@ class AppState:
 
     async def warm_up(self) -> dict[str, Any]:
         """Before readiness: cold caches would 503 the first asks (see ``retrieval.warmup``)."""
-        return await warm_up(self.services.pool, self.retriever)
+        return await warm_up(self.services.pool, self.retriever, reranker=self.reranker)
 
     async def close(self) -> None:
         for task in list(self.background):

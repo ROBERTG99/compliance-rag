@@ -67,3 +67,14 @@ def test_document_embeddings_are_cached_per_embedder_fingerprint() -> None:
     reranker.embedder = other
     c = reranker.rerank("q", [_cand("a")], AS_OF)
     assert other.calls == 1 and c[0]["cosine"] == 0.5
+
+
+def test_warm_preloads_stored_vectors_so_queries_embed_nothing() -> None:
+    embedder = CountingEmbedder("lsa-A", 1.0)
+    reranker = FeatureReranker(embedder=embedder)
+    cold = FeatureReranker(embedder=CountingEmbedder("lsa-A", 1.0)).rerank("q", [_cand("a")], AS_OF)
+    stored = np.full(4, 0.5, dtype=np.float32)  # what the pipeline stored for this chunk
+    loaded = reranker.warm([("a" * 32, "Article 5 — Controls", TEXT, stored)])
+    assert loaded == 1
+    warm = reranker.rerank("q", [_cand("a")], AS_OF)
+    assert embedder.calls == 0 and warm[0]["rerank"] == cold[0]["rerank"]

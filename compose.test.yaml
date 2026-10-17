@@ -1,0 +1,40 @@
+# `make test-docker`: unit, harness, integration and contract suites in a container against the stack's
+# Postgres, Redis, OpenSearch, MinIO and Qdrant (each test creates its own database, index and bucket).
+services:
+  tests:
+    build:
+      context: .
+      dockerfile: docker/tests.Dockerfile
+      network: host
+      args:
+        HTTPS_PROXY: "${HTTPS_PROXY:-}"
+    image: compliance-rag/tests:dev
+    profiles: ["qdrant"]
+    volumes: [".:/repo:ro"]
+    tmpfs: ["/tmp"]
+    environment:
+      CRAG_TEST_DATABASE_URL: postgresql://crag:crag@postgres:5432/crag
+      CRAG_TEST_REDIS_URL: redis://redis:6379/15
+      CRAG_TEST_OPENSEARCH_URL: http://opensearch:9200
+      CRAG_TEST_S3_ENDPOINT_URL: http://minio:9000
+      CRAG_TEST_S3_ACCESS_KEY: crag-dev-access
+      CRAG_TEST_S3_SECRET_KEY: crag-dev-secret-key
+      CRAG_TEST_QDRANT_URL: http://qdrant:6333
+      HOME: /tmp
+      HYPOTHESIS_STORAGE_DIRECTORY: /tmp/hypothesis
+      COVERAGE_FILE: /tmp/.coverage
+    command:
+      - pytest
+      - tests/unit
+      - tests/harness
+      - tests/integration
+      - tests/contract
+      - -q
+      - -p
+      - no:cacheprovider
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      opensearch: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      qdrant: { condition: service_healthy }

@@ -201,7 +201,7 @@ class Gateway:
         """
         with tracer.start_as_current_span(f"gen_ai.{req.route}", kind=SpanKind.CLIENT) as span:
             span.set_attribute("gen_ai.operation.name", "chat")
-            span.set_attribute("gen_ai.system", "anthropic" if self.provider != "fake" else "fake")
+            span.set_attribute("gen_ai.system", {"bedrock": "aws.bedrock"}.get(self.provider, self.provider))
             span.set_attribute("app.route", req.route)
             span.set_attribute("app.prompt", req.prompt_name)
             span.set_attribute("app.prompt_version", str(req.prompt_version))

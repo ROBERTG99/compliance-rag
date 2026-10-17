@@ -20,3 +20,13 @@ def test_strong_copyleft_and_unknown_fail() -> None:
     ):
         assert problems("pkg", licence) is not None, licence
     assert problems("docx2txt", "UNKNOWN") is None  # verified override
+
+
+def test_allowed_names_must_be_whole_words() -> None:
+    for licence in (
+        "Proprietary - use permitted under contract",
+        "Limited redistribution",
+        "See disclaimer",
+        "Sample terms",
+    ):
+        assert problems("pkg", licence) is not None, licence

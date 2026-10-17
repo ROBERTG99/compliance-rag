@@ -32,9 +32,14 @@ def summary(values: list[float], budget_ms: float) -> dict[str, Any]:
     }
 
 
-def assert_budget(name: str, values: list[float], budget_ms: float) -> dict[str, Any]:
+def assert_budget(
+    name: str, values: list[float], budget_ms: float, *, key: str | None = None, **context: Any
+) -> dict[str, Any]:
+    """Check the p95; with ``key`` the run is recorded in bench.json first, pass or fail."""
     assert values, f"{name}: no samples"
     result = summary(values, budget_ms)
+    if key is not None:
+        record(key, result, **context)
     assert result["passed"], f"{name}: p95 {result['p95_ms']} ms is not under {budget_ms} ms ({result})"
     return result
 
@@ -56,7 +61,13 @@ async def run_concurrently(calls: list[Callable[[], Awaitable[Any]]], concurrenc
 
 
 def record(name: str, result: dict[str, Any], **context: Any) -> None:
+    """Latest run at the top level, every run in ``runs`` and the worst p95 seen in ``worst_p95_ms``."""
     data = json.loads(REPORT.read_text(encoding="utf-8")) if REPORT.exists() else {}
-    data[name] = {**result, **context, "measured_at": datetime.now(UTC).isoformat(timespec="seconds")}
+    entry = {**result, **context, "measured_at": datetime.now(UTC).isoformat(timespec="seconds")}
+    runs = [
+        *data.get(name, {}).get("runs", []),
+        {k: entry[k] for k in ("measured_at", "n", "p50_ms", "p95_ms", "passed")},
+    ]
+    data[name] = {**entry, "runs": runs, "worst_p95_ms": max(r["p95_ms"] for r in runs)}
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")

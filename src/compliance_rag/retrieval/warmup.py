@@ -22,11 +22,27 @@ WARM_RELATIONS = ("chunks", "chunks_embedding_hnsw", "chunks_acl_gin", "chunks_v
 WARM_QUERY = "What is the maximum age of a proof-of-address document?"
 
 
+async def _warm_reranker(pool: AsyncConnectionPool, reranker: Any) -> int:
+    """Preload the reranker's per-chunk caches from the visible chunks' stored embeddings and text."""
+    async with pool.connection() as conn:
+        rows = await (
+            await conn.execute("SELECT chunk_id, section_path, text, embedding FROM chunks WHERE visible")
+        ).fetchall()
+    prepared = [
+        (str(r[0]).strip(), r[1], r[2], r[3].to_numpy() if hasattr(r[3], "to_numpy") else r[3]) for r in rows
+    ]
+    return int(await asyncio.to_thread(reranker.warm, prepared))
+
+
 async def warm_up(
-    pool: AsyncConnectionPool, retriever: HybridRetriever | None, parallel: int = 1
+    pool: AsyncConnectionPool,
+    retriever: HybridRetriever | None,
+    parallel: int = 1,
+    reranker: Any | None = None,
 ) -> dict[str, Any]:
     """Best effort: ``pg_prewarm`` the chunk heap and indexes, then run each role's legs ``parallel`` times
-    concurrently (so that many pool connections have served a query). Never raises."""
+    concurrently (so that many pool connections have served a query), then preload the reranker's per-chunk
+    caches. Never raises."""
     started = time.perf_counter()
     blocks, errors = 0, []
     try:
@@ -50,9 +66,16 @@ async def warm_up(
                 errors.append(f"{persona}: {type(failed[0]).__name__}")
             else:
                 roles += 1
+    reranked = 0
+    if reranker is not None and hasattr(reranker, "warm"):
+        try:
+            reranked = await _warm_reranker(pool, reranker)
+        except Exception as exc:
+            errors.append(f"reranker: {type(exc).__name__}")
     report = {
         "prewarmed_blocks": blocks,
         "roles": roles,
+        "reranker_chunks": reranked,
         "errors": errors,
         "seconds": round(time.perf_counter() - started, 3),
     }

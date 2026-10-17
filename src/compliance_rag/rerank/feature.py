@@ -11,7 +11,7 @@ import json
 import math
 import threading
 from collections import OrderedDict
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import date
 from functools import lru_cache
@@ -135,6 +135,23 @@ class FeatureReranker:
             while len(self._vectors) > VECTOR_CACHE_SIZE:
                 self._vectors.popitem(last=False)
         return [known[c["chunk_id"]] for c in candidates]  # type: ignore[misc]
+
+    def warm(self, rows: Iterable[tuple[str, str, str, Any]]) -> int:
+        """Preload (chunk_id, section_path, text, stored embedding) rows: the stored embedding is exactly what
+        ``_doc_vectors`` would compute (the pipeline embeds ``section_path + "\\n" + text``), and the sentence
+        term sets are pure functions of the text. Start-up only; returns the number of rows loaded."""
+        if self.embedder is None:
+            return 0
+        fp = str(self.embedder.fingerprint())
+        n = 0
+        for chunk_id, _section_path, text, embedding in rows:
+            sentence_terms(text)
+            with self._lock:
+                self._vectors[(fp, chunk_id)] = np.asarray(embedding, dtype=np.float32)
+                while len(self._vectors) > VECTOR_CACHE_SIZE:
+                    self._vectors.popitem(last=False)
+            n += 1
+        return n
 
     def _fill_cosine(self, question: str, candidates: list[Candidate]) -> None:
         missing = [c for c in candidates if c.get("cosine") is None]

@@ -58,12 +58,13 @@ format: ## Apply formatters
 	$(PY) ruff format src tests scripts data apps third_party migrations
 	$(PY) ruff check --fix src tests scripts data apps third_party migrations
 
-lint: ## ruff, eslint, prettier, markdownlint
+lint: ## ruff, eslint, prettier, markdownlint, promtool (alert rules and their tests)
 	$(PY) ruff check src tests scripts data apps third_party migrations
 	$(PY) ruff format --check src tests scripts data apps third_party migrations
 	$(PNPM) -C web lint
 	$(PNPM) -C web format:check
 	$(PNPM) -C web exec markdownlint-cli2 --config ../.markdownlint-cli2.yaml
+	./scripts/check_alerts.sh
 
 typecheck: ## mypy --strict, tsc --noEmit, import-linter
 	$(PY) mypy

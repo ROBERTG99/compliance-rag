@@ -9,7 +9,7 @@ from opentelemetry.sdk.trace import ReadableSpan
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from compliance_rag.obs.tracing import setup_tracing
+from compliance_rag.obs.tracing import ScrubbingExporter, setup_tracing
 
 _EXPORTER = InMemorySpanExporter()
 
@@ -18,7 +18,7 @@ _EXPORTER = InMemorySpanExporter()
 def spans() -> Iterator[InMemorySpanExporter]:
     provider = setup_tracing("crag-test")
     if not getattr(provider, "_crag_test_exporter", False):
-        provider.add_span_processor(SimpleSpanProcessor(_EXPORTER))
+        provider.add_span_processor(SimpleSpanProcessor(ScrubbingExporter(_EXPORTER)))  # as in production
         provider._crag_test_exporter = True  # type: ignore[attr-defined]
     _EXPORTER.clear()
     yield _EXPORTER

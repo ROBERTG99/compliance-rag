@@ -57,7 +57,15 @@ async def test_a_run_observes_total_retrieval_latency() -> None:
 def test_slo_alert_rules() -> None:
     rules = yaml.safe_load((ROOT / "deploy/prometheus/alerts.yml").read_text())
     alerts = {r["alert"]: r for g in rules["groups"] for r in g["rules"]}
-    assert set(alerts) == {"CragRetrievalSlow", "CragIngestionLag", "CragAclViolation", "CragCitationRejects"}
+    assert set(alerts) == {
+        "CragRetrievalSlow",
+        "CragIngestionLag",
+        "CragWorkerDown",
+        "CragAclViolation",
+        "CragCitationRejects",
+    }
+    assert 'stat="oldest_pending"' in alerts["CragIngestionLag"]["expr"]  # a stuck queue fires too
+    assert 'absent(up{job="worker"})' in alerts["CragWorkerDown"]["expr"]
     assert (
         'leg="total"' in alerts["CragRetrievalSlow"]["expr"] and "0.3" in alerts["CragRetrievalSlow"]["expr"]
     )

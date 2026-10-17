@@ -150,12 +150,29 @@ async def register_upload(
                 f"{meta.document_id} is shared with {current}; change its ACL with PUT /v1/documents/{{id}}/acl"
             )
         cur = await conn.execute(
-            "SELECT id, content_sha256 FROM document_versions WHERE document_id = %s AND version = %s",
+            "SELECT id, content_sha256, status FROM document_versions WHERE document_id = %s AND version = %s",
             (meta.document_id, meta.version),
         )
         existing = await cur.fetchone()
         if existing and existing[1] != sha:
             raise VersionConflict(f"{meta.document_id} v{meta.version} already exists with different content")
+        if existing and existing[2] == "active":
+            # same bytes, already in force, and its job was purged by retention: record a finished job (the
+            # idempotency key again) instead of re-indexing, which would hide the version while it runs
+            cur = await conn.execute(
+                """INSERT INTO ingestion_jobs (idempotency_key, kind, document_id, version_id, status, requested_by,
+                       attempts, finished_at, chunk_count)
+                   VALUES (%s, 'ingest', %s, %s, 'done', %s, 0, now(),
+                           (SELECT count(*) FROM chunks WHERE version_id = %s))
+                   ON CONFLICT (idempotency_key) DO UPDATE SET idempotency_key = EXCLUDED.idempotency_key
+                   RETURNING id""",
+                (key, meta.document_id, existing[0], requested_by, existing[0]),
+            )
+            done = await cur.fetchone()
+            assert done is not None
+            return RegisteredJob(
+                str(done[0]), meta.document_id, meta.version, str(existing[0]), created=False
+            )
         if existing:
             version_id = str(existing[0])
         else:

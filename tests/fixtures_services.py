@@ -12,16 +12,28 @@ import uuid
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import psycopg
 import pytest
 
-PG_IMAGE = "pgvector/pgvector:pg16"
-REDIS_IMAGE = "redis:7-alpine"
-OPENSEARCH_IMAGE = "opensearchproject/opensearch:2.19.1"
-MINIO_IMAGE = "compliance-rag/minio:RELEASE.2025-04-22T22-12-26Z"
-QDRANT_IMAGE = "qdrant/qdrant:v1.19.2"
+
+def _compose_image(service: str) -> str:
+    """Testcontainers use exactly the images pinned in compose.yaml (one source of truth)."""
+    import yaml
+
+    compose = yaml.safe_load(
+        (Path(__file__).resolve().parents[1] / "compose.yaml").read_text(encoding="utf-8")
+    )
+    return str(compose["services"][service]["image"])
+
+
+PG_IMAGE = _compose_image("postgres")
+REDIS_IMAGE = _compose_image("redis")
+OPENSEARCH_IMAGE = _compose_image("opensearch")
+MINIO_IMAGE = _compose_image("minio")
+QDRANT_IMAGE = _compose_image("qdrant")
 
 
 def _docker_container(image: str, port: int, env: dict[str, str] | None = None, command: str | None = None):  # type: ignore[no-untyped-def]

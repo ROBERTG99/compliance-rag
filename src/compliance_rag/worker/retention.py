@@ -2,7 +2,8 @@
 ingestion jobs 30; the audit log is kept (one row records each purge).
 
 An answer that still has feedback inside its own window is kept until that feedback expires, and newer
-follow-ups of a purged answer are unlinked rather than deleted.
+follow-ups of a purged answer are unlinked rather than deleted. When a conversation has no answer left, its
+LangGraph checkpoints (question, context chunk text, drafts) are deleted too.
 """
 
 from __future__ import annotations
@@ -22,6 +23,10 @@ class PurgeReport:
     answers: int
     feedback: int
     jobs: int
+    conversations: int = 0
+
+
+CHECKPOINT_TABLES = ("checkpoint_writes", "checkpoint_blobs", "checkpoints")
 
 
 async def purge_expired(pool: AsyncConnectionPool, *, now: datetime | None = None) -> PurgeReport:
@@ -31,27 +36,53 @@ async def purge_expired(pool: AsyncConnectionPool, *, now: datetime | None = Non
         feedback = await conn.execute(
             "DELETE FROM feedback WHERE created_at < %s", (now - timedelta(days=FEEDBACK_DAYS),)
         )
-        expired = """SELECT run_id FROM answers a WHERE a.created_at < %(cutoff)s
-                     AND NOT EXISTS (SELECT 1 FROM feedback f WHERE f.run_id = a.run_id)"""
-        await conn.execute(
-            f"UPDATE answers SET follow_up_of = NULL WHERE follow_up_of IN ({expired})",  # noqa: S608 - constant SQL
-            {"cutoff": answers_cutoff},
-        )
-        answers = await conn.execute(
-            f"DELETE FROM answers WHERE run_id IN ({expired})",  # noqa: S608 - constant SQL
-            {"cutoff": answers_cutoff},
-        )
+        # lock the expired rows first: a follow-up inserted meanwhile waits on the lock (its FK check) and the
+        # two statements below see exactly the same set
+        expired = await (
+            await conn.execute(
+                """SELECT run_id, conversation_id FROM answers a WHERE a.created_at < %s
+                   AND NOT EXISTS (SELECT 1 FROM feedback f WHERE f.run_id = a.run_id) FOR UPDATE""",
+                (answers_cutoff,),
+            )
+        ).fetchall()
+        run_ids = [r[0] for r in expired]
+        await conn.execute("UPDATE answers SET follow_up_of = NULL WHERE follow_up_of = ANY(%s)", (run_ids,))
+        answers = await conn.execute("DELETE FROM answers WHERE run_id = ANY(%s)", (run_ids,))
+        touched = sorted({str(r[1]) for r in expired})
+        alive = {
+            str(r[0])
+            for r in await (
+                await conn.execute(
+                    "SELECT DISTINCT conversation_id FROM answers WHERE conversation_id::text = ANY(%s)",
+                    (touched,),
+                )
+            ).fetchall()
+        }
+        gone = [c for c in touched if c not in alive]
+        if (
+            gone
+            and (await (await conn.execute("SELECT to_regclass('public.checkpoints')")).fetchone() or [None])[
+                0
+            ]
+        ):
+            for table in CHECKPOINT_TABLES:  # constant names
+                await conn.execute(f"DELETE FROM {table} WHERE thread_id = ANY(%s)", (gone,))  # noqa: S608
         jobs = await conn.execute(
             "DELETE FROM ingestion_jobs WHERE status IN ('done', 'failed') AND finished_at < %s",
             (now - timedelta(days=JOBS_DAYS),),
         )
-        report = PurgeReport(answers.rowcount, feedback.rowcount, jobs.rowcount)
+        report = PurgeReport(answers.rowcount, feedback.rowcount, jobs.rowcount, len(gone))
         await append_audit(
             conn,
             actor_sub="worker",
             actor_role="system",
             action="purge_expired",
             target="retention",
-            details={"answers": report.answers, "feedback": report.feedback, "jobs": report.jobs},
+            details={
+                "answers": report.answers,
+                "feedback": report.feedback,
+                "jobs": report.jobs,
+                "conversations": report.conversations,
+            },
         )
     return report

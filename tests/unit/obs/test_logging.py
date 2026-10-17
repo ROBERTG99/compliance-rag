@@ -41,3 +41,25 @@ def test_text_fields_are_never_logged(capsys: pytest.CaptureFixture[str]) -> Non
         assert line[key] == "[redacted]"
     assert line["chunk_id"] == "c" * 32
     assert "litigation" not in raw and "7 years" not in raw
+
+
+def test_nested_values_and_more_keys_are_redacted(capsys: pytest.CaptureFixture[str]) -> None:
+    configure_logging("INFO", service="api")
+    structlog.get_logger("t").info(
+        "nested",
+        details={"query": "litigation hold", "claims": [{"text": "kept 7 years"}]},
+        prompt="secret prompt",
+    )
+    raw = capsys.readouterr().out
+    assert "litigation" not in raw and "7 years" not in raw and "secret prompt" not in raw
+
+
+def test_stdlib_loggers_go_through_the_same_json_pipeline(capsys: pytest.CaptureFixture[str]) -> None:
+    import logging
+
+    configure_logging("INFO", service="api")
+    logging.getLogger("httpx").warning("request failed", extra={"question": "What is the litigation hold?"})
+    out = capsys.readouterr()
+    line = json.loads((out.out + out.err).strip().splitlines()[-1])
+    assert line["event"] == "request failed" and line["logger"] == "httpx" and line["service"] == "api"
+    assert "litigation" not in out.out + out.err

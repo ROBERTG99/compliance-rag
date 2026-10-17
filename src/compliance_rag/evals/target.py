@@ -51,7 +51,9 @@ class _Base:
     async def setup(self) -> None:
         self.system = await build_system(self.settings, **self.system_options)
         # timings are steady-state: warm the caches the way the API does before it reports ready
-        await warm_up(self.system.services.pool, self.system.retriever, parallel=8)
+        await warm_up(
+            self.system.services.pool, self.system.retriever, parallel=8, reranker=self.system.reranker
+        )
 
     async def close(self) -> None:
         if self.system is not None:

@@ -55,3 +55,28 @@ def test_client_libraries_are_instrumented() -> None:
     instrument_libraries()
     for instrumentor in (HTTPXClientInstrumentor(), PsycopgInstrumentor(), RedisInstrumentor()):
         assert instrumentor.is_instrumented_by_opentelemetry, type(instrumentor).__name__
+
+
+async def test_exported_spans_carry_no_query_strings_or_exception_messages(
+    spans: InMemorySpanExporter,
+) -> None:
+    app = FastAPI()
+
+    @app.get("/v1/documents")
+    async def search(q: str = "") -> dict[str, str]:
+        return {"q": "ok"}
+
+    @app.get("/boom")
+    async def boom() -> dict[str, str]:
+        raise RuntimeError("How long are complaint files under a litigation hold preserved?")
+
+    instrument_app(app)
+    transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(transport=transport, base_url="http://api") as client:
+        await client.get("/v1/documents", params={"q": "litigation hold"})
+        await client.get("/boom")
+    exported = " ".join(
+        f"{s.attributes} {[(e.name, e.attributes) for e in s.events]}" for s in spans.get_finished_spans()
+    )
+    assert "litigation" not in exported
+    assert "RuntimeError" in exported  # the exception type is kept for debugging

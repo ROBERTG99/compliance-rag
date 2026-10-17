@@ -12,8 +12,8 @@ from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace import Event, ReadableSpan, TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExporter, SpanExportResult
 from opentelemetry.trace import SpanKind, Status, StatusCode
 
 from compliance_rag import __version__
@@ -21,6 +21,68 @@ from compliance_rag import __version__
 _PROVIDER: TracerProvider | None = None
 _LIBRARIES = False
 tracer = trace.get_tracer("compliance_rag", __version__)
+
+
+REDACTED = "[redacted]"
+_QUERY_ATTRS = ("http.url", "url.full", "http.target", "url.query")
+
+
+def _strip_query(key: str, value: Any) -> Any:
+    if key == "url.query":
+        return REDACTED
+    return value.split("?", 1)[0] if isinstance(value, str) else value
+
+
+def scrub_span(span: ReadableSpan) -> ReadableSpan:
+    """Exception messages and stack traces can quote question or document text, and query strings can carry
+    search terms: keep the exception type and the path, drop the rest."""
+    attributes = {
+        k: (_strip_query(k, v) if k in _QUERY_ATTRS else v) for k, v in (span.attributes or {}).items()
+    }
+    events = [
+        Event(
+            e.name,
+            {
+                k: (REDACTED if k in ("exception.message", "exception.stacktrace") else v)
+                for k, v in (e.attributes or {}).items()
+            },
+            e.timestamp,
+        )
+        for e in span.events
+    ]
+    status = span.status
+    if status.description:
+        status = Status(status.status_code, status.description.split(":", 1)[0])
+    return ReadableSpan(
+        name=span.name,
+        context=span.context,
+        parent=span.parent,
+        resource=span.resource,
+        attributes=attributes,
+        events=events,
+        links=span.links,
+        kind=span.kind,
+        status=status,
+        start_time=span.start_time,
+        end_time=span.end_time,
+        instrumentation_scope=span.instrumentation_scope,
+    )
+
+
+class ScrubbingExporter(SpanExporter):
+    """Wraps the real exporter: every span is scrubbed before it leaves the process."""
+
+    def __init__(self, inner: SpanExporter) -> None:
+        self.inner = inner
+
+    def export(self, spans: Any) -> SpanExportResult:
+        return self.inner.export([scrub_span(s) for s in spans])
+
+    def shutdown(self) -> None:
+        self.inner.shutdown()
+
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
+        return self.inner.force_flush(timeout_millis)
 
 
 def setup_tracing(service: str, endpoint: str | None = None) -> TracerProvider:
@@ -37,7 +99,9 @@ def setup_tracing(service: str, endpoint: str | None = None) -> TracerProvider:
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
         _PROVIDER.add_span_processor(
-            BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{endpoint.rstrip('/')}/v1/traces"))
+            BatchSpanProcessor(
+                ScrubbingExporter(OTLPSpanExporter(endpoint=f"{endpoint.rstrip('/')}/v1/traces"))
+            )
         )
         _PROVIDER._crag_otlp = True  # type: ignore[attr-defined]
     return _PROVIDER

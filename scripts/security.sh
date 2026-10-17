@@ -25,8 +25,11 @@ step pnpm-audit-redteam pnpm -C evals/redteam audit --audit-level high
 step hadolint hadolint docker/*.Dockerfile
 if compgen -G ".github/workflows/*.yml" >/dev/null; then step actionlint actionlint; fi
 step licences uv run python scripts/check_licences.py
-if [ "${SKIP_TRIVY:-0}" = "1" ] || ! docker info >/dev/null 2>&1; then
-  echo "== trivy skipped (no Docker daemon or SKIP_TRIVY=1)"
+trivy_note=""
+if [ "${SKIP_TRIVY:-0}" = "1" ]; then
+  echo "== trivy skipped (SKIP_TRIVY=1)"; trivy_note=" (trivy skipped by SKIP_TRIVY=1)"
+elif ! docker info >/dev/null 2>&1; then
+  echo "== trivy: no Docker daemon (set SKIP_TRIVY=1 to skip on purpose)"; failed+=("trivy (no Docker daemon)")
 else
   for image in "${IMAGES[@]}"; do
     [ -n "$image" ] || continue
@@ -43,4 +46,4 @@ if [ ${#failed[@]} -gt 0 ]; then
   printf 'security: %d step(s) failed: %s\n' "${#failed[@]}" "${failed[*]}"
   exit 1
 fi
-echo "security: all checks passed"
+echo "security: all checks passed${trivy_note}"

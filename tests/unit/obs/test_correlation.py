@@ -30,8 +30,10 @@ async def test_given_id_is_echoed_and_logged(capsys: pytest.CaptureFixture[str])
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=_app()), base_url="http://api") as c:
         r = await c.get("/ping", headers={"X-Request-ID": "trace-abc-123"})
     assert r.headers["x-request-id"] == "trace-abc-123"
-    line = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
-    assert line["correlation_id"] == "trace-abc-123"
+    lines = [json.loads(raw) for raw in capsys.readouterr().out.strip().splitlines()]
+    handled = next(line for line in lines if line["event"] == "handled")
+    access = next(line for line in lines if line["event"] == "request")
+    assert handled["correlation_id"] == access["correlation_id"] == "trace-abc-123"
 
 
 async def test_missing_or_malformed_id_is_replaced() -> None:

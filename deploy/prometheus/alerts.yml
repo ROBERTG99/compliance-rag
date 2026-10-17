@@ -1,4 +1,5 @@
-# SLOs and alerts (BUILD.md §14). Checked by `promtool check rules` (tests/unit/obs/test_metrics.py checks names).
+# SLOs and alerts (BUILD.md §14). `make lint` runs `promtool check rules` and `promtool test rules`
+# (alerts.test.yml: one case per alert).
 groups:
   - name: compliance-rag
     rules:
@@ -11,13 +12,23 @@ groups:
           summary: Retrieval p95 (legs + fusion + rerank) above 300 ms over the last hour
           runbook: docs/runbook.md#retrieval-is-slow
       - alert: CragIngestionLag
-        expr: max(crag_ingestion_lag_seconds{stat="p95"}) > 300
+        # p95 of finished jobs, or a queue that stopped moving (oldest pending job older than 5 minutes)
+        expr: max(crag_ingestion_lag_seconds{stat="p95"}) > 300 or max(crag_ingestion_lag_seconds{stat="oldest_pending"}) > 300
         for: 10m
         labels:
           severity: ticket
         annotations:
-          summary: Ingestion lag p95 above 5 minutes
+          summary: Ingestion lag above 5 minutes (p95 of finished jobs or the oldest pending job)
           runbook: docs/runbook.md#ingestion-lag
+      - alert: CragWorkerDown
+        # a dead worker stops exporting the lag gauge, so the lag alert alone could not fire
+        expr: up{job="worker"} == 0 or absent(up{job="worker"})
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: The ingestion worker is not being scraped (ingestion and ACL sync are stalled)
+          runbook: docs/runbook.md#worker-down
       - alert: CragAclViolation
         # any post-check violation means a backend returned a hit outside the principal's groups: page at once
         expr: increase(crag_acl_postcheck_violations_total[5m]) > 0

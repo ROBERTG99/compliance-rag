@@ -24,6 +24,7 @@ _SHARED = {
     "langfuse_host": "LANGFUSE_HOST",
     "otel_exporter_otlp_endpoint": "OTEL_EXPORTER_OTLP_ENDPOINT",
     "log_level": "LOG_LEVEL",
+    "prometheus_multiproc_dir": "PROMETHEUS_MULTIPROC_DIR",
 }
 
 
@@ -96,6 +97,8 @@ class Settings(BaseSettings):
         None, validation_alias=_shared("otel_exporter_otlp_endpoint")
     )
     log_level: str = Field("INFO", validation_alias=_shared("log_level"))
+    # set for the multi-process API (WEB_CONCURRENCY > 1): prometheus_client keeps per-process files there
+    prometheus_multiproc_dir: str | None = Field(None, validation_alias=_shared("prometheus_multiproc_dir"))
 
     @property
     def root(self) -> Path:
