@@ -156,23 +156,28 @@ def corpus_generate(
 @corpus_app.command("export-datasets")
 def corpus_export_datasets(
     to: str = typer.Option("evals/datasets", help="Dataset directory"),
+    redteam_to: str = typer.Option("evals/redteam", help="Red-team case directory"),
     seed: int = typer.Option(2026, help="Generator seed"),
 ) -> None:
-    """Write questions.v1.jsonl and judge_labels.v1.jsonl; refuses to change an existing file."""
+    """Write questions.v1.jsonl, judge_labels.v1.jsonl and the red-team cases; never changes an existing file."""
     import json
     from pathlib import Path
 
     from data.generator.corpus import build_corpus
     from data.generator.questions import build_judge_labels, build_questions
+    from data.generator.redteam import build_redteam_cases, dump_cases
 
     policies = build_corpus(seed)
     outputs = {
-        "questions.v1.jsonl": build_questions(policies, seed),
-        "judge_labels.v1.jsonl": build_judge_labels(policies, seed),
+        Path(to) / "questions.v1.jsonl": build_questions(policies, seed),
+        Path(to) / "judge_labels.v1.jsonl": build_judge_labels(policies, seed),
+        Path(redteam_to) / "cases.v1.yaml": build_redteam_cases(policies),
     }
-    for name, rows in outputs.items():
-        target = Path(to) / name
-        text = "".join(json.dumps(r, sort_keys=True, ensure_ascii=False) + "\n" for r in rows)
+    for target, rows in outputs.items():
+        if target.suffix == ".yaml":
+            text = dump_cases(rows)
+        else:
+            text = "".join(json.dumps(r, sort_keys=True, ensure_ascii=False) + "\n" for r in rows)
         if target.exists():
             if target.read_text() != text:
                 typer.echo(

@@ -1,0 +1,11 @@
+{
+  "name": "crag-redteam",
+  "private": true,
+  "description": "Promptfoo red-team suite run offline against the local API (make redteam)",
+  "scripts": {
+    "redteam": "promptfoo eval -c promptfooconfig.yaml"
+  },
+  "devDependencies": {
+    "promptfoo": "0.123.1"
+  }
+}

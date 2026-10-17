@@ -46,10 +46,14 @@ def gate(reports: list[dict[str, Any]], baseline: dict[str, Any] | None) -> list
     return failures
 
 
-def publish(reports: list[dict[str, Any]], failures: list[str]) -> dict[str, Any]:
+def publish(
+    reports: list[dict[str, Any]], failures: list[str], previous: dict[str, Any] | None = None
+) -> dict[str, Any]:
     latest = summarize(
         reports, ablation=_load(REPORTS / "ablation.json"), redteam=_load(REPORTS / "redteam.json")
     )
+    if previous is not None:  # re-rendering slim reports: the per-category table needs the full run's cases
+        latest["by_category"] = previous.get("by_category", latest["by_category"])
     latest["passed"] = latest["passed"] and not failures
     _write(REPORTS / "latest.json", latest)
     (ROOT / "evals" / "REPORT.md").write_text(render_report(latest, failures=failures), encoding="utf-8")
@@ -75,8 +79,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     baseline = _load(REPORTS / "baseline.json")
 
+    previous = None
     if args.render_only:
-        latest = _load(REPORTS / "latest.json")
+        latest = previous = _load(REPORTS / "latest.json")
         if latest is None:
             print("no evals/reports/latest.json yet: run `make eval` first", file=sys.stderr)
             return 1
@@ -94,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
 
     failures = gate(reports, baseline)
     if args.render_only or (args.split == "test" and not args.limit):
-        publish(reports, failures)
+        publish(reports, failures, previous)
         print("wrote evals/REPORT.md and evals/reports/latest.json")
     for failure in failures:
         print(f"FAIL {failure}", file=sys.stderr)

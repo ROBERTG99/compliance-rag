@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-17T14:44:16+00:00",
+  "generated_at": "2026-10-17T15:03:33+00:00",
   "split": "test",
   "llm": "FakeLLM (offline)",
   "passed": true,
@@ -12,12 +12,12 @@
     "acl_leakage": 0.0,
     "stale_version_citation_rate": 0.0,
     "abstention_accuracy": 0.9333333333333333,
-    "retrieval_p95_ms": 104.738,
+    "retrieval_p95_ms": 107.298,
     "degraded_rate": 0.0,
     "retrieval.recall@10": 0.9204545454545454,
     "retrieval.mrr@10": 0.9431818181818182,
     "retrieval.acl_leakage": 0.0,
-    "retrieval.retrieval_p95_ms": 92.18311799997991,
+    "retrieval.retrieval_p95_ms": 105.45291600010387,
     "retrieval.degraded_rate": 0.0
   },
   "ablation": [
@@ -57,10 +57,61 @@
       "degraded_rate": 0.0
     }
   ],
-  "redteam": null,
+  "redteam": {
+    "tool": "promptfoo",
+    "generated_at": "2026-10-17T15:03:01.918Z",
+    "total": 40,
+    "failures": 0,
+    "by_kind": {
+      "document": 30,
+      "user": 10
+    },
+    "document_answered": {
+      "answered": 28,
+      "of": 30
+    },
+    "failed": []
+  },
   "by_category": {
     "suite": "rag",
-    "rows": {}
+    "rows": {
+      "acl_probe": {
+        "n": 12,
+        "recall@10": null,
+        "key_fact_accuracy": null,
+        "abstention_accuracy": 1.0
+      },
+      "multi_hop": {
+        "n": 16,
+        "recall@10": 0.8125,
+        "key_fact_accuracy": 0.625,
+        "abstention_accuracy": 0.875
+      },
+      "must_abstain": {
+        "n": 20,
+        "recall@10": null,
+        "key_fact_accuracy": null,
+        "abstention_accuracy": 0.9
+      },
+      "numeric": {
+        "n": 16,
+        "recall@10": 0.8125,
+        "key_fact_accuracy": 0.8125,
+        "abstention_accuracy": 0.8125
+      },
+      "single_hop": {
+        "n": 48,
+        "recall@10": 0.9791666666666666,
+        "key_fact_accuracy": 0.9791666666666666,
+        "abstention_accuracy": 0.9791666666666666
+      },
+      "version_sensitive": {
+        "n": 8,
+        "recall@10": 1.0,
+        "key_fact_accuracy": 1.0,
+        "abstention_accuracy": 1.0
+      }
+    }
   },
   "suites": {
     "rag": {
@@ -68,8 +119,8 @@
       "suite": "rag",
       "description": "Full graph per question against the seeded stack; thresholds from BUILD.md §11.",
       "split": "test",
-      "generated_at": "2026-10-17T14:44:06+00:00",
-      "duration_s": 12.2,
+      "generated_at": "2026-10-17T15:03:23+00:00",
+      "duration_s": 13.5,
       "dataset": {
         "path": "evals/datasets/questions.v1.jsonl",
         "sha256": "3474f7519c05c7c2c5a8bddcbfefc40ee6fb99cc5fd68028c01fd5196d6ba78b",
@@ -205,7 +256,7 @@
           "description": ""
         },
         "retrieval_p95": {
-          "value": 104.738,
+          "value": 107.298,
           "n": 120,
           "unit": "ms",
           "threshold": {
@@ -240,8 +291,8 @@
       "suite": "retrieval",
       "description": "Recall, MRR and latency of retrieval alone, with the persona's ACL and as_of.",
       "split": "test",
-      "generated_at": "2026-10-17T14:44:16+00:00",
-      "duration_s": 8.6,
+      "generated_at": "2026-10-17T15:03:33+00:00",
+      "duration_s": 9.6,
       "dataset": {
         "path": "evals/datasets/questions.v1.jsonl",
         "sha256": "3474f7519c05c7c2c5a8bddcbfefc40ee6fb99cc5fd68028c01fd5196d6ba78b",
@@ -302,7 +353,7 @@
           "description": ""
         },
         "retrieval_p95": {
-          "value": 92.18311799997991,
+          "value": 105.45291600010387,
           "n": 120,
           "unit": "ms",
           "threshold": {

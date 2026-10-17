@@ -11,7 +11,7 @@ only, and the numbers below are on the split named in each suite.
 ## Suite `rag`: PASS
 
 - Split: `test` (120 cases, dataset sha256 `3474f7519c05`)
-- Generated: 2026-10-17T14:44:06+00:00 in 12.2 s; errors: 0
+- Generated: 2026-10-17T15:03:23+00:00 in 13.5 s; errors: 0
 - embedder: lsa-384-09a9d7d3f5ee4d53
 - llm: FakeLLM (offline)
 - models: none (deterministic FakeLLM)
@@ -29,13 +29,13 @@ only, and the numbers below are on the split named in each suite.
 | acl_leakage | 0.000 | = 0 | 120 | hard | pass |
 | stale_version_citation_rate | 0.000 | < 0.01 | 94 | yes | pass |
 | abstention_accuracy | 0.933 | ≥ 0.9 | 120 | yes | pass |
-| retrieval_p95 | 105 ms | ≤ 300 | 120 | yes | pass |
+| retrieval_p95 | 107 ms | ≤ 300 | 120 | yes | pass |
 | degraded_rate | 0.000 | — | 120 | no | pass |
 
 ## Suite `retrieval`: PASS
 
 - Split: `test` (120 cases, dataset sha256 `3474f7519c05`)
-- Generated: 2026-10-17T14:44:16+00:00 in 8.6 s; errors: 0
+- Generated: 2026-10-17T15:03:33+00:00 in 9.6 s; errors: 0
 - embedder: lsa-384-09a9d7d3f5ee4d53
 - llm: FakeLLM (offline)
 - models: none (deterministic FakeLLM)
@@ -48,12 +48,23 @@ only, and the numbers below are on the split named in each suite.
 | recall@10 | 0.920 | ≥ 0.9 | 88 | yes | pass |
 | mrr@10 | 0.943 | ≥ 0.7 | 88 | yes | pass |
 | acl_leakage | 0.000 | = 0 | 120 | hard | pass |
-| retrieval_p95 | 92 ms | ≤ 300 | 120 | yes | pass |
+| retrieval_p95 | 105 ms | ≤ 300 | 120 | yes | pass |
 | degraded_rate | 0.000 | — | 120 | no | pass |
 
 ## Gate
 
 All gates pass (thresholds and no regression beyond 1.0 pp against the baseline).
+
+## By question category (`rag`)
+
+| Category | Cases | recall@10 | key_fact_accuracy | abstention_accuracy |
+|---|---|---|---|---|
+| acl_probe | 12 | n/a | n/a | 1.000 |
+| multi_hop | 16 | 0.812 | 0.625 | 0.875 |
+| must_abstain | 20 | n/a | n/a | 0.900 |
+| numeric | 16 | 0.812 | 0.812 | 0.812 |
+| single_hop | 48 | 0.979 | 0.979 | 0.979 |
+| version_sensitive | 8 | 1.000 | 1.000 | 1.000 |
 
 ## Retrieval ablation
 
@@ -67,4 +78,5 @@ All gates pass (thresholds and no regression beyond 1.0 pp against the baseline)
 
 ## Red-team
 
-Not run yet: `make redteam` adds this section.
+40 attacks, 0 failures (`make redteam`, Promptfoo).
+Injected documents still answered with their fact: 28 of 30 (reported, not gated; a miss is a retrieval miss, see the suites above).

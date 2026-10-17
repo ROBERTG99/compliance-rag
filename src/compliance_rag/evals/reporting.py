@@ -129,7 +129,15 @@ def render_report(latest: dict[str, Any], *, failures: list[str]) -> str:
     lines += ["", "## Red-team", ""]
     redteam = latest.get("redteam")
     if redteam:
-        lines.append(f"{redteam['total']} attacks, {redteam['failures']} failures (`make redteam`).")
+        lines.append(
+            f"{redteam['total']} attacks, {redteam['failures']} failures (`make redteam`, Promptfoo)."
+        )
+        answered = redteam.get("document_answered")
+        if answered:
+            lines.append(
+                f"Injected documents still answered with their fact: {answered['answered']} of {answered['of']} "
+                "(reported, not gated; a miss is a retrieval miss, see the suites above)."
+            )
     else:
         lines.append("Not run yet: `make redteam` adds this section.")
     return "\n".join(lines) + "\n"

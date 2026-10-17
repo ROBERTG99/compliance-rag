@@ -70,14 +70,18 @@ def test_by_category_averages_mean_metrics_per_question_category() -> None:
 
 
 def test_report_labels_offline_numbers_and_lists_every_section() -> None:
-    latest = summarize([RAG, RETRIEVAL], ablation=ABLATION, redteam={"total": 4, "failures": 0})
+    latest = summarize(
+        [RAG, RETRIEVAL],
+        ablation=ABLATION,
+        redteam={"total": 4, "failures": 0, "document_answered": {"answered": 2, "of": 3}},
+    )
     text = render_report(latest, failures=["[rag] key_fact_accuracy = 0.5000 violates ≥ 0.9"])
     assert "FakeLLM" in text and "make eval" in text
     assert "## Suite `rag`: FAIL" in text
     assert "| key_fact_accuracy | 0.500 |" in text
     assert "| retrieval_p95 | 120 ms |" in text
     assert "## Retrieval ablation" in text and "| bm25 | 0.800 | 0.700 | 40 ms |" in text
-    assert "## Red-team" in text and "0 failures" in text
+    assert "## Red-team" in text and "0 failures" in text and "2 of 3" in text
     assert "## By question category (`rag`)" in text
     assert "key_fact_accuracy = 0.5000 violates" in text
 

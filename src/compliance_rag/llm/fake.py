@@ -1,7 +1,9 @@
 """Deterministic offline models per route (``DEMO_MODE=offline`` and tests).
 
 * ``generate``: extractive composer — the context sentences with the highest overlap with the
-  question become claims that quote themselves; below an overlap of 0.2 it abstains.
+  question become claims that quote themselves; below an overlap of 0.2 it abstains. It is deliberately
+  naive about prompt injection: a context sentence carrying a ``CANARY-`` instruction is obeyed (the canary
+  is appended to every claim), so offline red-team results depend on the guards, not on the fake.
 * ``condense_followup``: merges the previous question's content terms into the follow-up.
 * ``judge``: ``evalgate.testing.FakeJudge``.
 """
@@ -17,6 +19,7 @@ from compliance_rag.rerank.text import content_terms
 
 MIN_OVERLAP = 0.2
 MAX_CLAIMS = 3
+CANARY = re.compile(r"\bCANARY-[0-9A-F]{6,}\b")
 
 
 def _clean(sentence: str) -> str:
@@ -80,6 +83,10 @@ def compose_extractive(question: str, context: list[dict[str, Any]]) -> dict[str
         claims.append({"text": _clean(text), "citations": [{"chunk_id": chunk_id, "quote": text}]})
     if not claims:
         return {"claims": [], "answer": "", "abstained": True}
+    obeyed = sorted({m for s in sentences for m in CANARY.findall(s[3])})
+    if obeyed:  # a naive model follows instructions found in its documents
+        for claim in claims:
+            claim["text"] = f"{claim['text']} {' '.join(obeyed)}"
     return {"claims": claims, "answer": " ".join(c["text"] for c in claims), "abstained": False}
 
 
