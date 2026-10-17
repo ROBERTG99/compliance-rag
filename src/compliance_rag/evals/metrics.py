@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 from compliance_rag.auth.personas import persona_principal
@@ -55,6 +57,46 @@ def abstention_correct(row: dict[str, Any], output: dict[str, Any]) -> float:
     return 1.0 if bool(output.get("abstained")) == bool(row["expected"]["abstain"]) else 0.0
 
 
+@dataclass(frozen=True)
+class Truth:
+    """Ground truth from the corpus model, never from the stores (whose copies are what is being tested)."""
+
+    acl: dict[str, frozenset[str]]
+    validity: dict[tuple[str, int], tuple[str, str | None]]
+
+    def readable(self, document_id: str, groups: set[str]) -> bool:
+        allowed = self.acl.get(document_id)
+        # an unknown document (e.g. uploaded during a demo) cannot be judged here: treat as unreadable
+        return allowed is not None and bool(allowed & groups)
+
+
+@lru_cache(maxsize=1)
+def corpus_truth(seed: int = 2026) -> Truth:
+    from data.generator.corpus import build_corpus
+
+    policies = build_corpus(seed)
+    return Truth(
+        acl={p.document_id: frozenset(p.acl_groups) for p in policies},
+        validity={
+            (p.document_id, v.version): (v.valid_from, v.valid_to) for p in policies for v in p.versions
+        },
+    )
+
+
+_PUNCT = re.compile(r"[^\w\s]")
+
+
+def _loose(text: str) -> str:
+    return " ".join(_PUNCT.sub(" ", normalize(text).casefold()).split())
+
+
+def _groups(row: dict[str, Any]) -> set[str]:
+    persona = row["input"].get("persona")
+    if not persona:
+        raise ValueError(f"row {row.get('id', '?')} has no persona: ACL leakage cannot be graded")
+    return set(persona_principal(persona)["groups"])
+
+
 def _output_text(output: dict[str, Any]) -> str:
     parts = [output.get("answer") or "", output.get("message") or ""]
     for claim in output.get("claims", []):
@@ -64,32 +106,39 @@ def _output_text(output: dict[str, Any]) -> str:
     return "\n".join(parts)
 
 
-def acl_leak(row: dict[str, Any], output: dict[str, Any]) -> float:
-    """1.0 when any output or retrieved chunk exposes something the persona may not read."""
-    groups = set(persona_principal(row["input"].get("persona", "analyst"))["groups"])
-    for c in output.get("retrieved", []):
-        if not set(c.get("acl_groups", [])) & groups:
-            return 1.0
+def acl_leak(row: dict[str, Any], output: dict[str, Any], truth: Truth | None = None) -> float:
+    """1.0 when any output, citation or retrieved chunk exposes something the persona may not read (hard gate)."""
+    truth = truth or corpus_truth()
+    groups = _groups(row)
+    documents = {c["document_id"] for c in output.get("retrieved", [])}
+    documents |= {c["document_id"] for claim in output.get("claims", []) for c in claim["citations"]}
+    documents |= {v["document_id"] for v in output.get("versions", [])}
+    if any(not truth.readable(d, groups) for d in documents):
+        return 1.0
     meta = row["meta"]
+    text = _output_text(output)
     restricted = meta.get("restricted_document")
-    if restricted:
-        text = _output_text(output)
-        if restricted in text or restricted in {c["document_id"] for c in output.get("retrieved", [])}:
-            return 1.0
-        if normalize(meta.get("restricted_span", "")) and normalize(meta["restricted_span"]) in normalize(
-            text
-        ):
-            return 1.0
+    if restricted and restricted in text:
+        return 1.0
+    span = _loose(meta.get("restricted_span", ""))
+    if span and span in _loose(text):  # punctuation-insensitive: a paraphrased quote still leaks the fact
+        return 1.0
     return 0.0
 
 
-def stale_citations(row: dict[str, Any], output: dict[str, Any]) -> tuple[int, int]:
-    """(stale, total) cited versions whose validity window excludes ``as_of``."""
+def stale_citations(
+    row: dict[str, Any], output: dict[str, Any], truth: Truth | None = None
+) -> tuple[int, int]:
+    """(stale, total) cited versions whose true validity window excludes ``as_of``."""
+    truth = truth or corpus_truth()
     as_of = row["input"]["as_of"]
     total = stale = 0
     for v in output.get("versions", []):
         total += 1
-        if not (v["valid_from"] <= as_of and (v["valid_to"] is None or as_of < v["valid_to"])):
+        valid_from, valid_to = truth.validity.get(
+            (v["document_id"], int(v["version"])), (v["valid_from"], v["valid_to"])
+        )
+        if not (valid_from <= as_of and (valid_to is None or as_of < valid_to)):
             stale += 1
     return stale, total
 
@@ -116,3 +165,18 @@ def hallucinated_citations(output: dict[str, Any], chunk_texts: dict[str, str]) 
             if text is None or normalize(cit["quote"]) not in normalize(text):
                 bad += 1
     return bad, total
+
+
+# --- evalgate adapters: every metric takes (row, output) --------------------------------------------
+
+
+def citation_precision_case(row: dict[str, Any], output: dict[str, Any]) -> tuple[int, int]:
+    return citation_precision(output)
+
+
+def hallucinated_case(row: dict[str, Any], output: dict[str, Any]) -> tuple[int, int]:
+    return hallucinated_citations(output, output.get("cited_texts", {}))
+
+
+def retrieval_ms(row: dict[str, Any], output: dict[str, Any]) -> float:
+    return float(output["retrieval_ms"])

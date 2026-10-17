@@ -10,6 +10,7 @@ import re
 from dataclasses import dataclass
 
 _NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
+_CITATION = re.compile(r"\[\d+\]")  # "[1]" marks a citation, not a fact
 _INJECTION = re.compile(r"ignore (the|all|previous)|answer pass|disregard|you are now", re.I)
 
 
@@ -18,7 +19,7 @@ def normalize_number(token: str) -> str:
 
 
 def numbers(text: str) -> set[str]:
-    return {normalize_number(m) for m in _NUMBER.findall(text)}
+    return {normalize_number(m) for m in _NUMBER.findall(_CITATION.sub(" ", text))}
 
 
 @dataclass(frozen=True)

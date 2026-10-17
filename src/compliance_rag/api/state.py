@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-import time
 from dataclasses import dataclass, field
-from datetime import date
 from typing import Any
 
 import structlog
@@ -20,17 +18,15 @@ from redis.asyncio import Redis
 from compliance_rag.api.limits import RateLimiter
 from compliance_rag.api.sse import RunEvents
 from compliance_rag.auth.jwt import JWKSCache, TokenValidator
-from compliance_rag.auth.personas import PERSONAS, persona_principal
 from compliance_rag.graph.build import GraphDeps, build_graph
 from compliance_rag.llm.gateway import Gateway
 from compliance_rag.rerank import create_reranker
 from compliance_rag.retrieval.hybrid import HybridRetriever
+from compliance_rag.retrieval.warmup import warm_up
 from compliance_rag.runtime import Services, build_services
 from compliance_rag.settings import Settings
 
 log = structlog.get_logger(__name__)
-WARM_RELATIONS = ("chunks", "chunks_embedding_hnsw", "chunks_acl_gin", "chunks_validity")
-WARM_QUERY = "What is the maximum age of a proof-of-address document?"
 
 
 @dataclass
@@ -85,37 +81,8 @@ class AppState:
         return self.arq
 
     async def warm_up(self) -> dict[str, Any]:
-        """Best effort: load the chunk heap and indexes into shared buffers, then run each role's legs once.
-
-        Without it the first asks after a restart read the HNSW index and BM25 segments from disk, exceed the
-        250 ms leg budget on both legs and return 503 until the caches are warm.
-        """
-        started = time.perf_counter()
-        blocks, errors = 0, []
-        try:
-            async with self.services.pool.connection() as conn:
-                for rel in WARM_RELATIONS:
-                    row = await (await conn.execute("SELECT pg_prewarm(%s)", (rel,))).fetchone()
-                    blocks += int(row[0]) if row else 0
-        except Exception as exc:  # warm-up must never stop the API from starting
-            errors.append(f"pg_prewarm: {type(exc).__name__}")
-        roles = 0
-        if self.retriever is not None:
-            # one principal per role: the ACL filter differs by role, not by persona alias
-            for persona in {role: name for name, (_, role) in PERSONAS.items()}.values():
-                try:
-                    await self.retriever.warm(WARM_QUERY, persona_principal(persona), date.today())
-                    roles += 1
-                except Exception as exc:
-                    errors.append(f"{persona}: {type(exc).__name__}")
-        report = {
-            "prewarmed_blocks": blocks,
-            "roles": roles,
-            "errors": errors,
-            "seconds": round(time.perf_counter() - started, 3),
-        }
-        log.info("warm_up", **report)
-        return report
+        """Before readiness: cold caches would 503 the first asks (see ``retrieval.warmup``)."""
+        return await warm_up(self.services.pool, self.retriever)
 
     async def close(self) -> None:
         for task in list(self.background):
