@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+import { useAuth } from "./auth/context";
 import { RequireAuth } from "./components/RequireAuth";
 import { Shell } from "./components/Shell";
 import { AskPage } from "./routes/ask/AskPage";
@@ -13,8 +14,11 @@ import { DocumentPage } from "./routes/library/DocumentPage";
 import { LibraryPage } from "./routes/library/LibraryPage";
 
 export default function App() {
+  const { principal } = useAuth();
+  // a new identity gets a fresh run: the previous answer (and any open stream) belongs to someone else
+  const identity = principal ? `${principal.sub}|${principal.role}` : "anonymous";
   return (
-    <AskRunProvider>
+    <AskRunProvider key={identity}>
       <Routes>
         <Route element={<Shell />}>
           <Route

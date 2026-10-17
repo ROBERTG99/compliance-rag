@@ -1,22 +1,30 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { AuthContext, type Auth } from "./context";
 import type { Persona } from "./config";
 import { authorizeUrl, createPkcePair, devToken, exchangeCode, randomToken } from "./pkce";
 import { decodePrincipal, loadToken, saveToken, storePkce, takePkce } from "./session";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [token, setTokenState] = useState<string | null>(() => {
     const stored = loadToken();
     return stored && decodePrincipal(stored) ? stored : null;
   });
   const [error, setError] = useState<string | null>(null);
 
-  const setToken = useCallback((next: string | null) => {
-    if (next && !decodePrincipal(next))
-      throw new Error("the identity provider returned an unusable token");
-    saveToken(next);
-    setTokenState(next);
-  }, []);
+  const setToken = useCallback(
+    (next: string | null) => {
+      if (next && !decodePrincipal(next))
+        throw new Error("the identity provider returned an unusable token");
+      // nothing fetched for one identity may be shown to the next: drop every cached response
+      void queryClient.cancelQueries();
+      queryClient.clear();
+      saveToken(next);
+      setTokenState(next);
+    },
+    [queryClient],
+  );
 
   const signIn = useCallback(async () => {
     const { verifier, challenge } = await createPkcePair();
@@ -59,6 +67,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(() => setToken(null), [setToken]);
+
+  // an expired token signs the user out instead of leaving screens that can only answer 401
+  useEffect(() => {
+    if (!token) return;
+    // decodePrincipal returns null once expired: sign out on the next tick (never synchronously in the effect)
+    const exp = decodePrincipal(token)?.exp ?? 0;
+    const timer = setTimeout(signOut, Math.max(0, exp * 1000 - Date.now()));
+    return () => clearTimeout(timer);
+  }, [token, signOut]);
 
   const value = useMemo<Auth>(
     () => ({

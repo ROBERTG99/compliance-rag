@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { mockFetch, renderApp, signInAs } from "../../test/render";
+import { fakeToken, mockFetch, renderApp, signInAs } from "../../test/render";
 
 const QUESTION = "What is the maximum age of a proof-of-address document?";
 const enc = new TextEncoder();
@@ -245,4 +245,31 @@ test("the answer survives opening the evidence and coming back", async () => {
     await screen.findByText(/older than 90 days at the date of onboarding/),
   ).toBeInTheDocument();
   expect(screen.getByLabelText(/question/i)).toHaveValue(QUESTION);
+});
+
+test("an answer is not shown to the next persona", async () => {
+  const stream = controlledStream();
+  mockFetch((url, init) => {
+    if (url === "/v1/ask")
+      return { status: 202, body: { run_id: "r1", events_url: "/v1/runs/r1/events" } };
+    if (url === "/v1/runs/r1/events") return stream.response;
+    if (url.endsWith("/oidc/dev/token")) {
+      return {
+        status: 200,
+        body: { access_token: fakeToken(JSON.parse(String(init?.body)).persona) },
+      };
+    }
+    return { status: 404, body: {} };
+  });
+  renderApp("/");
+  const user = userEvent.setup();
+  await ask(user);
+  stream.push(sse(1, "final", FINAL));
+  stream.close();
+  await screen.findByText(/KYC-0042 v3/);
+  await user.selectOptions(screen.getByLabelText(/persona/i), "support");
+  await waitFor(() => expect(screen.getByText(/support@northwind\.test/)).toBeInTheDocument());
+  expect(screen.queryByText(/older than 90 days/)).toBeNull();
+  expect(screen.queryByText(/KYC-0042 v3/)).toBeNull();
+  expect(screen.getByLabelText(/question/i)).toHaveValue("");
 });
