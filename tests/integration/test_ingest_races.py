@@ -62,7 +62,9 @@ async def test_acl_change_during_ingestion_reaches_the_new_version(ingest_deps: 
     assert await ingest_deps.pg.search(vec, SUPPORT, as_of, k=50) == []
     async with ingest_deps.pool.connection() as conn:
         rows = await (
-            await conn.execute("SELECT DISTINCT acl_groups FROM chunks WHERE version_id = %s", (job.version_id,))
+            await conn.execute(
+                "SELECT DISTINCT acl_groups FROM chunks WHERE version_id = %s", (job.version_id,)
+            )
         ).fetchall()
     assert [list(r[0]) for r in rows] == [["compliance"]]
 
