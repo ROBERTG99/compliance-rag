@@ -73,7 +73,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!token) return;
     // decodePrincipal returns null once expired: sign out on the next tick (never synchronously in the effect)
     const exp = decodePrincipal(token)?.exp ?? 0;
-    const timer = setTimeout(signOut, Math.max(0, exp * 1000 - Date.now()));
+    // setTimeout overflows above 2^31-1 ms (~24.8 days) and would fire at once
+    const timer = setTimeout(
+      signOut,
+      Math.min(Math.max(0, exp * 1000 - Date.now()), 2_147_483_647),
+    );
     return () => clearTimeout(timer);
   }, [token, signOut]);
 

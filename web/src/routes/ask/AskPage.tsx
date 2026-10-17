@@ -24,6 +24,8 @@ const NODE_LABELS: Record<string, string> = {
   abstain: "abstain",
 };
 
+const MAX_QUESTION = 2000; // the API's limit (BUILD.md §15)
+
 export function AskPage() {
   const { principal } = useAuth();
   const { state, requestError, ask, retry, question, setQuestion, asOf, setAsOf } =
@@ -44,11 +46,15 @@ export function AskPage() {
             <textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              maxLength={2000}
+              maxLength={MAX_QUESTION}
               rows={3}
               required
-              className="mt-1 block w-full rounded border border-control bg-surface placeholder:text-muted p-2"
+              aria-describedby="question-count"
+              className="mt-1 block w-full rounded border border-control bg-surface p-2"
             />
+            <span id="question-count" className="mt-1 block text-xs text-muted">
+              {question.length} of {MAX_QUESTION} characters
+            </span>
           </label>
           <div className="flex flex-wrap items-end gap-3">
             <label className="block">
@@ -58,7 +64,7 @@ export function AskPage() {
                 value={asOf}
                 max={isAdmin(principal) ? undefined : today()}
                 onChange={(e) => setAsOf(e.target.value)}
-                className="mt-1 block rounded border border-control bg-surface placeholder:text-muted p-1.5"
+                className="mt-1 block rounded border border-control bg-surface p-1.5"
               />
             </label>
             <button
@@ -74,9 +80,11 @@ export function AskPage() {
           <RunView state={state} requestError={requestError} onRetry={retry} />
         </div>
       </section>
-      <aside aria-label="Progress" className="text-sm">
-        <NodeProgress state={state} />
-      </aside>
+      {state.nodes.length > 0 ? (
+        <aside aria-label="Progress" className="text-sm">
+          <NodeProgress state={state} />
+        </aside>
+      ) : null}
     </div>
   );
 }
@@ -113,7 +121,7 @@ function RunView({
       {/* present from the start of the run so the abstention text is announced when it arrives */}
       <div
         role="status"
-        aria-label="No answer"
+        aria-label={final?.abstained ? "No answer" : undefined}
         className={final?.abstained ? "rounded border border-rule bg-surface p-4" : "sr-only"}
       >
         {final?.abstained ? final.message : ""}

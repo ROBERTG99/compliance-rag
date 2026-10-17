@@ -53,10 +53,20 @@ export function JobsPage() {
             <Tile label="p95 (24 h)" value={seconds(lag.data.p95_s)} />
           </dl>
         )}
+        {lag.data && lag.isError ? (
+          <div className="mt-3">
+            <ErrorState error={lag.error} onRetry={() => void lag.refetch()} />
+          </div>
+        ) : null}
       </section>
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <label className="flex items-center gap-1">
-          <input type="checkbox" checked={live} onChange={(e) => setLive(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={live}
+            onChange={(e) => setLive(e.target.checked)}
+            className="h-5 w-5 accent-accent"
+          />
           <span>Refresh every 15 s</span>
         </label>
         {jobs.dataUpdatedAt ? (
@@ -69,7 +79,7 @@ export function JobsPage() {
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="rounded border border-control bg-surface placeholder:text-muted px-1 py-0.5"
+            className="rounded border border-control bg-surface px-1 py-0.5"
           >
             <option value="">all</option>
             {STATUSES.map((s) => (
@@ -82,7 +92,7 @@ export function JobsPage() {
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value)}
-            className="rounded border border-control bg-surface placeholder:text-muted px-1 py-0.5"
+            className="rounded border border-control bg-surface px-1 py-0.5"
           >
             <option value="">all</option>
             {KINDS.map((k) => (
@@ -159,7 +169,7 @@ export function JobsPage() {
 
 function Tile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded border border-control bg-surface placeholder:text-muted p-3">
+    <div className="rounded border border-control bg-surface p-3">
       <dt className="text-sm text-muted">{label}</dt>
       <dd className="mt-1 text-2xl font-semibold tabular-nums">{value}</dd>
     </div>

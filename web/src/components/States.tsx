@@ -21,7 +21,16 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
 }
 
 /** problem+json error with an explicit retry (BUILD.md §13: every screen has this state). */
-export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+export function ErrorState({
+  error,
+  onRetry,
+  onDismiss,
+}: {
+  error: unknown;
+  onRetry?: () => void;
+  /** shown when Retry cannot help (a non-retryable problem), so the message can be closed */
+  onDismiss?: () => void;
+}) {
   const api = error instanceof ApiError ? error : null;
   const title =
     api?.problem?.title ??
@@ -41,6 +50,14 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
           className="mt-3 rounded border border-control px-3 py-1 text-sm"
         >
           Retry
+        </button>
+      ) : onDismiss ? (
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="mt-3 rounded border border-control px-3 py-1 text-sm"
+        >
+          Dismiss
         </button>
       ) : null}
     </div>

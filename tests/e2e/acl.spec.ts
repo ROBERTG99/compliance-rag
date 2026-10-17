@@ -39,6 +39,11 @@ test("switching persona in-page never shows the previous identity's restricted d
   await expect(page.getByRole("link", { name: "CMP-0215" })).toBeVisible();
 
   await switchPersona(page, "support"); // no reload: caches and the run must not survive the switch
+  // wait until support's own result has loaded, then check what it shows
+  await page.getByLabel("Search").fill("CMP-0215");
+  await expect(
+    page.getByText("No documents match these filters"),
+  ).toBeVisible();
   await expect(page.getByRole("link", { name: "CMP-0215" })).toHaveCount(0);
   await page.getByRole("link", { name: "Ask" }).click();
   await expect(page.locator("main")).not.toContainText("CMP-0215");

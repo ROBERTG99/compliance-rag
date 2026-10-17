@@ -13,7 +13,7 @@ export interface AskInput {
 
 export function useAskRun() {
   const api = useApi();
-  const { token } = useAuth();
+  const { token, signOut } = useAuth();
   const [state, dispatch] = useReducer(runReducer, initialRun);
   const [requestError, setRequestError] = useState<unknown>(null);
   const last = useRef<AskInput | null>(null);
@@ -40,6 +40,11 @@ export function useAskRun() {
         });
       } catch (exc) {
         if ((exc as Error).name === "AbortError") return;
+        // the event stream is fetched outside useApi: a revoked or expired token signs out here too
+        if (exc instanceof ApiError && exc.status === 401) {
+          signOut();
+          return;
+        }
         setRequestError(exc);
         const message = exc instanceof ApiError ? exc.message : "the request failed";
         // only offer Retry when it can help: never for a 400/404/422
@@ -47,7 +52,7 @@ export function useAskRun() {
         dispatch({ type: "fail", error: { code: "request", message, retryable } });
       }
     },
-    [api, token],
+    [api, token, signOut],
   );
 
   const retry = useCallback(() => {

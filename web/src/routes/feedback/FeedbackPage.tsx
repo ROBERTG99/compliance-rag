@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useApi } from "../../api/hooks";
 import type { FeedbackPage as Page, TriageItem, TriageRequest } from "../../api/types";
 import { EmptyState, ErrorState, Skeleton } from "../../components/States";
@@ -15,14 +15,20 @@ export function FeedbackPage() {
       api<Page>("/v1/feedback", { query: { status, rating, limit: 100 }, signal }),
   });
   const [announcement, setAnnouncement] = useState("");
-  const [lastTriage, setLastTriage] = useState<{ id: string; body: TriageRequest } | null>(null);
+  const statusLine = useRef<HTMLParagraphElement>(null);
+  type Triage = { id: string; question: string; body: TriageRequest };
+  const [lastTriage, setLastTriage] = useState<Triage | null>(null);
   const triage = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: TriageRequest }) =>
+    mutationFn: ({ id, body }: Triage) =>
       api(`/v1/feedback/${id}`, { method: "PATCH", json: body }),
-    onSuccess: (_data, { body }) => {
+    onMutate: () => setAnnouncement(""),
+    onSuccess: (_data, { body, question }) => {
+      // name the item, so a second identical action is announced too
       setAnnouncement(
-        body.status === "added_to_dev_set" ? "Added to the dev set." : "Marked as triaged.",
+        `${body.status === "added_to_dev_set" ? "Added to the dev set" : "Marked as triaged"}: “${question}”`,
       );
+      // the card (and its focused button) may leave the filtered list: keep focus on the outcome
+      statusLine.current?.focus();
       void client.invalidateQueries({ queryKey: ["feedback"] });
     },
   });
@@ -43,7 +49,7 @@ export function FeedbackPage() {
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="rounded border border-control bg-surface placeholder:text-muted px-1 py-0.5"
+            className="rounded border border-control bg-surface px-1 py-0.5"
           >
             <option value="">all</option>
             <option value="new">new</option>
@@ -56,7 +62,7 @@ export function FeedbackPage() {
           <select
             value={rating}
             onChange={(e) => setRating(e.target.value)}
-            className="rounded border border-control bg-surface placeholder:text-muted px-1 py-0.5"
+            className="rounded border border-control bg-surface px-1 py-0.5"
           >
             <option value="">all</option>
             <option value="up">helpful</option>
@@ -64,10 +70,17 @@ export function FeedbackPage() {
           </select>
         </label>
       </div>
-      <p role="status" className="text-sm text-ok">
+      <p
+        ref={statusLine}
+        tabIndex={-1}
+        role="status"
+        className="text-sm text-ok focus:outline-none"
+      >
         {announcement}
       </p>
-      {triage.isError ? <ErrorState error={triage.error} onRetry={retryTriage} /> : null}
+      {triage.isError ? (
+        <ErrorState error={triage.error} onRetry={retryTriage} onDismiss={() => triage.reset()} />
+      ) : null}
       {list.isPending ? (
         <Skeleton lines={6} label="Loading feedback" />
       ) : list.isError ? (
@@ -82,8 +95,9 @@ export function FeedbackPage() {
               item={item}
               busy={triage.isPending}
               onTriage={(body) => {
-                setLastTriage({ id: item.id, body });
-                triage.mutate({ id: item.id, body });
+                const next = { id: item.id, question: item.question, body };
+                setLastTriage(next);
+                triage.mutate(next);
               }}
             />
           ))}
@@ -105,12 +119,14 @@ function FeedbackCard({
   return (
     <article
       aria-label={`Feedback on: ${item.question}`}
-      className="rounded border border-control bg-surface placeholder:text-muted p-3 text-sm"
+      className="rounded border border-control bg-surface p-3 text-sm"
     >
       <p className="font-serif text-base">{item.question}</p>
       <p className="mt-1 text-muted">
         {item.rating === "up" ? "Helpful" : "Not helpful"} · {item.reason.replace(/_/g, " ")} ·{" "}
-        {item.user_sub} · as of {item.as_of}
+        {item.user_sub} ·{" "}
+        <time dateTime={item.created_at}>{new Date(item.created_at).toLocaleString()}</time> · as of{" "}
+        {item.as_of}
         {item.abstained ? " · abstained" : ""} · {item.status.replace(/_/g, " ")}
       </p>
       {item.comment ? (

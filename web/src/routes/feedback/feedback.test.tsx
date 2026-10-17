@@ -75,5 +75,7 @@ test("retry re-sends a triage that failed, and success is announced", async () =
   await user.click(within(card).getByRole("button", { name: /mark triaged/i }));
   await user.click(await screen.findByRole("button", { name: /retry/i }));
   await waitFor(() => expect(patches).toBe(2));
-  expect(await screen.findByText("Marked as triaged.")).toBeInTheDocument();
+  const done = await screen.findByText(/^Marked as triaged: “/);
+  expect(done).toHaveTextContent(ITEM.question);
+  expect(done).toHaveFocus(); // the triaged card may leave the list: focus stays on the outcome
 });

@@ -53,6 +53,16 @@ export async function expectAccessible(page: Page): Promise<void> {
   } finally {
     await page.setViewportSize(size);
   }
+  // both themes have their own tokens: check the other one too (fresh contexts follow the system scheme)
+  const dark = await page.evaluate(
+    () => window.matchMedia("(prefers-color-scheme: dark)").matches,
+  );
+  await page.emulateMedia({ colorScheme: dark ? "light" : "dark" });
+  try {
+    expect(await seriousViolations(page)).toEqual([]);
+  } finally {
+    await page.emulateMedia({ colorScheme: dark ? "dark" : "light" });
+  }
 }
 
 /** Switch identity in-page (no reload), as a user of the dev persona switcher would. */

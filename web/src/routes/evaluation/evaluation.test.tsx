@@ -7,7 +7,15 @@ const REPORT = {
   generated_at: "2026-10-17T10:00:00Z",
   split: "test",
   llm: "FakeLLM (offline)",
-  metrics: { "recall@10": 0.95, "MRR@10": 0.93, acl_leak: 0, abstention_accuracy: 0.97 },
+  // the names scripts/run_evals.py writes (ms units carry the _ms suffix; other suites are prefixed)
+  metrics: {
+    "recall@10": 0.95,
+    "mrr@10": 0.93,
+    acl_leakage: 0,
+    abstention_accuracy: 0.97,
+    retrieval_p95_ms: 107.4,
+    "retrieval.recall@10": 0.92,
+  },
   ablation: [
     { config: "bm25", "recall@10": 0.81, "MRR@10": 0.72, p95_ms: 40 },
     { config: "hybrid+rerank", "recall@10": 0.95, "MRR@10": 0.93, p95_ms: 110 },
@@ -27,6 +35,10 @@ test("the latest report shows metrics, its provenance and an ablation chart with
   expect(screen.getByText(/test split/i)).toBeInTheDocument();
   const metrics = screen.getByRole("table", { name: /metrics/i });
   expect(within(metrics).getByText("recall@10")).toBeInTheDocument();
+  expect(within(metrics).getByText("107 ms")).toBeInTheDocument();
+  const leak = within(metrics).getByText("acl_leakage").closest("th");
+  expect(leak).toHaveTextContent(/lower is better/);
+  expect(within(metrics).getByText("recall@10").closest("th")).not.toHaveTextContent(/lower/);
   const chart = screen.getByRole("figure", { name: /recall@10 by configuration/i });
   expect(chart.querySelectorAll("[data-value]")).toHaveLength(2);
   expect(

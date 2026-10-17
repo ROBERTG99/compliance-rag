@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useApi } from "../../api/hooks";
 import type { DocumentDetail, VersionEntry } from "../../api/types";
@@ -9,7 +10,7 @@ function versionState(v: VersionEntry, day: string): { label: string; tone: stri
   if (v.status !== "active") return { label: v.status, tone: "text-muted" };
   if (v.in_force) return { label: "In force", tone: "text-ok" };
   if (v.valid_from > day) return { label: "Announced", tone: "text-muted" }; // not yet in force
-  return { label: "Superseded", tone: "text-restricted" };
+  return { label: "Superseded", tone: "text-muted" }; // restricted red is reserved for access control
 }
 
 export function DocumentPage() {
@@ -21,6 +22,10 @@ export function DocumentPage() {
       api<DocumentDetail>(`/v1/documents/${encodeURIComponent(documentId)}`, { signal }),
     retry: false,
   });
+  const title = doc.data?.title;
+  useEffect(() => {
+    if (title) document.title = `${documentId} ${title} · Northwind Compliance Assistant`;
+  }, [documentId, title]);
   if (doc.isPending) return <Skeleton lines={5} label="Loading document" />;
   if (doc.isError) return <ErrorState error={doc.error} onRetry={() => void doc.refetch()} />;
   const d = doc.data;

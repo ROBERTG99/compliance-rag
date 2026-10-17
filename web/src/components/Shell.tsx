@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/context";
 import { oidc, PERSONAS, type Persona } from "../auth/config";
 import { isAdmin, personaOf } from "../auth/session";
+import { AskRunProvider } from "../routes/ask/AskRunProvider";
 import { ThemeToggle } from "./ThemeToggle";
 
 const link = ({ isActive }: { isActive: boolean }) =>
@@ -39,6 +40,7 @@ export function Shell() {
   const main = useRef<HTMLElement>(null);
   usePageChange(main);
   const admin = isAdmin(principal);
+  const identity = principal ? `${principal.sub}|${principal.role}` : "anonymous";
   return (
     <div className="min-h-screen bg-paper text-ink">
       <a
@@ -124,7 +126,11 @@ export function Shell() {
         tabIndex={-1}
         className="mx-auto max-w-6xl px-4 py-6 focus:outline-none"
       >
-        <Outlet />
+        {/* a new identity gets fresh screens and a fresh ask run (any open stream is aborted); the header
+            stays mounted so focus on the persona switcher survives the switch */}
+        <AskRunProvider key={identity}>
+          <Outlet key={identity} />
+        </AskRunProvider>
       </main>
     </div>
   );

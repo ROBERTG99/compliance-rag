@@ -123,6 +123,8 @@ services:
     image: compliance-rag/api:dev
     environment: *app-env
     ports: ["127.0.0.1:8610:8610"]
+    # GET /v1/evals/latest serves what `make eval` last wrote (the image carries the committed copy)
+    volumes: ["./evals/reports:/app/evals/reports:ro"]
     depends_on:
       seed: { condition: service_completed_successfully }
       redis: { condition: service_healthy }

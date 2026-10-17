@@ -30,14 +30,17 @@ for (const theme of ["light", "dark"] as const) {
     await page.getByRole("link", { name: "Evaluation" }).click();
     await expect(
       page
-        .getByRole("heading", { name: "Evaluation" })
+        .getByRole("table", { name: "Metrics" })
         .or(page.getByText("No evaluation report yet")),
     ).toBeVisible();
     await shot(page, `evaluation-${theme}`);
 
     await signIn(page, "support");
     await ask(page, LEGAL_ONLY, "2026-10-16");
-    await expect(page.getByRole("status", { name: "No answer" })).toBeVisible();
+    // the status region exists from the start of a run: wait for the abstention text itself
+    await expect(page.getByRole("status", { name: "No answer" })).toContainText(
+      "I can't answer that",
+    );
     await shot(page, `abstention-${theme}`);
 
     await signIn(page, "admin");

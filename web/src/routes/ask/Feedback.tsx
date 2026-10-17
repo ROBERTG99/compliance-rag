@@ -73,7 +73,7 @@ export function Feedback({ runId }: { runId: string }) {
               <select
                 value={reason}
                 onChange={(e) => setReason(e.target.value as FeedbackRequest["reason"])}
-                className="rounded border border-control bg-surface placeholder:text-muted px-1 py-0.5"
+                className="rounded border border-control bg-surface px-1 py-0.5"
               >
                 {REASONS.map((r) => (
                   <option key={r.value} value={r.value}>

@@ -4,7 +4,7 @@ import { useApi } from "../../api/hooks";
 import type { EvalsLatest } from "../../api/types";
 import { BarChart } from "../../components/BarChart";
 import { EmptyState, ErrorState, Skeleton } from "../../components/States";
-import { fmt, unitOf } from "./units";
+import { fmt, lowerIsBetter, unitOf } from "./units";
 
 type Row = Record<string, string | number>;
 
@@ -44,6 +44,9 @@ export function EvaluationPage() {
             <tr key={k} className="border-b border-rule">
               <th scope="row" className="py-1 pr-6 text-left font-medium">
                 {k}
+                {lowerIsBetter(k) ? (
+                  <span className="ml-1 font-normal text-muted">(lower is better)</span>
+                ) : null}
               </th>
               <td className="py-1 text-right tabular-nums">
                 {typeof v === "number" ? fmt(k, v) : String(v)}
@@ -59,7 +62,7 @@ export function EvaluationPage() {
             {metricKeys.map((k) => (
               <BarChart
                 key={k}
-                title={`${k} by configuration${unitOf(k) === "rate" ? "" : " (lower is better)"}`}
+                title={`${k} by configuration${lowerIsBetter(k) ? " (lower is better)" : ""}`}
                 bars={ablation.map((row) => ({ label: String(row.config), value: Number(row[k]) }))}
                 max={unitOf(k) === "rate" ? 1 : undefined}
                 format={(v) => fmt(k, v)}

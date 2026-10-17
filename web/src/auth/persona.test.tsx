@@ -111,3 +111,38 @@ test("switching persona drops everything fetched or answered under the previous 
   await waitFor(() => expect(screen.queryByText("CMP-0215")).toBeNull());
   expect(libraryCalls.length).toBeGreaterThanOrEqual(2); // refetched as the new identity, not served from cache
 });
+
+test("the persona switcher keeps focus after a switch", async () => {
+  mockFetch((url, init) =>
+    url.endsWith("/oidc/dev/token")
+      ? { status: 200, body: { access_token: fakeToken(JSON.parse(String(init?.body)).persona) } }
+      : { status: 404, body: {} },
+  );
+  renderApp("/");
+  const user = userEvent.setup();
+  await user.selectOptions(screen.getByLabelText(/persona/i), "legal");
+  await waitFor(() => expect(screen.getByText(/legal@northwind\.test/)).toBeInTheDocument());
+  expect(screen.getByLabelText(/persona/i)).toHaveFocus();
+});
+
+test("an expired token signs the user out", async () => {
+  sessionStorage.setItem("crag.token", fakeToken("legal", 1));
+  mockFetch(() => ({ status: 200, body: { items: [], next_cursor: null } }));
+  renderApp("/library");
+  expect(screen.getByText(/legal@northwind\.test/)).toBeInTheDocument();
+  expect(
+    await screen.findByRole("heading", { name: /sign in to continue/i }, { timeout: 3000 }),
+  ).toBeInTheDocument();
+  expect(sessionStorage.getItem("crag.token")).toBeNull();
+});
+
+test("a 401 from the API signs the user out", async () => {
+  sessionStorage.setItem("crag.token", fakeToken("legal"));
+  mockFetch(() => ({
+    status: 401,
+    body: { type: "about:blank", title: "Unauthorized", status: 401, detail: "token expired" },
+  }));
+  renderApp("/library");
+  expect(await screen.findByRole("heading", { name: /sign in to continue/i })).toBeInTheDocument();
+  expect(sessionStorage.getItem("crag.token")).toBeNull();
+});

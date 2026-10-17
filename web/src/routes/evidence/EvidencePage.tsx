@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useApi } from "../../api/hooks";
 import type { ChunkOut } from "../../api/types";
@@ -17,6 +18,14 @@ export function EvidencePage() {
     retry: false,
   });
 
+  const heading = chunk.data ? `${chunk.data.document_id} v${chunk.data.version}` : null;
+  useEffect(() => {
+    if (heading) document.title = `Evidence ${heading} · Northwind Compliance Assistant`;
+  }, [heading]);
+  // a deep link has no in-app history to go back to
+  const back = () =>
+    (window.history.state as { idx?: number } | null)?.idx ? navigate(-1) : navigate("/");
+
   if (chunk.isPending) return <Skeleton lines={6} label="Loading evidence" />;
   if (chunk.isError) return <ErrorState error={chunk.error} onRetry={() => void chunk.refetch()} />;
   const c = chunk.data;
@@ -27,7 +36,7 @@ export function EvidencePage() {
   return (
     <article>
       <p className="text-sm text-muted">
-        <button type="button" onClick={() => navigate(-1)} className="min-h-8 underline">
+        <button type="button" onClick={back} className="min-h-8 underline">
           Back
         </button>{" "}
         · Evidence (the cited passage of this version)
@@ -47,12 +56,14 @@ export function EvidencePage() {
         <div
           role="note"
           aria-label="Superseded version"
-          className="mt-3 rounded border border-restricted p-3 text-sm"
+          className="mt-3 rounded border border-control bg-highlight p-3 text-sm"
         >
           <p>
             This version is superseded: valid until {c.valid_to}.{" "}
             <Link to={`/library/${c.document_id}`} className="font-medium underline">
-              Current version v{c.current_version}
+              {c.current_version != null
+                ? `Current version v${c.current_version}`
+                : "No version is in force today: see the document timeline"}
             </Link>
           </p>
         </div>

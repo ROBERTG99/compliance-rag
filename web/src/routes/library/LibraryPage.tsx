@@ -42,7 +42,7 @@ export function LibraryPage() {
             value={q}
             maxLength={200}
             onChange={(e) => setQ(e.target.value)}
-            className="rounded border border-control bg-surface placeholder:text-muted px-1 py-0.5"
+            className="rounded border border-control bg-surface px-1 py-0.5"
           />
         </label>
         <label className="flex items-center gap-1">
@@ -50,7 +50,7 @@ export function LibraryPage() {
           <select
             value={domain}
             onChange={(e) => setDomain(e.target.value)}
-            className="rounded border border-control bg-surface placeholder:text-muted px-1 py-0.5"
+            className="rounded border border-control bg-surface px-1 py-0.5"
           >
             <option value="">all</option>
             {DOMAINS.map((d) => (
@@ -64,7 +64,7 @@ export function LibraryPage() {
             type="date"
             value={validAt}
             onChange={(e) => setValidAt(e.target.value)}
-            className="rounded border border-control bg-surface placeholder:text-muted px-1 py-0.5"
+            className="rounded border border-control bg-surface px-1 py-0.5"
           />
         </label>
       </div>
