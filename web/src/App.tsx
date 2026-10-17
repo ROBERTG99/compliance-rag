@@ -3,6 +3,7 @@ import { RequireAuth } from "./components/RequireAuth";
 import { Shell } from "./components/Shell";
 import { AskPage } from "./routes/ask/AskPage";
 import { Callback } from "./routes/Callback";
+import { EvidencePage } from "./routes/evidence/EvidencePage";
 import { NotFound } from "./routes/NotFound";
 import { Placeholder } from "./routes/Placeholder";
 
@@ -23,7 +24,7 @@ export default function App() {
           path="evidence/:chunkId"
           element={
             <RequireAuth>
-              <Placeholder title="Evidence" />
+              <EvidencePage />
             </RequireAuth>
           }
         />
