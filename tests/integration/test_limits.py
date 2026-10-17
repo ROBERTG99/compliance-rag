@@ -6,10 +6,10 @@ import uuid
 from collections.abc import Iterator
 
 import pytest
+from prometheus_client import REGISTRY
 from redis.asyncio import Redis
 
 from compliance_rag.api.limits import RateLimiter
-from compliance_rag.obs.metrics import RATELIMIT_BYPASS
 from tests.fixtures_services import ApiEnv
 
 pytestmark = pytest.mark.integration
@@ -48,14 +48,14 @@ async def test_rate_limiter_fails_open_when_redis_is_down(api_env: ApiEnv) -> No
     original = state.limiter
     dead = Redis.from_url("redis://127.0.0.1:1/0", socket_connect_timeout=0.2, socket_timeout=0.2)
     state.limiter = RateLimiter(dead, per_minute=1)
-    before = RATELIMIT_BYPASS._value.get()
+    before = REGISTRY.get_sample_value("crag_ratelimit_bypass_total")
     try:
         async with await api_env.client("analyst") as analyst:
             assert [(await analyst.post("/v1/ask", json=ASK)).status_code for _ in range(3)] == [200] * 3
     finally:
         state.limiter = original
         await dead.aclose()
-    assert RATELIMIT_BYPASS._value.get() >= before + 3
+    assert REGISTRY.get_sample_value("crag_ratelimit_bypass_total") >= before + 3
 
 
 async def test_question_and_upload_limits(api_env: ApiEnv) -> None:
@@ -86,3 +86,15 @@ async def test_question_and_upload_limits(api_env: ApiEnv) -> None:
     assert big.status_code == 413 and exe.status_code == 415
     for resp in (big, exe):
         assert resp.headers["content-type"].startswith("application/problem+json")
+
+
+async def test_queue_is_recreated_after_redis_comes_back(api_env: ApiEnv) -> None:
+    state = api_env.app.state.crag
+    original = state.arq
+    state.arq = None  # as if Redis was down when the API started
+    try:
+        assert await state.queue() is not None  # created lazily on the next upload
+    finally:
+        if state.arq is not original and state.arq is not None:
+            await state.arq.aclose()
+        state.arq = original

@@ -72,6 +72,18 @@ class AppState:
         await self.services.reload_embedder()
         self.build_graph()
 
+    async def queue(self) -> ArqRedis | None:
+        """The Arq pool, created on first use (or again after Redis comes back); None while unavailable."""
+        if self.arq is None:
+            try:
+                self.arq = await asyncio.wait_for(
+                    create_arq_pool(RedisSettings.from_dsn(self.settings.redis_url), retry=0), timeout=2.0
+                )
+            except Exception as exc:
+                log.warning("queue_unavailable", error=type(exc).__name__)
+                self.arq = None
+        return self.arq
+
     async def warm_up(self) -> dict[str, Any]:
         """Best effort: load the chunk heap and indexes into shared buffers, then run each role's legs once.
 
@@ -128,12 +140,8 @@ async def build_state(settings: Settings, *, validator: TokenValidator | None = 
     await pool.open(wait=True, timeout=30)
     checkpointer = AsyncPostgresSaver(pool)  # type: ignore[arg-type]
     await checkpointer.setup()
-    redis: Redis | None = Redis.from_url(settings.redis_url, socket_connect_timeout=1, socket_timeout=2)
-    try:
-        await redis.ping()  # type: ignore[union-attr]
-    except Exception:
-        await redis.aclose()  # type: ignore[union-attr]
-        redis = None
+    # always a client: each call fails open on its own (§4.7), so a Redis outage at start-up heals by itself
+    redis = Redis.from_url(settings.redis_url, socket_connect_timeout=1, socket_timeout=2)
     if validator is None:
         expected_issuer = settings.oidc_public_issuer or settings.oidc_issuer
         validator = TokenValidator(expected_issuer, settings.oidc_audience, JWKSCache(settings.oidc_issuer))
@@ -148,10 +156,6 @@ async def build_state(settings: Settings, *, validator: TokenValidator | None = 
         checkpointer=checkpointer,
         limiter=RateLimiter(redis, settings.rate_limit_per_min),
     )
-    if redis is not None:
-        try:
-            state.arq = await create_arq_pool(RedisSettings.from_dsn(settings.redis_url), retry=0)
-        except Exception:
-            state.arq = None
+    await state.queue()  # best effort now; retried lazily on the next upload
     state.build_graph()
     return state

@@ -41,9 +41,10 @@ async def put_acl(
         raise not_found("document") from exc
     except ValueError as exc:
         raise Problem(422, "Unprocessable Content", str(exc), "validation") from exc
-    if not change.indexes_synced and state.arq is not None:
+    queue = await state.queue() if not change.indexes_synced else None
+    if queue is not None:
         try:
-            await state.arq.enqueue_job("sync_acl", change.job_id, _job_id=f"acl:{change.job_id}")
+            await queue.enqueue_job("sync_acl", change.job_id, _job_id=f"acl:{change.job_id}")
         except Exception as exc:  # committed and audited; the reconcile cron retries unfinished syncs
             log.warning("acl_sync_enqueue_failed", job_id=change.job_id, error=type(exc).__name__)
     return JSONResponse(

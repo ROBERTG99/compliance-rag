@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, Path, Query, Request, Response, UploadFile
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from redis.exceptions import RedisError
 
 from compliance_rag.api.deps import current_principal, get_state, require_role
 from compliance_rag.api.errors import Problem, not_found
@@ -42,17 +43,23 @@ class FromS3Request(BaseModel):
     metadata: DocumentMetadata
 
 
+def _queue_unavailable() -> Problem:
+    return Problem(
+        503, "Service Unavailable", "the ingestion queue is unavailable", "queue_unavailable", retryable=True
+    )
+
+
 async def _enqueue(state: AppState, job: RegisteredJob, sha: str) -> None:
-    if state.arq is None:
-        raise Problem(
-            503,
-            "Service Unavailable",
-            "the ingestion queue is unavailable",
-            "queue_unavailable",
-            retryable=True,
-        )
+    queue = await state.queue()
+    if queue is None:
+        raise _queue_unavailable()
     key = idempotency_key("ingest", job.document_id, job.version, sha)
-    await state.arq.enqueue_job("ingest_document", job.job_id, _job_id=key)
+    try:
+        await queue.enqueue_job("ingest_document", job.job_id, _job_id=key)
+    except (RedisError, OSError) as exc:
+        # the job stays queued in Postgres; re-uploading the same bytes returns it and enqueues again
+        state.arq = None
+        raise _queue_unavailable() from exc
 
 
 async def _register(
@@ -60,14 +67,8 @@ async def _register(
 ) -> UploadAccepted:
     import hashlib
 
-    if state.arq is None:  # BUILD.md §4.7: Redis down → upload 503
-        raise Problem(
-            503,
-            "Service Unavailable",
-            "the ingestion queue is unavailable",
-            "queue_unavailable",
-            retryable=True,
-        )
+    if await state.queue() is None:  # BUILD.md §4.7: Redis down → upload 503
+        raise _queue_unavailable()
     try:
         doc_meta = meta.to_meta(source_format)
     except ValueError as exc:
