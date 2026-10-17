@@ -24,10 +24,21 @@ router = APIRouter(prefix="/v1", tags=["ask"])
 PING_INTERVAL_S = 15.0
 
 
+def _stripped(value: str) -> str:
+    value = value.strip()
+    if not value:
+        raise ValueError("question must not be blank")
+    return value
+
+
 class AskRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    # the 2,000-character limit applies to the text as sent (the contract); blanks are stripped afterwards
     question: Annotated[
-        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000), AfterValidator(no_nul)
+        str,
+        StringConstraints(min_length=1, max_length=2000),
+        AfterValidator(no_nul),
+        AfterValidator(_stripped),
     ]
     as_of: IsoDate | None = None
     follow_up_of: uuid.UUID | None = None

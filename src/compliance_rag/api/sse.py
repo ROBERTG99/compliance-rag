@@ -90,8 +90,10 @@ class RunEvents:
         self.ttl_s = ttl_s
         self.memory = MemoryEvents(ttl_s)
         self._memory_runs: set[str] = set()
-        self._owners: dict[str, str] = {}  # only until the run moves to memory or ends (bounded by sweep)
+        # per-run bookkeeping until the run ends or moves to memory; swept after ttl_s for runs that never end
+        self._owners: dict[str, str] = {}
         self._last_seq: dict[str, int] = {}
+        self._started: dict[str, float] = {}
 
     @staticmethod
     def _key(run_id: str) -> str:
@@ -113,11 +115,20 @@ class RunEvents:
             self._memory_runs.add(run_id)
             await self.memory.set_owner(run_id, sub)
             return
+        self._sweep()
         self._owners[run_id] = sub
+        self._started[run_id] = time.monotonic()
         try:
             await self.redis.set(f"{self._key(run_id)}:owner", sub, ex=self.ttl_s)
         except (RedisError, OSError) as exc:
             await self._to_memory(run_id, exc)
+
+    def _sweep(self) -> None:
+        cutoff = time.monotonic() - self.ttl_s
+        for run_id in [r for r, at in self._started.items() if at < cutoff]:
+            self._started.pop(run_id, None)
+            self._owners.pop(run_id, None)
+            self._last_seq.pop(run_id, None)
 
     async def owner(self, run_id: str) -> str | None:
         if not self._use_memory(run_id):
@@ -144,6 +155,7 @@ class RunEvents:
                 if event in TERMINAL:
                     self._owners.pop(run_id, None)
                     self._last_seq.pop(run_id, None)
+                    self._started.pop(run_id, None)
                 return seq
             except (RedisError, OSError) as exc:
                 await self._to_memory(run_id, exc)

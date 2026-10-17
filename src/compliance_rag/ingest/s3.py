@@ -104,7 +104,11 @@ async def poll_inbox(
             if await deps.objects.size(key) > MAX_UPLOAD_BYTES:  # HEAD: never download an oversized file
                 raise ValueError(f"file exceeds {MAX_UPLOAD_BYTES} bytes")
             job = await register_upload(
-                deps, meta.to_meta(format_for(key) or "md"), await deps.objects.get(key), requested_by
+                deps,
+                meta.to_meta(format_for(key) or "md"),
+                await deps.objects.get(key),
+                requested_by,
+                actor_role="system",  # inbox uploads are audited like API uploads
             )
         except (ValidationError, ValueError, json.JSONDecodeError, psycopg.errors.IntegrityError) as exc:
             # the file itself is wrong: park it with the reason so it never blocks the inbox again
