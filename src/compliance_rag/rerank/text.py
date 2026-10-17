@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 
 STOPWORDS = frozenset(
     [
@@ -107,13 +108,22 @@ CANONICAL = {
 }
 
 
+@lru_cache(maxsize=65536)
+def _term(part: str) -> str | None:
+    """The canonical stem of one word part, or None for stopwords and numbers (the vocabulary is small)."""
+    if not part or part in STOPWORDS or part.isdigit():
+        return None
+    stem = _stem(part)
+    return CANONICAL.get(stem, stem)
+
+
 def content_terms(text: str) -> set[str]:
     terms: set[str] = set()
     for word in _WORD.findall(text.lower()):
         for part in word.split("-"):
-            if part and part not in STOPWORDS and not part.isdigit():
-                stem = _stem(part)
-                terms.add(CANONICAL.get(stem, stem))
+            term = _term(part)
+            if term is not None:
+                terms.add(term)
     return terms
 
 

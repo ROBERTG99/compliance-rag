@@ -9,9 +9,12 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import threading
+from collections import OrderedDict
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import date
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -52,6 +55,17 @@ def _finite(value: float | None) -> float:
     return v if math.isfinite(v) else 0.0
 
 
+@lru_cache(maxsize=65536)
+def sentence_terms(text: str) -> tuple[frozenset[str], ...]:
+    """Content terms per sentence of a chunk; chunks recur across questions, so this is cached."""
+    return tuple(frozenset(content_terms(s.text)) for s in split_sentences(text))
+
+
+@lru_cache(maxsize=16384)
+def heading_terms(text: str) -> frozenset[str]:
+    return frozenset(content_terms(text))
+
+
 def extract_features(question: str, candidates: Sequence[Candidate], as_of: date) -> list[list[float]]:
     """Five features per candidate (all in [0, 1]).
 
@@ -69,11 +83,10 @@ def extract_features(question: str, candidates: Sequence[Candidate], as_of: date
     rows: list[list[float]] = []
     for c in candidates:
         heading_text = f"{c.get('title', '')} {c.get('section_path', '')}"
-        h_terms = content_terms(heading_text)
+        h_terms = heading_terms(heading_text)
         overlap = 0.0
         if q_predicate:
-            for sentence in split_sentences(c["text"]):
-                s_terms = content_terms(sentence.text)
+            for s_terms in sentence_terms(c["text"]):
                 overlap = max(overlap, len(q_predicate & s_terms) / len(q_predicate))
         # no named entity in the question → nothing in the heading can contradict it
         heading = len(q_entities & h_terms) / len(q_entities) if q_entities else 1.0
@@ -91,6 +104,9 @@ def _sigmoid(x: np.ndarray) -> np.ndarray:
     return 1.0 / (1.0 + np.exp(-x))
 
 
+VECTOR_CACHE_SIZE = 30000  # ~46 MB at 384 float32 dimensions, more than the whole corpus
+
+
 class FeatureReranker:
     name = "feature"
 
@@ -98,15 +114,35 @@ class FeatureReranker:
         self.weights = weights or FeatureWeights.load()
         self.embedder = embedder
         self._coef = np.asarray(self.weights.coef, dtype=np.float64)
+        # (embedder fingerprint, chunk_id) -> document vector; a refitted embedder never reuses old vectors
+        self._vectors: OrderedDict[tuple[str, str], np.ndarray] = OrderedDict()
+        self._lock = threading.Lock()  # rerank runs in worker threads (asyncio.to_thread)
+
+    def _doc_vectors(self, candidates: list[Candidate]) -> list[np.ndarray]:
+        assert self.embedder is not None
+        fp = str(self.embedder.fingerprint())
+        with self._lock:
+            known = {c["chunk_id"]: self._vectors.get((fp, c["chunk_id"])) for c in candidates}
+        todo = [c for c in candidates if known[c["chunk_id"]] is None]
+        if todo:  # embedded outside the lock; a concurrent duplicate computes the same vector
+            vecs = self.embedder.embed_documents([f"{c.get('section_path', '')}\n{c['text']}" for c in todo])
+            for c, v in zip(todo, vecs, strict=True):
+                known[c["chunk_id"]] = np.asarray(v, dtype=np.float32)
+        with self._lock:
+            for chunk_id, vector in known.items():
+                self._vectors[(fp, chunk_id)] = vector  # type: ignore[assignment]
+                self._vectors.move_to_end((fp, chunk_id))
+            while len(self._vectors) > VECTOR_CACHE_SIZE:
+                self._vectors.popitem(last=False)
+        return [known[c["chunk_id"]] for c in candidates]  # type: ignore[misc]
 
     def _fill_cosine(self, question: str, candidates: list[Candidate]) -> None:
         missing = [c for c in candidates if c.get("cosine") is None]
         if not missing or self.embedder is None:
             return
         q = self.embedder.embed_query(question)
-        vecs = self.embedder.embed_documents([f"{c.get('section_path', '')}\n{c['text']}" for c in missing])
-        for c, v in zip(missing, vecs @ q, strict=True):
-            c["cosine"] = float(v)
+        for c, v in zip(missing, self._doc_vectors(missing), strict=True):
+            c["cosine"] = float(v @ q)
 
     def scores(self, question: str, candidates: list[Candidate], as_of: date) -> list[float]:
         if not candidates:

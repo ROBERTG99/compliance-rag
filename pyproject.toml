@@ -120,6 +120,7 @@ markers = [
     "integration: needs Postgres/Redis/OpenSearch/MinIO (testcontainers or CRAG_TEST_* URLs)",
     "docker: needs a Docker daemon",
     "perf: performance budgets",
+    "stack: needs the running compose stack (make bench / make e2e start it)",
     "allow_network: test may open sockets to non-loopback hosts",
 ]
 timeout = 300
