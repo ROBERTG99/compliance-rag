@@ -64,6 +64,11 @@ def seed(
         services = await build_services(settings, with_qdrant=qdrant or settings.vector_store == "qdrant")
         try:
             await services.objects.ensure_bucket()
+            # a freshly restarted OpenSearch can pass its healthcheck before the REST port accepts connections
+            for _ in range(60):
+                if await services.bm25.ping():
+                    break
+                await asyncio.sleep(1)
             await services.bm25.init()
             if services.qdrant is not None:
                 await services.qdrant.ensure_collection()

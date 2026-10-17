@@ -15,11 +15,14 @@ from typing import Any, Protocol
 
 import numpy as np
 import numpy.typing as npt
+import structlog
 
 from compliance_rag.obs.metrics import ACL_POSTCHECK_VIOLATIONS, RETRIEVAL_SECONDS
 from compliance_rag.retrieval.filters import AccessFilter
 from compliance_rag.retrieval.fusion import rrf_fuse
 from compliance_rag.retrieval.types import Candidate, Principal
+
+log = structlog.get_logger(__name__)
 
 
 class RetrievalUnavailable(RuntimeError):
@@ -99,6 +102,13 @@ class HybridRetriever:
             return []
         return await self.vector.search(embedding, principal, as_of, self.leg_k)
 
+    async def warm(self, query: str, principal: Principal, as_of: date) -> None:
+        """Run each leg once without the leg timeout so caches fill (start-up warm-up only)."""
+        if self.bm25 is not None:
+            await self.bm25.search(query, principal, as_of, self.leg_k)
+        if self.vector is not None:
+            await self._vector_leg(query, principal, as_of)
+
     async def run_legs(self, query: str, principal: Principal, as_of: date) -> HybridResult:
         """Run both legs concurrently; a failed or slow leg is listed in ``degraded``."""
         AccessFilter.for_principal(principal, as_of)  # validates the principal before any I/O
@@ -115,6 +125,8 @@ class HybridRetriever:
         for name, res in zip(legs, results, strict=True):
             if isinstance(res, BaseException):
                 degraded.append(name)
+                # error type only: messages can echo query text
+                log.warning("retrieval_leg_failed", leg=name, error=type(res).__name__)
             else:
                 out[name], timings[name] = res
         if len(degraded) == len(legs):

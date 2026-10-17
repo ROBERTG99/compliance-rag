@@ -22,6 +22,8 @@ def create_app(settings: Settings | None = None, *, state: AppState | None = Non
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         owned = state is None
         app.state.crag = state or await build_state(settings)  # refuses to start on EmbedderMismatch
+        if owned:
+            await app.state.crag.warm_up()  # before readiness: cold caches would 503 the first asks
         try:
             yield
         finally:
