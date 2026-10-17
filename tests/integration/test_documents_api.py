@@ -167,3 +167,45 @@ async def test_inbox_poll_registers_sidecar_documents(api_env: ApiEnv) -> None:
     assert result.registered == 1 and len(enqueued) == 1
     assert not await state.services.objects.exists("inbox/aml-0107-v11.md")
     assert await state.services.objects.exists("processed/aml-0107-v11.md")
+
+
+async def test_one_bad_inbox_file_does_not_block_the_others(api_env: ApiEnv) -> None:
+    from compliance_rag.ingest.s3 import poll_inbox
+
+    state = api_env.app.state.crag
+    objects = state.services.objects
+    # sorted first: an oversized file (would violate the size CHECK) and a malformed PDF
+    await objects.put("inbox/aaa-huge.md", b"#" * (20 * 1024 * 1024 + 1))
+    await objects.put("inbox/aaa-huge.json", json.dumps({**META, "version": 12}).encode())
+    await objects.put("inbox/aab-bad.pdf", b"not a pdf")
+    await objects.put("inbox/aab-bad.json", json.dumps({**META, "version": 13}).encode())
+    await objects.put("inbox/aml-0107-v14.md", _aml0107_v4() + b"\nv14")
+    await objects.put("inbox/aml-0107-v14.json", json.dumps({**META, "version": 14}).encode())
+    enqueued: list[str] = []
+    result = await poll_inbox(state.services.ingest_deps(), enqueue=lambda job: enqueued.append(job.job_id))
+    assert (result.registered, result.failed) == (1, 2) and len(enqueued) == 1
+    assert await objects.exists("failed/aaa-huge.md.error.txt")
+    assert await objects.exists("failed/aab-bad.pdf.error.txt")
+    assert await objects.exists("processed/aml-0107-v14.md")
+
+
+async def test_inbox_keeps_files_when_the_queue_is_down(api_env: ApiEnv) -> None:
+    from compliance_rag.ingest.s3 import poll_inbox
+
+    objects = api_env.app.state.crag.services.objects
+    await objects.put("inbox/aml-0107-v15.md", _aml0107_v4() + b"\nv15")
+    await objects.put("inbox/aml-0107-v15.json", json.dumps({**META, "version": 15}).encode())
+
+    def down(_job: object) -> None:
+        raise ConnectionError("redis down")
+
+    result = await poll_inbox(api_env.app.state.crag.services.ingest_deps(), enqueue=down)
+    assert result.registered == 0 and result.failed == 0
+    assert await objects.exists(
+        "inbox/aml-0107-v15.md"
+    )  # retried on the next poll (registration is idempotent)
+    enqueued: list[str] = []
+    again = await poll_inbox(
+        api_env.app.state.crag.services.ingest_deps(), enqueue=lambda j: enqueued.append(j.job_id)
+    )
+    assert again.registered == 1 and len(enqueued) == 1

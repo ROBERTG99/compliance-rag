@@ -35,6 +35,9 @@ EXTENSIONS = {"pdf": "pdf", "docx": "docx", "html": "html", "md": "md"}
 VALID_GROUPS = {"all", "compliance", "legal", "support"}
 
 
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # mirrors the document_versions.size_bytes CHECK (NFR-6)
+
+
 class VersionConflict(ValueError):
     """(document_id, version) already exists with different content."""
 
@@ -108,6 +111,8 @@ async def register_upload(
         raise ValueError(f"unsupported format {meta.source_format}")
     if not set(meta.acl_groups) <= VALID_GROUPS or not meta.acl_groups:
         raise ValueError("acl_groups must be a non-empty subset of all, compliance, legal, support")
+    if not 0 < len(blob) <= MAX_UPLOAD_BYTES:
+        raise ValueError(f"file size must be between 1 byte and {MAX_UPLOAD_BYTES} bytes")
     sniff_format(blob, meta.source_format)
     sha = content_sha256(blob)
     key = idempotency_key("ingest", meta.document_id, meta.version, sha)

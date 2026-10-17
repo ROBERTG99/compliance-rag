@@ -12,11 +12,20 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+import psycopg
+import structlog
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from compliance_rag.ingest.pipeline import DocumentMeta, IngestDeps, RegisteredJob, register_upload
+from compliance_rag.ingest.pipeline import (
+    MAX_UPLOAD_BYTES,
+    DocumentMeta,
+    IngestDeps,
+    RegisteredJob,
+    register_upload,
+)
 from compliance_rag.validation import DOCUMENT_ID_PATTERN, Domain, Group, IsoDate, SafeText
 
+log = structlog.get_logger(__name__)
 INBOX = "inbox/"
 FORMAT_BY_EXT = {"pdf": "pdf", "docx": "docx", "html": "html", "htm": "html", "md": "md", "markdown": "md"}
 
@@ -92,18 +101,30 @@ async def poll_inbox(
             continue
         try:
             meta = DocumentMetadata.model_validate(json.loads(await deps.objects.get(sidecar)))
+            if await deps.objects.size(key) > MAX_UPLOAD_BYTES:  # HEAD: never download an oversized file
+                raise ValueError(f"file exceeds {MAX_UPLOAD_BYTES} bytes")
             job = await register_upload(
                 deps, meta.to_meta(format_for(key) or "md"), await deps.objects.get(key), requested_by
             )
+        except (ValidationError, ValueError, json.JSONDecodeError, psycopg.errors.IntegrityError) as exc:
+            # the file itself is wrong: park it with the reason so it never blocks the inbox again
+            await deps.objects.put(f"failed/{key.removeprefix(INBOX)}.error.txt", str(exc)[:2000].encode())
+            failed += 1
+            await _move(deps, key, "failed/")
+            await _move(deps, sidecar, "failed/")
+            continue
+        except Exception as exc:  # infrastructure (database, storage): leave it for the next poll
+            log.warning("inbox_item_deferred", key=key, error=type(exc).__name__)
+            continue
+        try:
             outcome = enqueue(job)
             if inspect.isawaitable(outcome):
                 await outcome
-            target = "processed/"
-            registered += 1
-        except (ValidationError, ValueError, json.JSONDecodeError) as exc:
-            await deps.objects.put(f"failed/{key.removeprefix(INBOX)}.error.txt", str(exc)[:2000].encode())
-            target = "failed/"
-            failed += 1
+        except Exception as exc:  # queue down: registration is idempotent, so the next poll re-enqueues it
+            log.warning("inbox_enqueue_deferred", key=key, error=type(exc).__name__)
+            continue
+        registered += 1
+        target = "processed/"
         await _move(deps, key, target)
         await _move(deps, sidecar, target)
     return PollResult(registered, failed, waiting)
