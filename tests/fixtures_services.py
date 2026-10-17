@@ -21,7 +21,7 @@ PG_IMAGE = "pgvector/pgvector:pg16"
 REDIS_IMAGE = "redis:7-alpine"
 OPENSEARCH_IMAGE = "opensearchproject/opensearch:2.19.1"
 MINIO_IMAGE = "compliance-rag/minio:RELEASE.2025-04-22T22-12-26Z"
-QDRANT_IMAGE = "qdrant/qdrant:latest"
+QDRANT_IMAGE = "qdrant/qdrant:v1.19.2"
 
 
 def _docker_container(image: str, port: int, env: dict[str, str] | None = None, command: str | None = None):  # type: ignore[no-untyped-def]

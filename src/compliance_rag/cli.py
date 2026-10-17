@@ -83,6 +83,38 @@ def seed(
     asyncio.run(_run())
 
 
+@app.command()
+def reindex(
+    reembed: bool = typer.Option(False, help="Recompute embeddings first (refits the LSA embedder)"),
+    bm25: bool = typer.Option(True, "--bm25/--no-bm25", help="Rewrite the OpenSearch index"),
+    qdrant: bool = typer.Option(
+        False, help="Also rewrite Qdrant (profile qdrant); on when CRAG_VECTOR_STORE=qdrant"
+    ),
+) -> None:
+    """Rebuild the search indexes (and optionally the embeddings) from Postgres."""
+    from compliance_rag.ingest.reindex import reindex as do_reindex
+    from compliance_rag.runtime import build_services
+
+    settings = get_settings()
+    use_qdrant = qdrant or settings.vector_store == "qdrant"
+
+    async def _run() -> None:
+        services = await build_services(settings, with_qdrant=use_qdrant)
+        try:
+            if bm25:
+                await services.bm25.init()
+            if services.qdrant is not None:
+                await services.qdrant.ensure_collection()
+            report = await do_reindex(
+                services.ingest_deps(), bm25=bm25, qdrant=use_qdrant, reembed=reembed, log=typer.echo
+            )
+            typer.echo(f"reindexed {report.chunks} chunks in {report.seconds:.1f}s")
+        finally:
+            await services.close()
+
+    asyncio.run(_run())
+
+
 @search_app.command("init")
 def search_init(opensearch_url: str = typer.Option(None, help="Override CRAG_OPENSEARCH_URL")) -> None:
     """Create the BM25 index and alias if missing (idempotent)."""

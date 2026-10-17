@@ -105,7 +105,7 @@ fit-reranker: ## Fit reranker weights on the dev split
 	$(PY) python scripts/fit_reranker.py
 
 reindex: ## Rebuild embeddings and both indexes
-	$(COMPOSE) run --rm seed crag reindex
+	$(COMPOSE) run --rm seed crag reindex --reembed
 
 eval: stack-ready ## Offline evals with thresholds; writes evals/REPORT.md
 	$(PY) python scripts/run_evals.py

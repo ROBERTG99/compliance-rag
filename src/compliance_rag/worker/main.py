@@ -55,6 +55,17 @@ async def ingest_document(ctx: dict[str, Any], job_id: str) -> dict[str, Any]:
     }
 
 
+async def reindex_all(ctx: dict[str, Any], reembed: bool = False) -> dict[str, Any]:
+    """Rewrite OpenSearch (and Qdrant when configured) from Postgres; ``reembed`` recomputes embeddings."""
+    from compliance_rag.ingest.reindex import reindex
+
+    services: Services = ctx["services"]
+    report = await reindex(services.ingest_deps(), reembed=reembed, log=lambda _m: None)
+    if reembed:
+        await services.reload_embedder()
+    return {"chunks": report.chunks, "qdrant": report.qdrant, "seconds": round(report.seconds, 1)}
+
+
 async def poll_s3_inbox(ctx: dict[str, Any]) -> dict[str, int]:
     """Cron (every 30 s): register ``inbox/`` documents that have a sidecar ``.json`` and enqueue them."""
     from compliance_rag.ingest.pipeline import content_sha256, idempotency_key
@@ -118,7 +129,7 @@ def redis_settings() -> RedisSettings:
 
 
 class WorkerSettings:
-    functions: ClassVar[list[Any]] = [ingest_document, sync_acl]
+    functions: ClassVar[list[Any]] = [ingest_document, sync_acl, reindex_all]
     cron_jobs: ClassVar[list[Any]] = [
         cron(poll_s3_inbox, second={0, 30}, run_at_startup=False, unique=True),
         cron(refresh_lag_metric, second={0, 15, 30, 45}, run_at_startup=True, unique=True),

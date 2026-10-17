@@ -55,20 +55,15 @@ only, and the numbers below are on the split named in each suite.
 
 All gates pass (thresholds and no regression beyond 1.0 pp against the baseline).
 
-## By question category (`rag`)
-
-| Category | Cases | recall@10 | key_fact_accuracy | abstention_accuracy |
-|---|---|---|---|---|
-| acl_probe | 12 | n/a | n/a | 1.000 |
-| multi_hop | 16 | 0.812 | 0.625 | 0.875 |
-| must_abstain | 20 | n/a | n/a | 0.900 |
-| numeric | 16 | 0.812 | 0.812 | 0.812 |
-| single_hop | 48 | 0.979 | 0.979 | 0.979 |
-| version_sensitive | 8 | 1.000 | 1.000 | 1.000 |
-
 ## Retrieval ablation
 
-Not run yet: `make eval-ablation` adds this table.
+| Configuration | recall@10 | mrr@10 | p95_ms | degraded_rate |
+|---|---|---|---|---|
+| bm25 | 0.812 | 0.825 | 15 ms | 0.000 |
+| vector-pgvector | 0.733 | 0.664 | 65 ms | 0.000 |
+| vector-qdrant | 0.744 | 0.676 | 28 ms | 0.000 |
+| hybrid | 0.818 | 0.751 | 73 ms | 0.008 |
+| hybrid+rerank | 0.920 | 0.943 | 101 ms | 0.000 |
 
 ## Red-team
 

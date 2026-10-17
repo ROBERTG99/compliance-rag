@@ -43,12 +43,13 @@ def provenance(settings: Settings, system: System | None) -> dict[str, Any]:
 
 
 class _Base:
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(self, settings: Settings | None = None, **system: Any) -> None:
         self.settings = settings or get_settings()
+        self.system_options = system  # build_system flags: bm25, vector, vector_store, rerank (ablation)
         self.system: System | None = None
 
     async def setup(self) -> None:
-        self.system = await build_system(self.settings)
+        self.system = await build_system(self.settings, **self.system_options)
         # timings are steady-state: warm the caches the way the API does before it reports ready
         await warm_up(self.system.services.pool, self.system.retriever, parallel=8)
 
@@ -57,7 +58,14 @@ class _Base:
             await self.system.close()
 
     def describe(self) -> dict[str, Any]:
-        return provenance(self.settings, self.system)
+        info = provenance(self.settings, self.system)
+        if self.system_options:
+            info["configuration"] = ", ".join(f"{k}={v}" for k, v in self.system_options.items())
+            if "vector_store" in self.system_options:
+                info["vector_store"] = self.system_options["vector_store"]
+            if self.system_options.get("rerank") is False:
+                info["reranker"] = "none (RRF order)"
+        return info
 
 
 class RagTarget(_Base):
