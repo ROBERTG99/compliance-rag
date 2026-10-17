@@ -17,6 +17,7 @@
 | M0 | "ship" (after fixes) | Guard rewritten per review (segment tokeniser, identity/force-push variants, dataset false positives). |
 | M1 | "ship" | Follow-ups applied (audit TRUNCATE trigger, float hashing, `make corpus` exports datasets, env.example both directions). Deferred items in `docs/KNOWN_LIMITATIONS.md`. |
 | M2 | "ship" (re-review after `e847e0f`, `6047fd5`, `8cb824a`) | All five reviewer blockers and ACL-audit items 1, 3, 5, 7 fixed and verified (35 M2 integration tests). |
+| M3 | "ship" (re-review after fixes `302e3d8`..`3f8d73e` and follow-ups) | Blockers fixed: SSE reads vs the Redis socket timeout (`302e3d8`), ACL change racing ingestion and 409 overwriting raw bytes (`561b7c1`). Should-fix 4–12, re-review follow-ups (activation-time ACL test, inbox audit, SSE bookkeeping sweep) and most nits fixed; full suite green after the question-length contract fix. Remaining nits in `docs/KNOWN_LIMITATIONS.md`. |
 
 ### M2 blockers (all fixed; kept for the record)
 
