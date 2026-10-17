@@ -42,7 +42,9 @@ export function useAskRun() {
         if ((exc as Error).name === "AbortError") return;
         setRequestError(exc);
         const message = exc instanceof ApiError ? exc.message : "the request failed";
-        dispatch({ type: "fail", error: { code: "request", message, retryable: true } });
+        // only offer Retry when it can help: never for a 400/404/422
+        const retryable = exc instanceof ApiError ? exc.retryable : true;
+        dispatch({ type: "fail", error: { code: "request", message, retryable } });
       }
     },
     [api, token],

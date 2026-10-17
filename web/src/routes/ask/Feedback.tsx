@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApi } from "../../api/hooks";
 import type { FeedbackRequest } from "../../api/types";
 import { ErrorState } from "../../components/States";
@@ -45,8 +45,7 @@ export function Feedback({ runId }: { runId: string }) {
     }
   };
 
-  if (state === "sent")
-    return <p className="text-sm text-ok">Thanks — your feedback was recorded.</p>;
+  if (state === "sent") return <Sent />;
   return (
     <fieldset className="rounded border border-rule p-3 text-sm">
       <legend className="px-1 font-medium">Was this answer helpful?</legend>
@@ -55,7 +54,7 @@ export function Feedback({ runId }: { runId: string }) {
           type="button"
           aria-pressed={rating === "up"}
           onClick={() => choose("up")}
-          className="rounded border border-rule px-2 py-1 aria-pressed:bg-accent aria-pressed:text-accent-ink"
+          className="rounded border border-control px-2 py-1 aria-pressed:bg-accent aria-pressed:text-accent-ink"
         >
           <span aria-hidden="true">👍</span> Helpful
         </button>
@@ -63,7 +62,7 @@ export function Feedback({ runId }: { runId: string }) {
           type="button"
           aria-pressed={rating === "down"}
           onClick={() => choose("down")}
-          className="rounded border border-rule px-2 py-1 aria-pressed:bg-accent aria-pressed:text-accent-ink"
+          className="rounded border border-control px-2 py-1 aria-pressed:bg-accent aria-pressed:text-accent-ink"
         >
           <span aria-hidden="true">👎</span> Not helpful
         </button>
@@ -74,7 +73,7 @@ export function Feedback({ runId }: { runId: string }) {
               <select
                 value={reason}
                 onChange={(e) => setReason(e.target.value as FeedbackRequest["reason"])}
-                className="rounded border border-rule bg-surface px-1 py-0.5"
+                className="rounded border border-control bg-surface placeholder:text-muted px-1 py-0.5"
               >
                 {REASONS.map((r) => (
                   <option key={r.value} value={r.value}>
@@ -84,13 +83,13 @@ export function Feedback({ runId }: { runId: string }) {
               </select>
             </label>
             <label className="flex min-w-48 flex-1 items-center gap-1">
-              <span className="sr-only">Comment</span>
+              <span>Comment (optional)</span>
               <input
                 value={comment}
                 maxLength={1000}
-                placeholder="Optional comment"
+                placeholder="What was wrong or missing?"
                 onChange={(e) => setComment(e.target.value)}
-                className="w-full rounded border border-rule bg-surface px-1 py-0.5"
+                className="w-full rounded border border-control bg-surface placeholder:text-muted px-1 py-0.5"
               />
             </label>
             <button
@@ -110,5 +109,15 @@ export function Feedback({ runId }: { runId: string }) {
         </div>
       ) : null}
     </fieldset>
+  );
+}
+
+function Sent() {
+  const ref = useRef<HTMLParagraphElement>(null);
+  useEffect(() => ref.current?.focus(), []); // the form (and its focused button) is gone: keep focus nearby
+  return (
+    <p ref={ref} role="status" tabIndex={-1} className="text-sm text-ok">
+      Thanks — your feedback was recorded.
+    </p>
   );
 }

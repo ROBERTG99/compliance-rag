@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useApi } from "../../api/hooks";
 import type { ChunkOut } from "../../api/types";
 import { ErrorState, Skeleton } from "../../components/States";
@@ -10,6 +10,7 @@ export function EvidencePage() {
   const [params] = useSearchParams();
   const quote = params.get("quote") ?? "";
   const api = useApi();
+  const navigate = useNavigate();
   const chunk = useQuery({
     queryKey: ["chunk", chunkId],
     queryFn: ({ signal }) => api<ChunkOut>(`/v1/chunks/${encodeURIComponent(chunkId)}`, { signal }),
@@ -24,8 +25,13 @@ export function EvidencePage() {
   const span = quote ? findQuote(text, quote) : null;
 
   return (
-    <article className="max-w-[72ch]">
-      <p className="text-sm text-muted">Evidence</p>
+    <article>
+      <p className="text-sm text-muted">
+        <button type="button" onClick={() => navigate(-1)} className="min-h-8 underline">
+          Back
+        </button>{" "}
+        · Evidence (the cited passage of this version)
+      </p>
       <h1 className="font-serif text-2xl font-semibold">{c.title}</h1>
       <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">
         <span className="rounded border border-accent px-1.5 font-medium text-accent">
@@ -51,7 +57,7 @@ export function EvidencePage() {
           </p>
         </div>
       ) : null}
-      <div className="mt-4 whitespace-pre-line font-serif text-lg leading-relaxed">
+      <div className="mt-4 max-w-[72ch] whitespace-pre-line font-serif text-lg leading-relaxed">
         {span ? (
           <>
             {text.slice(0, span[0])}

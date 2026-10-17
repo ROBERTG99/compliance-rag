@@ -57,3 +57,23 @@ test("an admin triages feedback into the dev set; test-split questions cannot be
   expect(within(second).getByRole("button", { name: /add to dev set/i })).toBeDisabled();
   expect(within(second).getByText(/held-out test split/i)).toBeInTheDocument();
 });
+
+test("retry re-sends a triage that failed, and success is announced", async () => {
+  let patches = 0;
+  mockFetch((_url, init) => {
+    if (init?.method === "PATCH") {
+      patches += 1;
+      return patches === 1
+        ? { status: 503, body: { type: "x", title: "Service Unavailable", status: 503 } }
+        : { status: 200, body: { ...ITEM, status: "triaged" } };
+    }
+    return { status: 200, body: { items: [ITEM], next_cursor: null } };
+  });
+  renderApp("/feedback");
+  const user = userEvent.setup();
+  const [card] = await screen.findAllByRole("article");
+  await user.click(within(card).getByRole("button", { name: /mark triaged/i }));
+  await user.click(await screen.findByRole("button", { name: /retry/i }));
+  await waitFor(() => expect(patches).toBe(2));
+  expect(await screen.findByText("Marked as triaged.")).toBeInTheDocument();
+});

@@ -137,7 +137,9 @@ services:
       context: .
       dockerfile: docker/web.Dockerfile
       network: host
-      args: *build-args
+      args:
+        <<: *build-args
+        VITE_DEV_PERSONAS: "1"  # local dev stack only: dev-oidc persona switcher
     image: compliance-rag/web:dev
     ports: ["127.0.0.1:8600:8080"]
     depends_on:

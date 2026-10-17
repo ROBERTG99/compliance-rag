@@ -1,6 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { mockFetch, renderApp, signInAs } from "../../test/render";
+import { fmt, unitOf } from "./units";
 
 const REPORT = {
   generated_at: "2026-10-17T10:00:00Z",
@@ -26,10 +27,21 @@ test("the latest report shows metrics, its provenance and an ablation chart with
   expect(screen.getByText(/test split/i)).toBeInTheDocument();
   const metrics = screen.getByRole("table", { name: /metrics/i });
   expect(within(metrics).getByText("recall@10")).toBeInTheDocument();
-  const chart = screen.getByRole("img", { name: /recall@10 by configuration/i });
-  expect(chart.querySelectorAll("rect[data-value]")).toHaveLength(2);
+  const chart = screen.getByRole("figure", { name: /recall@10 by configuration/i });
+  expect(chart.querySelectorAll("[data-value]")).toHaveLength(2);
+  expect(
+    screen.getByRole("figure", { name: /p95_ms by configuration \(lower is better\)/i }),
+  ).toBeInTheDocument();
   const table = screen.getByRole("table", { name: /ablation/i });
   expect(within(table).getByText("hybrid+rerank")).toBeInTheDocument();
+});
+
+test("units come from the metric name suffix", () => {
+  expect(fmt("citation_support", 0.9512)).toBe("0.951");
+  expect(fmt("faithfulness_score", 0.9)).toBe("0.900");
+  expect(fmt("p95_ms", 112.4)).toBe("112 ms");
+  expect(fmt("cost_usd", 0.0041)).toBe("$0.0041");
+  expect(unitOf("answer_semantic")).toBe("rate");
 });
 
 test("no report yet is an empty state, not an error", async () => {

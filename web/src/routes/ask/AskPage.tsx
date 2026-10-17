@@ -47,7 +47,7 @@ export function AskPage() {
               maxLength={2000}
               rows={3}
               required
-              className="mt-1 block w-full rounded border border-rule bg-surface p-2"
+              className="mt-1 block w-full rounded border border-control bg-surface placeholder:text-muted p-2"
             />
           </label>
           <div className="flex flex-wrap items-end gap-3">
@@ -58,7 +58,7 @@ export function AskPage() {
                 value={asOf}
                 max={isAdmin(principal) ? undefined : today()}
                 onChange={(e) => setAsOf(e.target.value)}
-                className="mt-1 block rounded border border-rule bg-surface p-1.5"
+                className="mt-1 block rounded border border-control bg-surface placeholder:text-muted p-1.5"
               />
             </label>
             <button
@@ -110,17 +110,22 @@ function RunView({
           onRetry={state.error?.retryable === false ? undefined : onRetry}
         />
       ) : null}
-      {final?.abstained ? (
-        <div
-          role="status"
-          aria-label="No answer"
-          className="rounded border border-rule bg-surface p-4"
-        >
-          {final.message}
-        </div>
-      ) : null}
+      {/* present from the start of the run so the abstention text is announced when it arrives */}
+      <div
+        role="status"
+        aria-label="No answer"
+        className={final?.abstained ? "rounded border border-rule bg-surface p-4" : "sr-only"}
+      >
+        {final?.abstained ? final.message : ""}
+      </div>
       {state.phase === "running" && state.claims.length === 0 ? (
         <Skeleton lines={3} label="Composing answer" />
+      ) : null}
+      {state.claims.length > 0 ? (
+        <p className="text-sm">
+          <span className="rounded bg-highlight px-1.5">AI-generated</span>{" "}
+          <span className="text-muted">Each claim is checked against the quoted policy text.</span>
+        </p>
       ) : null}
       <section aria-label="Answer" aria-live="polite" className="space-y-3">
         {state.claims.map((claim) => (
@@ -141,8 +146,8 @@ function ClaimView({ claim }: { claim: Claim }) {
         <Link
           key={c.n}
           to={`/evidence/${c.chunk_id}?quote=${encodeURIComponent(c.quote)}`}
-          aria-label={`Citation ${c.n}: ${c.document_id} v${c.version}`}
-          className="ml-0.5 inline-block rounded border border-accent px-1 font-sans text-sm text-accent no-underline"
+          aria-label={`[${c.n}] citation: ${c.document_id} v${c.version}`}
+          className="mx-1 inline-flex min-h-6 min-w-6 items-center justify-center rounded border border-accent px-1 font-sans text-sm text-accent no-underline"
         >
           [{c.n}]
         </Link>
@@ -155,7 +160,6 @@ function AnswerMeta({ final }: { final: AnswerResponse }) {
   return (
     <div className="space-y-2 border-t border-rule pt-3 text-sm">
       <p className="flex flex-wrap gap-x-4 gap-y-1">
-        <span className="rounded bg-highlight px-1.5">AI-generated</span>
         <span>As of {final.as_of}</span>
         {final.confidence !== null ? <span>Confidence {final.confidence.toFixed(2)}</span> : null}
         {final.degraded.length ? (

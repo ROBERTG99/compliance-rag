@@ -3,12 +3,10 @@ export interface Bar {
   value: number;
 }
 
-const ROW = 28;
-const LABEL_W = 120;
-const VALUE_W = 56;
-const WIDTH = 480;
-
-/** Single-series horizontal bars (one axis, starts at zero). Hover shows the exact value; a table view sits beside it. */
+/**
+ * Single-series horizontal bars on one axis starting at zero, in HTML so it reflows at 375 px and labels
+ * wrap. The bars are a visual summary: the exact values are in the table rendered next to every chart.
+ */
 export function BarChart({
   title,
   bars,
@@ -21,72 +19,28 @@ export function BarChart({
   format?: (value: number) => string;
 }) {
   const top = Math.max(max ?? 0, ...bars.map((b) => b.value)) || 1;
-  const plot = WIDTH - LABEL_W - VALUE_W;
-  const height = bars.length * ROW;
   return (
-    <figure className="min-w-0">
-      <figcaption className="mb-1 text-sm font-medium">{title}</figcaption>
-      <svg
-        role="img"
-        aria-label={title}
-        viewBox={`0 0 ${WIDTH} ${height}`}
-        className="w-full max-w-xl"
-      >
-        {bars.map((b, i) => {
-          const w = Math.max(0, (b.value / top) * plot);
-          const y = i * ROW + 6;
-          const h = ROW - 12;
-          const r = Math.min(4, w); // 4 px rounded data end; the baseline end stays square
-          return (
-            <g key={b.label}>
-              <text
-                x={LABEL_W - 8}
-                y={y + h / 2}
-                dominantBaseline="middle"
-                textAnchor="end"
-                fill="var(--crag-ink)"
-                fontSize="12"
-              >
-                {b.label}
-              </text>
-              <path
+    <figure aria-label={title} className="min-w-0">
+      <figcaption className="mb-2 text-sm font-semibold">{title}</figcaption>
+      <div className="space-y-1.5" aria-hidden="true">
+        {bars.map((b) => (
+          <div
+            key={b.label}
+            title={`${b.label}: ${format(b.value)}`}
+            className="grid grid-cols-[minmax(6rem,9rem)_1fr_auto] items-center gap-2 text-sm"
+          >
+            <span className="break-words leading-tight">{b.label}</span>
+            <span className="h-4 border-l border-rule">
+              <span
                 data-value={b.value}
-                d={`M${LABEL_W},${y} h${w - r} a${r},${r} 0 0 1 ${r},${r} v${h - 2 * r} a${r},${r} 0 0 1 ${-r},${r} h${-(w - r)} z`}
-                fill="var(--crag-accent)"
-              >
-                <title>{`${b.label}: ${format(b.value)}`}</title>
-              </path>
-              <rect
-                data-value={b.value}
-                x={LABEL_W}
-                y={y - 4}
-                width={plot}
-                height={h + 8}
-                fill="transparent"
-              >
-                <title>{`${b.label}: ${format(b.value)}`}</title>
-              </rect>
-              <text
-                x={LABEL_W + w + 6}
-                y={y + h / 2}
-                dominantBaseline="middle"
-                fill="var(--crag-ink-muted)"
-                fontSize="12"
-              >
-                {format(b.value)}
-              </text>
-            </g>
-          );
-        })}
-        <line
-          x1={LABEL_W}
-          x2={LABEL_W}
-          y1={0}
-          y2={height}
-          stroke="var(--crag-rule)"
-          strokeWidth={1}
-        />
-      </svg>
+                className="block h-full rounded-r bg-accent"
+                style={{ width: `${Math.max(0, Math.min(100, (b.value / top) * 100))}%` }}
+              />
+            </span>
+            <span className="tabular-nums text-muted">{format(b.value)}</span>
+          </div>
+        ))}
+      </div>
     </figure>
   );
 }

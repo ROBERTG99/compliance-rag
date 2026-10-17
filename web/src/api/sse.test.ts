@@ -70,3 +70,23 @@ test("streamRun does not retry a 404", async () => {
   });
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
+
+test("streamRun retries a 503 while the API restarts and resumes from the last event", async () => {
+  const seen: number[] = [];
+  const responses = [
+    streamOf(block(1, "run_started", {}), true),
+    new Response(JSON.stringify({ title: "Service Unavailable", status: 503 }), { status: 503 }),
+    streamOf(block(2, "final", {})),
+  ];
+  const headers: (string | null)[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url: string, init: RequestInit) => {
+      headers.push(new Headers(init.headers).get("Last-Event-ID"));
+      return responses.shift()!;
+    }),
+  );
+  await streamRun("/v1/runs/r/events", "t", (e: RunEvent) => seen.push(e.id), { retryDelayMs: 1 });
+  expect(seen).toEqual([1, 2]);
+  expect(headers).toEqual([null, "1", "1"]);
+});

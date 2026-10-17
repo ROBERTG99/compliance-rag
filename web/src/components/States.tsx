@@ -34,11 +34,11 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
       {api?.retryAfterS ? (
         <p className="mt-1 text-sm text-muted">Try again in {api.retryAfterS} s.</p>
       ) : null}
-      {onRetry ? (
+      {onRetry && (!api || api.retryable) ? (
         <button
           type="button"
           onClick={onRetry}
-          className="mt-3 rounded border border-rule px-3 py-1 text-sm"
+          className="mt-3 rounded border border-control px-3 py-1 text-sm"
         >
           Retry
         </button>

@@ -14,11 +14,21 @@ export function FeedbackPage() {
     queryFn: ({ signal }) =>
       api<Page>("/v1/feedback", { query: { status, rating, limit: 100 }, signal }),
   });
+  const [announcement, setAnnouncement] = useState("");
+  const [lastTriage, setLastTriage] = useState<{ id: string; body: TriageRequest } | null>(null);
   const triage = useMutation({
     mutationFn: ({ id, body }: { id: string; body: TriageRequest }) =>
       api(`/v1/feedback/${id}`, { method: "PATCH", json: body }),
-    onSuccess: () => void client.invalidateQueries({ queryKey: ["feedback"] }),
+    onSuccess: (_data, { body }) => {
+      setAnnouncement(
+        body.status === "added_to_dev_set" ? "Added to the dev set." : "Marked as triaged.",
+      );
+      void client.invalidateQueries({ queryKey: ["feedback"] });
+    },
   });
+
+  // Retry re-sends the request that failed (not just dismissing the error)
+  const retryTriage = () => (lastTriage ? triage.mutate(lastTriage) : triage.reset());
 
   return (
     <div className="space-y-4">
@@ -33,7 +43,7 @@ export function FeedbackPage() {
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="rounded border border-rule bg-surface px-1 py-0.5"
+            className="rounded border border-control bg-surface placeholder:text-muted px-1 py-0.5"
           >
             <option value="">all</option>
             <option value="new">new</option>
@@ -46,7 +56,7 @@ export function FeedbackPage() {
           <select
             value={rating}
             onChange={(e) => setRating(e.target.value)}
-            className="rounded border border-rule bg-surface px-1 py-0.5"
+            className="rounded border border-control bg-surface placeholder:text-muted px-1 py-0.5"
           >
             <option value="">all</option>
             <option value="up">helpful</option>
@@ -54,7 +64,10 @@ export function FeedbackPage() {
           </select>
         </label>
       </div>
-      {triage.isError ? <ErrorState error={triage.error} onRetry={() => triage.reset()} /> : null}
+      <p role="status" className="text-sm text-ok">
+        {announcement}
+      </p>
+      {triage.isError ? <ErrorState error={triage.error} onRetry={retryTriage} /> : null}
       {list.isPending ? (
         <Skeleton lines={6} label="Loading feedback" />
       ) : list.isError ? (
@@ -68,7 +81,10 @@ export function FeedbackPage() {
               key={item.id}
               item={item}
               busy={triage.isPending}
-              onTriage={(body) => triage.mutate({ id: item.id, body })}
+              onTriage={(body) => {
+                setLastTriage({ id: item.id, body });
+                triage.mutate({ id: item.id, body });
+              }}
             />
           ))}
         </div>
@@ -89,7 +105,7 @@ function FeedbackCard({
   return (
     <article
       aria-label={`Feedback on: ${item.question}`}
-      className="rounded border border-rule bg-surface p-3 text-sm"
+      className="rounded border border-control bg-surface placeholder:text-muted p-3 text-sm"
     >
       <p className="font-serif text-base">{item.question}</p>
       <p className="mt-1 text-muted">
@@ -105,7 +121,7 @@ function FeedbackCard({
           type="button"
           disabled={busy || item.status !== "new"}
           onClick={() => onTriage({ status: "triaged", split: "dev" })}
-          className="rounded border border-rule px-2 py-1 disabled:opacity-50"
+          className="rounded border border-control px-2 py-1 disabled:opacity-50"
         >
           Mark triaged
         </button>

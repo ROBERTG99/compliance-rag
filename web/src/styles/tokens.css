@@ -5,6 +5,7 @@
   --crag-ink: #111827;
   --crag-ink-muted: #4b5563;
   --crag-rule: #d6d3cb;
+  --crag-control: #6b7280; /* form-control and button borders: >= 3:1 (WCAG 1.4.11) */
   --crag-accent: #3730a3;
   --crag-accent-ink: #ffffff;
   --crag-highlight: #fef3c7;
@@ -21,6 +22,7 @@
     --crag-ink: #e7e5e0;
     --crag-ink-muted: #b4b0a8;
     --crag-rule: #33373f;
+    --crag-control: #8b8f98;
     --crag-accent: #a5b4fc;
     --crag-accent-ink: #14161b;
     --crag-highlight: #4a3b10;
@@ -37,6 +39,7 @@
   --crag-ink: #e7e5e0;
   --crag-ink-muted: #b4b0a8;
   --crag-rule: #33373f;
+  --crag-control: #8b8f98;
   --crag-accent: #a5b4fc;
   --crag-accent-ink: #14161b;
   --crag-highlight: #4a3b10;
@@ -52,6 +55,7 @@
   --color-ink: var(--crag-ink);
   --color-muted: var(--crag-ink-muted);
   --color-rule: var(--crag-rule);
+  --color-control: var(--crag-control);
   --color-accent: var(--crag-accent);
   --color-accent-ink: var(--crag-accent-ink);
   --color-highlight: var(--crag-highlight);

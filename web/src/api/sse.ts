@@ -9,6 +9,7 @@ export interface RunEvent {
 }
 
 export const TERMINAL = new Set(["final", "error"]);
+const RETRY_STATUS = new Set([502, 503, 504]); // the API restarting or a proxy blip: Redis still holds the replay
 
 /** Parse complete SSE blocks out of `buffer`; returns the events and the unconsumed tail. */
 export function parseSse(buffer: string): { events: RunEvent[]; rest: string } {
@@ -33,7 +34,7 @@ export function parseSse(buffer: string): { events: RunEvent[]; rest: string } {
     try {
       events.push({ id, event, data: JSON.parse(data.join("\n")) as Record<string, unknown> });
     } catch {
-      /* a malformed block is skipped; the next event id still advances resume */
+      /* a malformed block is skipped (resume continues from the last event that parsed) */
     }
   }
   return { events, rest };
@@ -58,7 +59,8 @@ export async function streamRun(
 ): Promise<number> {
   let lastId = opts.lastEventId ?? 0;
   const maxRetries = opts.maxRetries ?? 3;
-  for (let attempt = 0; ; attempt++) {
+  let attempt = 0;
+  for (;;) {
     const headers: Record<string, string> = { Accept: "text/event-stream" };
     if (token) headers.Authorization = `Bearer ${token}`;
     if (lastId > 0) headers["Last-Event-ID"] = String(lastId);
@@ -82,6 +84,7 @@ export async function streamRun(
         for (const event of parsed.events) {
           if (event.id <= lastId) continue; // replayed duplicates after a resume
           lastId = event.id;
+          attempt = 0; // progress: a long run may drop several times without failing
           onEvent(event);
           if (TERMINAL.has(event.event)) done = true;
         }
@@ -92,11 +95,12 @@ export async function streamRun(
       }
     } catch (exc) {
       if ((exc as Error).name === "AbortError") throw exc;
-      if (exc instanceof ApiError && exc.status !== 0) throw exc; // 404 etc. are final
+      if (exc instanceof ApiError && exc.status !== 0 && !RETRY_STATUS.has(exc.status)) throw exc; // 404 etc. are final
       if (attempt >= maxRetries) throw exc instanceof ApiError ? exc : new ApiError(0, null);
     }
     if (done) return lastId;
     if (attempt >= maxRetries) throw new ApiError(0, null);
-    await new Promise((r) => setTimeout(r, (opts.retryDelayMs ?? 500) * (attempt + 1)));
+    attempt += 1;
+    await new Promise((r) => setTimeout(r, (opts.retryDelayMs ?? 500) * attempt));
   }
 }

@@ -17,22 +17,24 @@ const KINDS = ["ingest", "acl_sync", "reindex"] as const;
 const REFRESH_MS = 15_000;
 
 const seconds = (s: number) => `${s.toFixed(1)} s`;
-const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : "—");
+const when = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleString(undefined, { timeZoneName: "short" }) : "—";
 
 export function JobsPage() {
   const api = useApi();
   const [status, setStatus] = useState("");
   const [kind, setKind] = useState("");
+  const [live, setLive] = useState(true); // WCAG 2.2.2: auto-refresh can be paused
   const lag = useQuery({
     queryKey: ["index-lag"],
     queryFn: ({ signal }) => api<IndexLag>("/v1/index/lag", { signal }),
-    refetchInterval: REFRESH_MS,
+    refetchInterval: live ? REFRESH_MS : false,
   });
   const jobs = useQuery({
     queryKey: ["jobs", status, kind],
     queryFn: ({ signal }) =>
       api<JobPage>("/v1/ingestion-jobs", { query: { status, kind, limit: 200 }, signal }),
-    refetchInterval: REFRESH_MS,
+    refetchInterval: live ? REFRESH_MS : false,
   });
 
   return (
@@ -41,7 +43,7 @@ export function JobsPage() {
       <section aria-label="Index lag">
         {lag.isPending ? (
           <Skeleton lines={1} label="Loading lag" />
-        ) : lag.isError ? (
+        ) : !lag.data ? (
           <ErrorState error={lag.error} onRetry={() => void lag.refetch()} />
         ) : (
           <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -52,13 +54,22 @@ export function JobsPage() {
           </dl>
         )}
       </section>
-      <div className="flex flex-wrap gap-3 text-sm">
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <label className="flex items-center gap-1">
+          <input type="checkbox" checked={live} onChange={(e) => setLive(e.target.checked)} />
+          <span>Refresh every 15 s</span>
+        </label>
+        {jobs.dataUpdatedAt ? (
+          <span className="text-muted">
+            Updated {new Date(jobs.dataUpdatedAt).toLocaleTimeString()}
+          </span>
+        ) : null}
         <label className="flex items-center gap-1">
           <span>Status</span>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="rounded border border-rule bg-surface px-1 py-0.5"
+            className="rounded border border-control bg-surface placeholder:text-muted px-1 py-0.5"
           >
             <option value="">all</option>
             {STATUSES.map((s) => (
@@ -71,7 +82,7 @@ export function JobsPage() {
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value)}
-            className="rounded border border-rule bg-surface px-1 py-0.5"
+            className="rounded border border-control bg-surface placeholder:text-muted px-1 py-0.5"
           >
             <option value="">all</option>
             {KINDS.map((k) => (
@@ -80,24 +91,46 @@ export function JobsPage() {
           </select>
         </label>
       </div>
+      {jobs.data && jobs.isError ? (
+        <ErrorState error={jobs.error} onRetry={() => void jobs.refetch()} />
+      ) : null}
       {jobs.isPending ? (
         <Skeleton lines={5} label="Loading jobs" />
-      ) : jobs.isError ? (
+      ) : !jobs.data ? (
         <ErrorState error={jobs.error} onRetry={() => void jobs.refetch()} />
       ) : jobs.data.items.length === 0 ? (
         <EmptyState title="No jobs match these filters" />
       ) : (
-        <div className="overflow-x-auto">
+        <div
+          tabIndex={0}
+          role="region"
+          aria-label="Ingestion jobs table, scrollable"
+          className="overflow-x-auto"
+        >
           <table aria-label="Ingestion jobs" className="w-full text-left text-sm">
             <thead className="border-b border-rule text-muted">
               <tr>
-                <th className="py-1 pr-3 font-medium">Document</th>
-                <th className="py-1 pr-3 font-medium">Kind</th>
-                <th className="py-1 pr-3 font-medium">Status</th>
-                <th className="py-1 pr-3 text-right font-medium">Attempts</th>
-                <th className="py-1 pr-3 font-medium">Enqueued</th>
-                <th className="py-1 pr-3 font-medium">Finished</th>
-                <th className="py-1 font-medium">Error</th>
+                <th scope="col" className="py-1 pr-3 font-medium">
+                  Document
+                </th>
+                <th scope="col" className="py-1 pr-3 font-medium">
+                  Kind
+                </th>
+                <th scope="col" className="py-1 pr-3 font-medium">
+                  Status
+                </th>
+                <th scope="col" className="py-1 pr-3 text-right font-medium">
+                  Attempts
+                </th>
+                <th scope="col" className="py-1 pr-3 font-medium">
+                  Enqueued
+                </th>
+                <th scope="col" className="py-1 pr-3 font-medium">
+                  Finished
+                </th>
+                <th scope="col" className="py-1 font-medium">
+                  Error
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -126,7 +159,7 @@ export function JobsPage() {
 
 function Tile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded border border-rule bg-surface p-3">
+    <div className="rounded border border-control bg-surface placeholder:text-muted p-3">
       <dt className="text-sm text-muted">{label}</dt>
       <dd className="mt-1 text-2xl font-semibold tabular-nums">{value}</dd>
     </div>

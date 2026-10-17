@@ -3,7 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { LEGAL_ONLY, POA, ask, signIn } from "./helpers";
 
 const IMAGES = path.resolve(__dirname, "../../docs/images");
-const shot = (page: Page, name: string) => page.screenshot({ path: path.join(IMAGES, `${name}.png`) });
+const shot = (page: Page, name: string) =>
+  page.screenshot({ path: path.join(IMAGES, `${name}.png`) });
 
 for (const theme of ["light", "dark"] as const) {
   test(`screens in ${theme} theme`, async ({ page }) => {
@@ -12,7 +13,10 @@ for (const theme of ["light", "dark"] as const) {
     await ask(page, POA, "2026-10-16");
     await expect(page.getByText("KYC-0042 v3")).toBeVisible();
     await shot(page, `ask-${theme}`);
-    await page.getByRole("link", { name: /citation 1/i }).first().click();
+    await page
+      .getByRole("link", { name: /\[1\] citation/i })
+      .first()
+      .click();
     await expect(page.locator("mark")).toBeVisible();
     await shot(page, `evidence-${theme}`);
 
@@ -24,7 +28,11 @@ for (const theme of ["light", "dark"] as const) {
     await expect(page.getByRole("list", { name: "Versions" })).toBeVisible();
     await shot(page, `document-${theme}`);
     await page.getByRole("link", { name: "Evaluation" }).click();
-    await expect(page.getByRole("heading", { name: "Evaluation" }).or(page.getByText("No evaluation report yet"))).toBeVisible();
+    await expect(
+      page
+        .getByRole("heading", { name: "Evaluation" })
+        .or(page.getByText("No evaluation report yet")),
+    ).toBeVisible();
     await shot(page, `evaluation-${theme}`);
 
     await signIn(page, "support");
@@ -34,10 +42,14 @@ for (const theme of ["light", "dark"] as const) {
 
     await signIn(page, "admin");
     await page.getByRole("link", { name: "Ingestion jobs" }).click();
-    await expect(page.getByRole("table", { name: "Ingestion jobs" })).toBeVisible();
+    await expect(
+      page.getByRole("table", { name: "Ingestion jobs" }),
+    ).toBeVisible();
     await shot(page, `jobs-${theme}`);
     await page.getByRole("link", { name: "Feedback review" }).click();
-    await expect(page.getByRole("heading", { name: "Feedback review" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Feedback review" }),
+    ).toBeVisible();
     await page.waitForLoadState("networkidle");
     await shot(page, `feedback-${theme}`);
   });
@@ -48,7 +60,10 @@ test("demo video of the main journey", async ({ page }) => {
   await ask(page, POA, "2026-10-16");
   await expect(page.getByText("KYC-0042 v3")).toBeVisible();
   await page.waitForTimeout(1500);
-  await page.getByRole("link", { name: /citation 1/i }).first().click();
+  await page
+    .getByRole("link", { name: /\[1\] citation/i })
+    .first()
+    .click();
   await expect(page.locator("mark")).toBeVisible();
   await page.waitForTimeout(1500);
   await page.goBack();

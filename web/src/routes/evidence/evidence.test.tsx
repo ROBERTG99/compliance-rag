@@ -49,18 +49,25 @@ test("the quote is highlighted and a superseded version links to the current one
   expect(current).toHaveAttribute("href", "/library/KYC-0042");
 });
 
-test("a chunk the user may not see shows the not-found problem with retry", async () => {
-  let calls = 0;
-  mockFetch(() => {
-    calls += 1;
-    return {
-      status: 404,
-      body: { type: "x", title: "Not Found", status: 404, detail: "chunk not found" },
-    };
-  });
+test("a chunk the user may not see is a plain not-found (retrying cannot help)", async () => {
+  mockFetch(() => ({
+    status: 404,
+    body: { type: "x", title: "Not Found", status: 404, detail: "chunk not found" },
+  }));
   renderApp(`/evidence/${"b".repeat(32)}`);
   const alert = await screen.findByRole("alert");
   expect(alert).toHaveTextContent(/chunk not found/i);
+  expect(screen.queryByRole("button", { name: /retry/i })).toBeNull();
+});
+
+test("a transient failure offers retry", async () => {
+  let calls = 0;
+  mockFetch(() => {
+    calls += 1;
+    return { status: 503, body: { type: "x", title: "Service Unavailable", status: 503 } };
+  });
+  renderApp(`/evidence/${"b".repeat(32)}`);
+  await screen.findByRole("alert");
   await userEvent.setup().click(screen.getByRole("button", { name: /retry/i }));
   expect(calls).toBeGreaterThanOrEqual(2);
 });

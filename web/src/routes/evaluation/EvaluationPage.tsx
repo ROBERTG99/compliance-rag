@@ -4,11 +4,9 @@ import { useApi } from "../../api/hooks";
 import type { EvalsLatest } from "../../api/types";
 import { BarChart } from "../../components/BarChart";
 import { EmptyState, ErrorState, Skeleton } from "../../components/States";
+import { fmt, unitOf } from "./units";
 
 type Row = Record<string, string | number>;
-
-const isRate = (key: string) => !/(_ms|_s|latency|cost)/i.test(key);
-const fmt = (key: string, v: number) => (isRate(key) ? v.toFixed(3) : `${Math.round(v)}`);
 
 export function EvaluationPage() {
   const api = useApi();
@@ -61,37 +59,46 @@ export function EvaluationPage() {
             {metricKeys.map((k) => (
               <BarChart
                 key={k}
-                title={`${k} by configuration${isRate(k) ? "" : " (lower is better)"}`}
+                title={`${k} by configuration${unitOf(k) === "rate" ? "" : " (lower is better)"}`}
                 bars={ablation.map((row) => ({ label: String(row.config), value: Number(row[k]) }))}
-                max={isRate(k) ? 1 : undefined}
+                max={unitOf(k) === "rate" ? 1 : undefined}
                 format={(v) => fmt(k, v)}
               />
             ))}
           </div>
-          <table aria-label="Ablation table" className="text-sm">
-            <thead className="border-b border-rule text-muted">
-              <tr>
-                <th className="py-1 pr-4 text-left font-medium">Configuration</th>
-                {metricKeys.map((k) => (
-                  <th key={k} className="py-1 pr-4 text-right font-medium">
-                    {k}
+          <div
+            tabIndex={0}
+            role="region"
+            aria-label="Ablation table, scrollable"
+            className="overflow-x-auto"
+          >
+            <table aria-label="Ablation table" className="text-sm">
+              <thead className="border-b border-rule text-muted">
+                <tr>
+                  <th scope="col" className="py-1 pr-4 text-left font-medium">
+                    Configuration
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {ablation.map((row) => (
-                <tr key={String(row.config)} className="border-b border-rule">
-                  <td className="py-1 pr-4">{String(row.config)}</td>
                   {metricKeys.map((k) => (
-                    <td key={k} className="py-1 pr-4 text-right tabular-nums">
-                      {fmt(k, Number(row[k]))}
-                    </td>
+                    <th key={k} scope="col" className="py-1 pr-4 text-right font-medium">
+                      {k}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {ablation.map((row) => (
+                  <tr key={String(row.config)} className="border-b border-rule">
+                    <td className="py-1 pr-4">{String(row.config)}</td>
+                    {metricKeys.map((k) => (
+                      <td key={k} className="py-1 pr-4 text-right tabular-nums">
+                        {fmt(k, Number(row[k]))}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       ) : null}
     </div>

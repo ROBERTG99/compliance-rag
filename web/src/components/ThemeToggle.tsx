@@ -29,7 +29,7 @@ export function ThemeToggle() {
     <label className="flex items-center gap-1">
       <span>Theme</span>
       <select
-        className="rounded border border-rule bg-surface px-1 py-0.5"
+        className="min-h-8 rounded border border-control bg-surface px-1 py-1"
         value={theme}
         onChange={(e) => setTheme(e.target.value as Theme)}
       >

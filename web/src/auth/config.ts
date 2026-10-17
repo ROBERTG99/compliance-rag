@@ -4,8 +4,9 @@ export const oidc = {
   proxy: "/oidc",
   clientId: "compliance-rag-web",
   redirectPath: "/callback",
-  /** Dev persona switcher (dev-oidc `/dev/token`); hide with VITE_DEV_PERSONAS=0. */
-  devPersonas: (import.meta.env.VITE_DEV_PERSONAS as string | undefined) !== "0",
+  /** Dev persona switcher (dev-oidc `/dev/token`): on in `vite dev` and tests; builds opt in with VITE_DEV_PERSONAS=1. */
+  devPersonas:
+    import.meta.env.DEV || (import.meta.env.VITE_DEV_PERSONAS as string | undefined) === "1",
 };
 
 export const PERSONAS = ["analyst", "legal", "support", "admin"] as const;

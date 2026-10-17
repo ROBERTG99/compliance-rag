@@ -27,3 +27,14 @@ make seed          # synthetic corpus (seed 2026)
 ```
 
 See `CONTRIBUTING.md` for the workflow and `docs/runbook.md` for operations.
+
+## Signing in locally
+
+The SPA (http://localhost:8600) signs in with authorization code + PKCE against the dev OIDC issuer
+(http://localhost:8612), which lists four synthetic personas: analyst, legal, support and content
+admin. The "Persona (dev)" select in the header switches identity without the redirect by calling
+dev-oidc's `/dev/token` through the same-origin `/oidc/` proxy.
+
+The switcher is compiled in only for `vite dev`, the unit tests and builds with
+`VITE_DEV_PERSONAS=1`. The compose `web` service passes `VITE_DEV_PERSONAS=1` because the whole
+stack is local; the Dockerfile default is `0`, so any other build has no switcher.

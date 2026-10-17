@@ -100,7 +100,7 @@ test("verified claims render before final, with keyboard-reachable citation chip
   expect(screen.getByText(/retrieve/i)).toBeInTheDocument();
   expect(screen.queryByText(/KYC-0042 v3/)).toBeNull(); // no final yet
 
-  const chip = within(claims).getByRole("link", { name: /citation 1: KYC-0042 v3/i });
+  const chip = within(claims).getByRole("link", { name: /\[1\] citation: KYC-0042 v3/i });
   expect(chip).toHaveAttribute("href", expect.stringContaining(`/evidence/${"c".repeat(32)}`));
   chip.focus();
   expect(chip).toHaveFocus();
@@ -238,8 +238,8 @@ test("the answer survives opening the evidence and coming back", async () => {
   stream.push(sse(1, "final", FINAL));
   stream.close();
   await screen.findByText(/KYC-0042 v3/);
-  await user.click(screen.getByRole("link", { name: /citation 1/i }));
-  await screen.findByText("Evidence");
+  await user.click(screen.getByRole("link", { name: /\[1\] citation/i }));
+  await screen.findByRole("button", { name: "Back" });
   await user.click(screen.getByRole("link", { name: "Ask" }));
   expect(
     await screen.findByText(/older than 90 days at the date of onboarding/),

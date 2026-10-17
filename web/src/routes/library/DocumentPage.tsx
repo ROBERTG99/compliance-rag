@@ -3,13 +3,13 @@ import { Link, useParams } from "react-router-dom";
 import { useApi } from "../../api/hooks";
 import type { DocumentDetail, VersionEntry } from "../../api/types";
 import { ErrorState, Skeleton } from "../../components/States";
+import { today } from "../../lib/dates";
 
-function versionState(v: VersionEntry): { label: string; tone: string } {
+function versionState(v: VersionEntry, day: string): { label: string; tone: string } {
   if (v.status !== "active") return { label: v.status, tone: "text-muted" };
   if (v.in_force) return { label: "In force", tone: "text-ok" };
-  return v.valid_to
-    ? { label: "Superseded", tone: "text-restricted" }
-    : { label: "Announced", tone: "text-muted" };
+  if (v.valid_from > day) return { label: "Announced", tone: "text-muted" }; // not yet in force
+  return { label: "Superseded", tone: "text-restricted" };
 }
 
 export function DocumentPage() {
@@ -39,7 +39,7 @@ export function DocumentPage() {
       </p>
       <ol aria-label="Versions" className="border-l-2 border-rule pl-4">
         {d.versions.map((v) => {
-          const state = versionState(v);
+          const state = versionState(v, today());
           return (
             <li key={v.version} className="relative py-2">
               <span

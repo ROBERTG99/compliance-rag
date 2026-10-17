@@ -7,6 +7,9 @@ WORKDIR /web
 COPY web/package.json web/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY web/ ./
+# the dev persona switcher is compiled in only when asked for (compose sets 1 for the local stack)
+ARG VITE_DEV_PERSONAS=0
+ENV VITE_DEV_PERSONAS=$VITE_DEV_PERSONAS
 RUN pnpm exec vite build
 
 FROM nginx:1.27-alpine
