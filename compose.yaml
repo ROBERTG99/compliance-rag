@@ -158,6 +158,54 @@ services:
     depends_on:
       api: { condition: service_healthy }
 
+  # --- profile observability (BUILD.md §14): collector 8680/8681, Grafana 8690, Prometheus 8691, Jaeger 8692
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.132.0
+    profiles: ["observability"]
+    command: ["--config=/etc/otelcol/collector.yaml"]
+    volumes: ["./deploy/otel/collector.yaml:/etc/otelcol/collector.yaml:ro"]
+    ports: ["127.0.0.1:8680:4317", "127.0.0.1:8681:4318"]
+    depends_on: [jaeger]  # distroless images (collector, Jaeger) have no shell for a healthcheck
+
+  jaeger:
+    image: jaegertracing/jaeger:2.9.0
+    profiles: ["observability"]
+    ports: ["127.0.0.1:8692:16686"]
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: ["observability"]
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports: ["127.0.0.1:8691:9090"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9090/-/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: ["observability"]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["127.0.0.1:8690:3000"]
+    depends_on:
+      prometheus: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
 volumes:
   pgdata:
   osdata:

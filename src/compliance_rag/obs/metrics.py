@@ -6,7 +6,7 @@ from prometheus_client import Counter, Gauge, Histogram
 
 RETRIEVAL_SECONDS = Histogram(
     "crag_retrieval_seconds",
-    "Retrieval latency per leg",
+    "Retrieval latency per leg (bm25, vector) and in total (legs + fusion + rerank, label total)",
     ["leg"],
     buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.5, 1.0, 2.5),
 )

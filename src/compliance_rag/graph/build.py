@@ -32,7 +32,13 @@ from compliance_rag.guard.context_guard import guard_text
 from compliance_rag.guard.output_guard import check_output
 from compliance_rag.llm.gateway import Gateway, LLMError, LLMMaxTokens, LLMRefusal, LLMRequest, LLMResult
 from compliance_rag.llm.prompts import load_prompt
-from compliance_rag.obs.metrics import ABSTENTIONS, CLAIMS_REJECTED, CLAIMS_VERIFIED, TTFT_SECONDS
+from compliance_rag.obs.metrics import (
+    ABSTENTIONS,
+    CLAIMS_REJECTED,
+    CLAIMS_VERIFIED,
+    RETRIEVAL_SECONDS,
+    TTFT_SECONDS,
+)
 from compliance_rag.obs.steps import StepRecord, make_step, number_steps
 from compliance_rag.obs.tracing import tracer
 from compliance_rag.retrieval.hybrid import HybridResult
@@ -283,11 +289,19 @@ def build_graph(deps: GraphDeps, checkpointer: Any | None = None) -> Any:
 
     @_node("rerank")
     async def rerank(state: GraphState) -> dict[str, Any]:
+        started = time.perf_counter()
         top = state["fused"][: settings.leg_k]
         # Cohere on Bedrock and provider embeddings (cosine fill) block: run them in a worker thread
         reranked = await asyncio.to_thread(
             deps.reranker.rerank, state["standalone_question"], list(top), date.fromisoformat(state["as_of"])
         )
+        # the NFR-1 / CragRetrievalSlow measure: legs + fusion + rerank of this run
+        earlier = sum(
+            s["latency_ms"]
+            for s in state.get("steps", [])
+            if s["run_id"] == state["run_id"] and s["node"] in {"retrieve", "fuse"}
+        )
+        RETRIEVAL_SECONDS.labels(leg="total").observe(earlier / 1000 + (time.perf_counter() - started))
         return {"reranked": reranked}
 
     @_node("guard_context")
