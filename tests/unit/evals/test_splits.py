@@ -32,3 +32,9 @@ def test_normalised_test_question_is_detected(tmp_path: Path) -> None:
 def test_missing_registry_fails_closed(tmp_path: Path) -> None:
     with pytest.raises(SplitRegistryUnavailable):
         in_test_split("anything", tmp_path / "nowhere")
+
+
+def test_punctuation_does_not_hide_a_test_question(tmp_path: Path) -> None:
+    root = _write(tmp_path, [{"split": "test", "input": {"question": "What is the EDD threshold?"}}])
+    assert in_test_split("What is the EDD threshold", root)
+    assert in_test_split("what is the EDD-threshold?!", root)

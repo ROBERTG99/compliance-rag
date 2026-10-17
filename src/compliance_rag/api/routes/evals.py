@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any
 
@@ -23,7 +24,7 @@ async def latest_report(
 ) -> dict[str, Any]:
     path = state.settings.root.joinpath(*LATEST)
     try:
-        data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+        data: dict[str, Any] = json.loads(await asyncio.to_thread(path.read_text, encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError) as exc:
         raise not_found("evaluation report") from exc
     return data

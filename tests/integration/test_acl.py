@@ -31,6 +31,12 @@ async def test_abstention_does_not_reveal_restricted_documents(api_env: ApiEnv) 
     assert strip(restricted) == strip(unknown)
     assert "CMP-0215" not in str(restricted) and "litigation" not in restricted["message"].lower()
     assert restricted["cost_usd"] is None
+    # FR-11: the restricted evidence itself is a 404 (not 403) for support
+    chunk_id = legal["claims"][0]["citations"][0]["chunk_id"]
+    async with await api_env.client("support") as support:
+        assert (await support.get(f"/v1/chunks/{chunk_id}")).status_code == 404
+    async with await api_env.client("legal") as legal_client:
+        assert (await legal_client.get(f"/v1/chunks/{chunk_id}")).status_code == 200
 
 
 async def test_follow_up_requires_the_same_owner(api_env: ApiEnv) -> None:

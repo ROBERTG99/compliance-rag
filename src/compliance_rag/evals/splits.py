@@ -10,6 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 
 _SPACE = re.compile(r"\s+")
+_PUNCT = re.compile(r"[^\w\s]")
 
 
 class SplitRegistryUnavailable(RuntimeError):
@@ -17,8 +18,9 @@ class SplitRegistryUnavailable(RuntimeError):
 
 
 def question_key(question: str) -> str:
-    """Normalised hash so whitespace, case and Unicode form do not hide a test question."""
-    text = _SPACE.sub(" ", unicodedata.normalize("NFKC", question)).strip().casefold()
+    """Normalised hash so whitespace, case, punctuation and Unicode form do not hide a test question."""
+    text = _PUNCT.sub(" ", unicodedata.normalize("NFKC", question).casefold())
+    text = _SPACE.sub(" ", text).strip()
     return hashlib.sha256(text.encode()).hexdigest()
 
 

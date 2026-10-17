@@ -209,3 +209,20 @@ async def test_inbox_keeps_files_when_the_queue_is_down(api_env: ApiEnv) -> None
         api_env.app.state.crag.services.ingest_deps(), enqueue=lambda j: enqueued.append(j.job_id)
     )
     assert again.registered == 1 and len(enqueued) == 1
+
+
+async def test_library_search_escapes_wildcards_and_hides_unfinished_versions(api_env: ApiEnv) -> None:
+    blob = _aml0107_v4() + b"\npending-only"
+    async with await api_env.client("admin") as admin:
+        pending = await admin.post(
+            "/v1/documents", data={**META, "version": "16"}, files={"file": ("v16.md", blob, "text/markdown")}
+        )
+        assert pending.status_code == 202
+        admin_view = (await admin.get("/v1/documents/AML-0107")).json()
+    async with await api_env.client("analyst") as analyst:
+        wildcard = (await analyst.get("/v1/documents", params={"q": "%"})).json()
+        underscore = (await analyst.get("/v1/documents", params={"q": "_"})).json()
+        analyst_view = (await analyst.get("/v1/documents/AML-0107")).json()
+    assert wildcard["items"] == [] and underscore["items"] == []  # literal characters, not wildcards
+    assert 16 in {v["version"] for v in admin_view["versions"]}
+    assert {v["status"] for v in analyst_view["versions"]} == {"active"}

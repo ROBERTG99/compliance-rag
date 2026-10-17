@@ -203,8 +203,9 @@ async def list_documents(
         where.append("d.domain = %(domain)s")
         params["domain"] = domain
     if q:
-        where.append("(d.title ILIKE %(q)s OR d.document_id ILIKE %(q)s)")
-        params["q"] = f"%{q}%"
+        where.append("(d.title ILIKE %(q)s ESCAPE '\\' OR d.document_id ILIKE %(q)s ESCAPE '\\')")
+        escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        params["q"] = f"%{escaped}%"
     if valid_at:
         where.append(
             "EXISTS (SELECT 1 FROM document_versions v WHERE v.document_id = d.document_id AND v.status = "
@@ -269,8 +270,10 @@ async def get_document(
             await conn.execute(
                 """SELECT v.version, v.status, v.source_format, v.valid_from, v.valid_to, v.uploaded_at, v.activated_at,
                       v.size_bytes, (SELECT count(*) FROM chunks c WHERE c.version_id = v.id)
-               FROM document_versions v WHERE v.document_id = %s ORDER BY v.version""",
-                (document_id,),
+               FROM document_versions v WHERE v.document_id = %s AND (v.status = 'active' OR %s)
+               ORDER BY v.version""",
+                # pending/failed versions (upload metadata) are an admin concern
+                (document_id, principal["role"] == "content_admin"),
             )
         ).fetchall()
     today = date.today()
