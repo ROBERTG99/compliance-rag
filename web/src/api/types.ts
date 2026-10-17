@@ -1,0 +1,24 @@
+import type { components } from "./schema";
+
+type S = components["schemas"];
+export type AnswerResponse = S["AnswerResponse"];
+export type AskAccepted = S["AskAccepted"];
+export type AskRequest = S["AskRequest"];
+export type Claim = S["ClaimOut"];
+export type Citation = S["CitationOut"];
+export type CitedVersion = S["VersionOut"];
+export type ChunkOut = S["ChunkOut"];
+export type DocumentPage = S["DocumentPage"];
+export type DocumentSummary = S["DocumentSummary"];
+export type DocumentDetail = S["DocumentDetail"];
+export type VersionEntry = S["VersionEntry"];
+export type JobPage = S["JobPage"];
+export type JobOut = S["JobOut"];
+export type IndexLag = S["IndexLag"];
+export type FeedbackRequest = S["FeedbackRequest"];
+export type FeedbackItem = S["FeedbackItem"];
+export type FeedbackPage = S["FeedbackPage"];
+export type TriageItem = S["TriageItem"];
+export type TriageRequest = S["TriageRequest"];
+export type EvalsLatest = S["EvalsLatest"];
+export type Problem = S["Problem"];

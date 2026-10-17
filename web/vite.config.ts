@@ -4,12 +4,18 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 const apiTarget = process.env.CRAG_API_URL ?? "http://localhost:8610";
+const oidcTarget = process.env.CRAG_OIDC_URL ?? "http://localhost:8612";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 8600,
-    proxy: { "/v1": apiTarget, "/healthz": apiTarget, "/readyz": apiTarget },
+    proxy: {
+      "/v1": apiTarget,
+      "/healthz": apiTarget,
+      "/readyz": apiTarget,
+      "/oidc": { target: oidcTarget, rewrite: (path) => path.replace(/^\/oidc/, "") },
+    },
   },
   test: {
     globals: true,
