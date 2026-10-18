@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import time
+import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import date
@@ -100,6 +101,16 @@ def idempotency_key(kind: str, document_id: str, version: int | str, sha: str) -
     return hashlib.sha256(f"{kind}|{document_id}|{version}|{sha}".encode()).hexdigest()
 
 
+# fixed namespace: ids derived from it must never change (chunk ids hash the version id)
+VERSION_NAMESPACE = uuid.UUID("6f1c0a52-4b8e-5d4a-9a51-6e6f72746877")
+
+
+def version_id_for(document_id: str, version: int, sha: str) -> str:
+    """Version ids come from the document, version and content, so chunk ids (and with them every score
+    tie-break in retrieval) are the same on every seed and every machine; random ids reordered ties."""
+    return str(uuid.uuid5(VERSION_NAMESPACE, f"{document_id}|{version}|{sha}"))
+
+
 def chunk_id_for(version_id: str, ordinal: int) -> str:
     return hashlib.sha256(f"{version_id}|{ordinal}".encode()).hexdigest()[:32]
 
@@ -183,10 +194,11 @@ async def register_upload(
         else:
             await deps.objects.put(s3_key, blob)
             cur = await conn.execute(
-                """INSERT INTO document_versions (document_id, version, content_sha256, source_format, s3_key,
+                """INSERT INTO document_versions (id, document_id, version, content_sha256, source_format, s3_key,
                        size_bytes, valid_from, valid_to, status)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'pending') RETURNING id""",
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'pending') RETURNING id""",
                 (
+                    version_id_for(meta.document_id, meta.version, sha),
                     meta.document_id,
                     meta.version,
                     sha,

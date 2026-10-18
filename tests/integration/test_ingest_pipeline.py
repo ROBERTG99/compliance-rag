@@ -10,8 +10,10 @@ from compliance_rag.ingest.pipeline import (
     DocumentMeta,
     IngestDeps,
     VersionConflict,
+    content_sha256,
     ingest_document,
     register_upload,
+    version_id_for,
 )
 from compliance_rag.retrieval.types import Principal
 from data.generator.corpus import SEED, build_corpus
@@ -68,6 +70,14 @@ async def test_new_version_supersedes_previous(ingest_deps: IngestDeps) -> None:
     assert rows == [(2, "active", date(2026, 3, 1)), (3, "active", None)]
     assert await _versions_of_hits(ingest_deps, date(2026, 2, 15)) == ({2}, {2})
     assert await _versions_of_hits(ingest_deps, date(2026, 10, 16)) == ({3}, {3})
+
+
+async def test_registered_version_id_is_derived_from_its_content(ingest_deps: IngestDeps) -> None:
+    policy = _kyc0042()
+    v1 = policy.versions[0]
+    blob = render_version(policy, v1)
+    job = await register_upload(ingest_deps, _meta(policy, v1, date(2024, 1, 1)), blob, "admin")
+    assert job.version_id == version_id_for("KYC-0042", v1.version, content_sha256(blob))
 
 
 async def test_upload_idempotent_and_conflict(ingest_deps: IngestDeps) -> None:
