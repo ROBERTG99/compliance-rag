@@ -3,12 +3,12 @@
     "budget_ms": 300,
     "concurrency": 4,
     "llm": "FakeLLM (offline)",
-    "max_ms": 132.0,
-    "measured_at": "2026-10-17T22:13:31+00:00",
+    "max_ms": 190.9,
+    "measured_at": "2026-10-18T15:26:36+00:00",
     "method": "unmeasured warm-up pass over other dev questions, then the measured pass",
     "n": 60,
-    "p50_ms": 73.0,
-    "p95_ms": 126.0,
+    "p50_ms": 81.9,
+    "p95_ms": 138.8,
     "passed": true,
     "runs": [
       {
@@ -31,22 +31,50 @@
         "p50_ms": 73.0,
         "p95_ms": 126.0,
         "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T15:10:25+00:00",
+        "n": 60,
+        "p50_ms": 90.9,
+        "p95_ms": 224.1,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T15:11:25+00:00",
+        "n": 60,
+        "p50_ms": 81.7,
+        "p95_ms": 144.2,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T15:25:36+00:00",
+        "n": 60,
+        "p50_ms": 100.5,
+        "p95_ms": 165.0,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T15:26:36+00:00",
+        "n": 60,
+        "p50_ms": 81.9,
+        "p95_ms": 138.8,
+        "passed": true
       }
     ],
     "split": "dev",
-    "worst_p95_ms": 130.9
+    "worst_p95_ms": 224.1
   },
   "nfr2_ttft": {
     "budget_ms": 300,
     "concurrency": 4,
     "llm": "FakeLLM (offline)",
-    "max_ms": 249.4,
-    "measured_at": "2026-10-17T22:13:31+00:00",
+    "max_ms": 342.7,
+    "measured_at": "2026-10-18T15:26:36+00:00",
     "method": "unmeasured warm-up pass over other dev questions, then the measured pass",
     "n": 59,
-    "p50_ms": 159.4,
-    "p95_ms": 231.5,
-    "passed": true,
+    "p50_ms": 191.8,
+    "p95_ms": 314.5,
+    "passed": false,
     "runs": [
       {
         "measured_at": "2026-10-17T22:11:31+00:00",
@@ -68,10 +96,38 @@
         "p50_ms": 159.4,
         "p95_ms": 231.5,
         "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T15:10:25+00:00",
+        "n": 59,
+        "p50_ms": 236.0,
+        "p95_ms": 395.7,
+        "passed": false
+      },
+      {
+        "measured_at": "2026-10-18T15:11:25+00:00",
+        "n": 59,
+        "p50_ms": 176.8,
+        "p95_ms": 304.2,
+        "passed": false
+      },
+      {
+        "measured_at": "2026-10-18T15:25:36+00:00",
+        "n": 59,
+        "p50_ms": 199.1,
+        "p95_ms": 287.7,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T15:26:36+00:00",
+        "n": 59,
+        "p50_ms": 191.8,
+        "p95_ms": 314.5,
+        "passed": false
       }
     ],
     "split": "dev",
-    "worst_p95_ms": 289.7
+    "worst_p95_ms": 395.7
   },
   "nfr3_ingestion_lag": {
     "budget_ms": 300000,
@@ -97,11 +153,11 @@
   "nfr8_documents": {
     "budget_ms": 200,
     "concurrency": 4,
-    "max_ms": 346.3,
-    "measured_at": "2026-10-17T22:13:32+00:00",
+    "max_ms": 34.9,
+    "measured_at": "2026-10-18T15:26:37+00:00",
     "n": 120,
-    "p50_ms": 6.2,
-    "p95_ms": 9.9,
+    "p50_ms": 14.1,
+    "p95_ms": 25.8,
     "passed": true,
     "runs": [
       {
@@ -124,8 +180,36 @@
         "p50_ms": 6.2,
         "p95_ms": 9.9,
         "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T15:10:26+00:00",
+        "n": 120,
+        "p50_ms": 9.3,
+        "p95_ms": 15.8,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T15:11:25+00:00",
+        "n": 120,
+        "p50_ms": 10.7,
+        "p95_ms": 19.3,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T15:25:37+00:00",
+        "n": 120,
+        "p50_ms": 11.2,
+        "p95_ms": 15.3,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T15:26:37+00:00",
+        "n": 120,
+        "p50_ms": 14.1,
+        "p95_ms": 25.8,
+        "passed": true
       }
     ],
-    "worst_p95_ms": 13.8
+    "worst_p95_ms": 25.8
   }
 }

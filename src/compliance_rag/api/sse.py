@@ -144,13 +144,18 @@ class RunEvents:
             try:
                 key = self._key(run_id)
                 assert self.redis is not None
-                seq = int(await self.redis.incr(f"{key}:seq"))
-                await self.redis.xadd(
-                    key, {"event": event, "data": json.dumps(data, default=str)}, id=f"0-{seq}"
-                )
+                # a run's events are written by its own task only, so the sequence is local: one round trip per
+                # event on the graph's critical path (the first one also sets the TTLs, in the same pipeline)
+                seq = self._last_seq.get(run_id, 0) + 1
+                fields: dict[Any, Any] = {"event": event, "data": json.dumps(data, default=str)}
                 if seq == 1:
-                    for k in (key, f"{key}:seq", f"{key}:owner"):
-                        await self.redis.expire(k, self.ttl_s)
+                    pipe = self.redis.pipeline(transaction=False)
+                    pipe.xadd(key, fields, id=f"0-{seq}")
+                    pipe.expire(key, self.ttl_s)
+                    pipe.expire(f"{key}:owner", self.ttl_s)
+                    await pipe.execute()
+                else:
+                    await self.redis.xadd(key, fields, id=f"0-{seq}")
                 self._last_seq[run_id] = seq
                 if event in TERMINAL:
                     self._owners.pop(run_id, None)

@@ -1,1 +1,1 @@
-{"command": "docker compose up -d --wait --build", "seconds": 42, "budget_seconds": 300, "measured_at": "2026-10-18T00:45:02Z"}
+{"command": "docker compose build api web dev-oidc && docker compose up -d --wait", "seconds": 78, "budget_seconds": 300, "measured_at": "2026-10-18T15:10:14Z"}

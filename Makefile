@@ -96,7 +96,11 @@ e2e: stack-ready ## Playwright end-to-end tests (with axe) against the running s
 	NODE_PATH=$(CURDIR)/web/node_modules $(PNPM) -C web exec playwright test --project=e2e
 
 bench: stack-ready ## Performance tests with budgets
-	$(PY) pytest tests/perf -q -p no:cacheprovider
+	@# the stack budgets first, alone: the other perf tests start their own databases (testcontainers), which
+	@# must not share the host with the stack being measured
+	$(PY) pytest tests/perf/test_stack_budgets.py -q -p no:cacheprovider; stack=$$?; \
+	  $(PY) pytest tests/perf -q -p no:cacheprovider --deselect tests/perf/test_stack_budgets.py; rest=$$?; \
+	  exit $$(( stack || rest ))
 
 # ---------------------------------------------------------------- data, AI and evals
 corpus: ## Generate the corpus and questions (seed 2026)

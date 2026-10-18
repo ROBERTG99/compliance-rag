@@ -76,3 +76,26 @@ async def test_memory_runs_are_evicted_after_ttl() -> None:
     await asyncio.sleep(1.2)
     await events.set_owner("new", "u")
     assert "old" not in events.memory.owners and "old" not in events.memory.events
+
+
+async def test_each_event_is_one_redis_round_trip_with_ordered_ids(redis_url: str) -> None:
+    # events are written by the run's own task only, so their numbers need no shared counter: the graph waits on
+    # one XADD per event (about 20 events precede the first claim), and the stream still expires
+    redis = _client(redis_url)
+    events, run = RunEvents(redis), uuid.uuid4().hex
+    await events.set_owner(run, "u")
+    calls: list[str] = []
+    original = redis.execute_command
+
+    async def counting(*args, **kwargs):  # type: ignore[no-untyped-def]
+        calls.append(str(args[0]).upper())
+        return await original(*args, **kwargs)
+
+    redis.execute_command = counting  # type: ignore[method-assign]
+    for i in range(5):
+        assert await events.append(run, "node", {"i": i}) == i + 1
+    redis.execute_command = original  # type: ignore[method-assign]
+    assert calls == ["XADD"] * 4  # no counter; the first event shares one pipeline with its TTLs
+    assert [seq for seq, _, _ in await events.read(run, 0)] == [1, 2, 3, 4, 5]
+    assert 0 < await redis.ttl(f"crag:run:{run}") <= events.ttl_s
+    await redis.aclose()
