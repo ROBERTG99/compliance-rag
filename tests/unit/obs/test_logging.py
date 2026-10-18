@@ -327,3 +327,41 @@ def test_plain_messages_inside_an_except_block_are_not_masked_by_the_active_exce
         logging.getLogger("compliance_rag.test").warning("retrying the request")
     out = capsys.readouterr()
     assert json.loads((out.out + out.err).strip().splitlines()[-1])["event"] == "retrying the request"
+
+
+@pytest.mark.parametrize("message", ["recent", "e", "most", "call"])
+def test_a_message_inside_the_traceback_header_cannot_stop_the_substitution(
+    capsys: pytest.CaptureFixture[str], message: str
+) -> None:
+    error = ValueError(message)
+    error.add_note("NoteSecret LitigationHold")
+    event = _text_traceback_event(capsys, error)
+    assert "NoteSecret" not in event and "raise exc" not in event  # notes and source lines never pass
+    assert event.startswith("Traceback (most recent call last):\n") and "ValueError" in event
+
+
+def test_a_short_exc_info_message_cannot_stop_the_substitution(capsys: pytest.CaptureFixture[str]) -> None:
+    import logging
+    import traceback
+
+    configure_logging("INFO", service="api")
+    try:
+        error = ValueError("e")
+        error.add_note("NoteSecret")
+        raise error
+    except ValueError as exc:
+        logging.getLogger("uvicorn.error").error("startup: " + traceback.format_exc(), exc_info=exc)
+    out = capsys.readouterr()
+    event = json.loads((out.out + out.err).strip().splitlines()[-1])["event"]
+    assert "NoteSecret" not in event and "raise error" not in event
+    assert event.startswith("startup: Traceback (most recent call last):\n")
+
+
+def test_deeply_nested_exception_groups_render_a_bounded_number_of_members(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def nest(depth: int) -> BaseException:
+        return KeyError("leaf") if depth == 0 else ExceptionGroup("g", [nest(depth - 1) for _ in range(6)])
+
+    event = _text_traceback_event(capsys, nest(5))  # 6**5 leaves within the depth and width caps
+    assert event.count("KeyError") <= 100 and "more exceptions" in event and len(event) < 100_000

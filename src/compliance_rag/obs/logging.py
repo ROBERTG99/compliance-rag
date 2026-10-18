@@ -75,7 +75,8 @@ def _chain(exc: BaseException) -> list[BaseException]:
     return seen
 
 
-def _type_and_frames(exc: BaseException, depth: int = 0) -> str:
+def _type_and_frames(exc: BaseException, depth: int = 0, budget: list[int] | None = None) -> str:
+    budget = [_MAX_RENDERED] if budget is None else budget  # exceptions left to render, shared by groups
     parts: list[str] = []
     for item in reversed(_chain(exc)):  # outermost last, like Python's own traceback
         tb: TracebackType | None = item.__traceback__
@@ -87,10 +88,15 @@ def _type_and_frames(exc: BaseException, depth: int = 0) -> str:
         module = type(item).__module__
         part = f"{_TRACEBACK}\n{frames}{name if module == 'builtins' else f'{module}.{name}'}"
         if isinstance(item, BaseExceptionGroup) and depth < _MAX_GROUP_DEPTH:
+            shown = 0
             for number, sub in enumerate(item.exceptions[:_MAX_GROUP_WIDTH], 1):
-                nested = _type_and_frames(sub, depth + 1).replace("\n", "\n  | ")
+                if budget[0] <= 0:
+                    break
+                budget[0] -= 1
+                shown = number
+                nested = _type_and_frames(sub, depth + 1, budget).replace("\n", "\n  | ")
                 part += f"\n  +---------------- {number} ----------------\n  | {nested}"
-            if (more := len(item.exceptions) - _MAX_GROUP_WIDTH) > 0:
+            if (more := len(item.exceptions) - shown) > 0:
                 part += f"\n  +---------------- ... ----------------\n  | and {more} more exceptions"
         if parts:  # how this exception relates to the one rendered before it, in Python's own words
             parts.append(_CAUSE if item.__cause__ is not None else _CONTEXT)
@@ -101,31 +107,64 @@ def _type_and_frames(exc: BaseException, depth: int = 0) -> str:
 _TRACEBACK = "Traceback (most recent call last):"
 _MAX_GROUP_DEPTH = 5
 _MAX_GROUP_WIDTH = 10
+_MAX_MESSAGES = 1000
+_MAX_RENDERED = 100
 _CAUSE = "The above exception was the direct cause of the following exception:"
 _CONTEXT = "During handling of the above exception, another exception occurred:"
 _WITHHELD = "[traceback text withheld: no exception in context]"
 
 
-def _messages(exc: BaseException, depth: int = 0) -> list[str]:
-    found = []
-    for item in _chain(exc):
-        try:
-            message = str(item)
-        except Exception:  # a broken __str__ has no message to mask
-            message = ""
-        if message:
-            found.append(message)
-        if isinstance(item, BaseExceptionGroup) and depth < _MAX_GROUP_DEPTH:
-            for sub in item.exceptions:
-                found.extend(_messages(sub, depth + 1))
+def _messages(exc: BaseException) -> set[str]:
+    """The messages of an exception's chain and of its group members (at most ``_MAX_MESSAGES`` exceptions)."""
+    found: set[str] = set()
+    pending, seen = [exc], 0
+    while pending and seen < _MAX_MESSAGES:
+        for item in _chain(pending.pop()):
+            seen += 1
+            try:
+                message = str(item)
+            except Exception:  # a broken __str__ has no message to mask
+                message = ""
+            if message:
+                found.add(message)
+            if isinstance(item, BaseExceptionGroup):
+                pending.extend(item.exceptions)
     return found
 
 
-def _mask_messages(text: str, *excs: BaseException | None) -> str:
-    messages = {message for exc in excs if exc is not None for message in _messages(exc)}
+def _mask(text: str, messages: set[str]) -> str:
     for message in sorted(messages, key=len, reverse=True):  # a message inside a longer one is masked with it
         text = text.replace(message, REDACTED)
     return text
+
+
+def _spans(text: str, messages: set[str]) -> list[tuple[int, int]]:
+    spans = []
+    for message in messages:
+        start = text.find(message)
+        while start >= 0:
+            spans.append((start, start + len(message)))
+            start = text.find(message, start + 1)
+    return spans
+
+
+def _traceback_start(text: str, messages: set[str]) -> int | None:
+    """Where logged traceback text begins: the first header that is not part of an exception message, moved back
+    to the start of any message it cuts through. Decided on the unmasked text, so a message cannot hide it."""
+    spans = _spans(text, messages)
+    header = text.find(_TRACEBACK)
+    while header >= 0:
+        end = header + len(_TRACEBACK)
+        if not any(start <= header and end <= stop for start, stop in spans):  # not inside a message
+            cut, moved = header, True
+            while moved:
+                moved = False
+                for start, stop in spans:
+                    if start < cut < stop:
+                        cut, moved = start, True
+            return cut
+        header = text.find(_TRACEBACK, header + 1)
+    return None
 
 
 def _exceptions_without_messages(
@@ -135,20 +174,24 @@ def _exceptions_without_messages(
     input (pydantic ``input_value``) or document text, also where a library puts them into its own message.
 
     A traceback logged as text (uvicorn's lifespan logs ``traceback.format_exc()`` from inside its ``except``) is
-    never parsed: its text is replaced by the active exception rendered the same way, or withheld when there is
-    none, since a message can imitate any traceback structure. Messages are masked before the text is cut, so a
-    message that contains the traceback header is masked as a whole."""
+    never parsed: from its header on, the text is replaced by the active exception rendered the same way, or
+    withheld when there is none, since a message can imitate any traceback structure. Where it starts is decided
+    before masking, and only the text before it is kept (masked)."""
     exc = _exception(event.pop("exc_info", None))
     message = event.get("event")
     if isinstance(message, str):
-        message = _mask_messages(message, exc)
-        if _TRACEBACK in message:  # the active exception masks only text that holds a traceback
-            active = sys.exc_info()[1] or exc
-            message = _mask_messages(message, active)
-        if _TRACEBACK in message:
-            lead_in = message[: message.index(_TRACEBACK)]
-            message = lead_in + (_WITHHELD if active is None else _type_and_frames(active))
-        event["event"] = message
+        active = sys.exc_info()[1] or exc
+        messages = _messages(exc) if exc is not None else set()
+        if (
+            _TRACEBACK in message and active is not None
+        ):  # the active exception counts only for traceback text
+            messages |= _messages(active)
+        cut = _traceback_start(message, messages)
+        if cut is None:
+            event["event"] = _mask(message, messages)
+        else:
+            rendered = _WITHHELD if active is None else _type_and_frames(active)
+            event["event"] = _mask(message[:cut], messages) + rendered
     if exc is not None:
         event["exception"] = _type_and_frames(exc)
     return event
