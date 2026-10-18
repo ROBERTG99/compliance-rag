@@ -81,7 +81,7 @@ services:
     build:
       context: .
       dockerfile: docker/minio.Dockerfile
-      network: host
+      network: ${BUILD_NETWORK:-default}
       args: *build-args
     image: compliance-rag/minio:RELEASE.2025-10-15T17-29-55Z
     environment:
@@ -94,7 +94,7 @@ services:
     build:
       context: .
       dockerfile: docker/dev-oidc.Dockerfile
-      network: host
+      network: ${BUILD_NETWORK:-default}
       args: *build-args
     image: compliance-rag/dev-oidc:dev
     environment:
@@ -123,7 +123,7 @@ services:
     build:
       context: .
       dockerfile: docker/api.Dockerfile
-      network: host
+      network: ${BUILD_NETWORK:-default}
       args: *build-args
     image: compliance-rag/api:dev
     environment:
@@ -161,7 +161,7 @@ services:
     build:
       context: .
       dockerfile: docker/web.Dockerfile
-      network: host
+      network: ${BUILD_NETWORK:-default}
       args:
         <<: *build-args
         VITE_DEV_PERSONAS: "1"  # local dev stack only: dev-oidc persona switcher

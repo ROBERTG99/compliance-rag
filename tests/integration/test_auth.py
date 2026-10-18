@@ -166,6 +166,36 @@ async def test_pkce_authorization_code_flow(oidc: httpx.AsyncClient) -> None:
     assert reuse.status_code == 400  # codes are single use
 
 
+@pytest.mark.parametrize(
+    "redirect",
+    [
+        "http://localhost:@evil.example/callback",  # "localhost:" as user info, evil.example as the host
+        "http://localhost:8600@evil.example/callback",
+        "http://evil.example/callback",
+        "http://localhost:8601/callback",
+        "http://localhost:8600/callback/../steal",
+        "javascript:alert(1)",
+    ],
+)
+async def test_authorize_redirects_only_to_registered_uris(oidc: httpx.AsyncClient, redirect: str) -> None:
+    query = {
+        "response_type": "code",
+        "client_id": "crag-web",
+        "redirect_uri": redirect,
+        "code_challenge": "c",
+    }
+    assert (await oidc.get("/authorize", params=query)).status_code == 400
+    form = {"persona": "legal", "client_id": "crag-web", "redirect_uri": redirect, "code_challenge": "c"}
+    assert (await oidc.post("/authorize", data=form)).status_code == 400
+
+
+async def test_authorize_redirects_to_the_registered_uri(oidc: httpx.AsyncClient) -> None:
+    form = {"persona": "legal", "client_id": "crag-web", "redirect_uri": "http://127.0.0.1:8600/callback"}
+    resp = await oidc.post("/authorize", data={**form, "code_challenge": "c", "state": "s"})
+    assert resp.status_code == 302
+    assert resp.headers["location"].startswith("http://127.0.0.1:8600/callback?code=")
+
+
 async def test_discovery_document(oidc: httpx.AsyncClient) -> None:
     doc = (await oidc.get("/.well-known/openid-configuration")).json()
     assert doc["issuer"] == ISSUER and doc["jwks_uri"].endswith("/jwks.json")

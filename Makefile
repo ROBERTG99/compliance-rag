@@ -11,6 +11,9 @@ API_URL ?= http://localhost:8610
 WEB_URL ?= http://localhost:8600
 CORE_COV := --cov=compliance_rag --cov-report=term:skip-covered --cov-report=xml
 export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD ?= 1
+# image builds reach a build proxy on the host only through the host network; without a proxy (CI) they use the
+# default network, since `network: host` needs an entitlement that buildx bake refuses on GitHub runners
+export BUILD_NETWORK ?= $(if $(HTTPS_PROXY),host,default)
 
 .PHONY: help bootstrap up down seed demo logs check-fast test test-docker e2e eval eval-live bench \
 	lint typecheck security verify verify-clean docs clean migrate corpus fit-reranker reindex \

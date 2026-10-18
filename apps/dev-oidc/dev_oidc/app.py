@@ -34,6 +34,8 @@ PERSONAS = {
     "admin": {"sub": "admin@northwind.test", "name": "Ada Admin", "role": "content_admin"},
 }
 CODE_TTL_S = 120
+# the SPA's callback on the local stack (`web`, port 8600); DEV_OIDC_REDIRECT_URIS (comma-separated) replaces them
+REDIRECT_URIS = ("http://localhost:8600/callback", "http://127.0.0.1:8600/callback")
 
 
 @dataclass
@@ -57,8 +59,11 @@ def _b64(n: int) -> str:
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
 
 
-def create_app(public_url: str | None = None) -> FastAPI:
+def create_app(public_url: str | None = None, redirect_uris: list[str] | None = None) -> FastAPI:
     issuer = (public_url or os.environ.get("DEV_OIDC_PUBLIC_URL", "http://localhost:8612")).rstrip("/")
+    configured = os.environ.get("DEV_OIDC_REDIRECT_URIS", "")
+    uris = redirect_uris or [u.strip() for u in configured.split(",") if u.strip()] or list(REDIRECT_URIS)
+    registered = {uri: uri for uri in uris}
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     numbers = key.public_key().public_numbers()
     kid = hashlib.sha256(_b64(numbers.n).encode()).hexdigest()[:16]
@@ -87,6 +92,14 @@ def create_app(public_url: str | None = None) -> FastAPI:
         }
         token = jwt.encode(claims, key, algorithm="RS256", headers={"kid": kid})
         return {"access_token": token, "id_token": token, "token_type": "Bearer", "expires_in": ttl_s}
+
+    def registered_redirect(redirect_uri: str) -> str:
+        """The registered URI equal to the request's: redirects go only to a registered value (exact match), so
+        a URL that merely starts like one (``http://localhost:@evil.example/``) is refused."""
+        target = registered.get(redirect_uri)
+        if target is None:
+            raise HTTPException(400, "redirect_uri is not registered")
+        return target
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
@@ -121,6 +134,7 @@ def create_app(public_url: str | None = None) -> FastAPI:
     ) -> str:
         if response_type != "code" or code_challenge_method != "S256":
             raise HTTPException(400, "only response_type=code with S256 PKCE is supported")
+        redirect_uri = registered_redirect(redirect_uri)
         esc = html.escape
         buttons = "".join(
             f'<button name="persona" value="{name}" type="submit">{esc(p["name"])} — {esc(p["sub"])} ({esc(p["role"])})</button>'
@@ -147,13 +161,10 @@ def create_app(public_url: str | None = None) -> FastAPI:
     ) -> RedirectResponse:
         if persona not in PERSONAS:
             raise HTTPException(400, "unknown persona")
-        if not redirect_uri.startswith(("http://localhost:", "http://127.0.0.1:")):
-            raise HTTPException(400, "redirect_uri must be a localhost URL")
+        target = registered_redirect(redirect_uri)
         code = secrets.token_urlsafe(24)
-        codes[code] = PendingCode(persona, client_id, redirect_uri, code_challenge, time.time() + CODE_TTL_S)
-        return RedirectResponse(
-            f"{redirect_uri}?{urlencode({'code': code, 'state': state})}", status_code=302
-        )
+        codes[code] = PendingCode(persona, client_id, target, code_challenge, time.time() + CODE_TTL_S)
+        return RedirectResponse(f"{target}?{urlencode({'code': code, 'state': state})}", status_code=302)
 
     @app.post("/token")
     async def token(request: Request) -> JSONResponse:

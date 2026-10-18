@@ -93,6 +93,17 @@ def test_test_compose_runs_the_suites_against_the_stack_services() -> None:
     assert set(tests["depends_on"]) >= {"postgres", "redis", "opensearch", "minio", "qdrant"}
 
 
+def test_builds_use_the_host_network_only_when_asked() -> None:
+    # `network: host` needs the network.host entitlement under buildx bake (GitHub runners refuse it); it is
+    # needed only to reach a build proxy on the host, so `make` sets BUILD_NETWORK=host when HTTPS_PROXY is set
+    for name in ("compose.yaml", "compose.test.yaml"):
+        for service, svc in _compose(name)["services"].items():
+            if "build" in svc:
+                assert svc["build"]["network"] == "${BUILD_NETWORK:-default}", f"{name}: {service}"
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    assert "export BUILD_NETWORK ?= $(if $(HTTPS_PROXY),host,default)" in makefile
+
+
 def test_the_worker_healthcheck_does_not_import_the_worker() -> None:
     # `arq --check` imports the whole worker to read one Redis key: ~4 s of CPU every 10 s on the API's host
     test = _compose("compose.yaml")["services"]["worker"]["healthcheck"]["test"]

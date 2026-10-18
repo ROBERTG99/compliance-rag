@@ -37,6 +37,8 @@ jobs:
         run: make lint
       - name: Typecheck (mypy --strict, tsc, import-linter)
         run: make typecheck
+      - name: Build the MinIO image (compiled from a pinned release; the testcontainers fixtures start it)
+        run: docker compose build minio
       - name: Tests with coverage gates (testcontainers)
         run: make test
   secrets:
