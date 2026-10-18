@@ -121,4 +121,6 @@ def test_report_says_whether_live_evals_were_run() -> None:
     assert "## Live evaluation" in text and "Not run" in text and "make eval-live" in text
     live = {"date": "2026-10-18", "model": "claude-opus-5-5", "cost_usd": 0.42, "questions": 40}
     text = render_report({**summarize([RETRIEVAL]), "live": live}, failures=[])
-    assert "claude-opus-5-5" in text and "0.42" in text and "Not run" not in text.split("## Live evaluation")[1]
+    assert (
+        "claude-opus-5-5" in text and "0.42" in text and "Not run" not in text.split("## Live evaluation")[1]
+    )
