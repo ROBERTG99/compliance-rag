@@ -352,6 +352,9 @@ async def make_api_env(
         log=lambda _m: None,
     )
     await state.reload()
+    # as the API's lifespan does before it reports ready: a cold app can time both retrieval legs out on a
+    # loaded host, which ends a test's run in `retrieval_unavailable` instead of the behaviour under test
+    await state.warm_up()
     app = create_app(settings, state=state)
     try:
         yield ApiEnv(app=app, settings=settings, oidc=oidc)
