@@ -19,7 +19,7 @@ pools, httpx clients for OpenSearch and Qdrant, async object-store and Redis cli
 ## Decision
 
 Background work runs on Arq with Redis as the broker. `WorkerSettings` in
-`src/compliance_rag/worker/main.py:149-163` registers the job functions `ingest_document`, `sync_acl`
+`src/compliance_rag/worker/main.py:149-165` registers the job functions `ingest_document`, `sync_acl`
 and `reindex_all` and four crons, all `unique=True`: `poll_s3_inbox` (every 30 s), `refresh_lag_metric`
 (every 15 s), `reconcile_acl` (every minute) and `purge_expired` (daily, 03:10 UTC). Jobs are coroutines
 that reuse the same `Services` container as the API (`worker/main.py:20-27`). Failed jobs are
@@ -61,4 +61,4 @@ Negative:
 - Fewer features than Celery (no workflow primitives, a smaller ecosystem). None are used here.
 - Arq job spans are not linked to the API trace that enqueued them, because the trace context is not
   passed through the job payload (`docs/KNOWN_LIMITATIONS.md`, Observability row).
-- `job_timeout` is 600 s (`worker/main.py:161`): an ingestion that runs longer is stopped by Arq.
+- `job_timeout` is 600 s (`worker/main.py:163`): an ingestion that runs longer is stopped by Arq.
