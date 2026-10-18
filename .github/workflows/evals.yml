@@ -1,0 +1,55 @@
+# Offline evals with gates and the red-team; the report is posted on the PR (BUILD.md §11, §17).
+name: evals
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: evals-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  evals:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: evals/redteam/pnpm-lock.yaml
+      - name: Install
+        run: |
+          uv sync --frozen
+          pnpm -C evals/redteam install --frozen-lockfile
+      - name: Start the stack
+        run: make up
+      - name: Offline evals (fail on any gate or baseline regression)
+        run: make eval
+      - name: Red-team (Promptfoo)
+        run: make redteam
+      - name: Comment the report on the PR
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const body = fs.readFileSync("evals/REPORT.md", "utf8");
+            const marker = "<!-- crag-evals -->";
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const mine = comments.find((c) => c.body && c.body.startsWith(marker));
+            const text = `${marker}\n${body}`.slice(0, 65000);
+            if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body: text });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body: text });
