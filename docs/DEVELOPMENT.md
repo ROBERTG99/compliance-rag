@@ -30,8 +30,8 @@ See `CONTRIBUTING.md` for the workflow and `docs/runbook.md` for operations.
 
 ## Signing in locally
 
-The SPA (http://localhost:8600) signs in with authorization code + PKCE against the dev OIDC issuer
-(http://localhost:8612), which lists four synthetic personas: analyst, legal, support and content
+The SPA (<http://localhost:8600>) signs in with authorization code + PKCE against the dev OIDC issuer
+(<http://localhost:8612>), which lists four synthetic personas: analyst, legal, support and content
 admin. The "Persona (dev)" select in the header switches identity without the redirect by calling
 dev-oidc's `/dev/token` through the same-origin `/oidc/` proxy.
 
