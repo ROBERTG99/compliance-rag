@@ -15,7 +15,26 @@ echo "fresh clone of $(git rev-parse --short HEAD) in $WORK"
 export COMPOSE_PROJECT_NAME=crag-verify
 unset ANTHROPIC_API_KEY OPENAI_API_KEY AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN \
   LANGFUSE_PUBLIC_KEY LANGFUSE_SECRET_KEY
-make bootstrap
-make up
-make verify
-echo "verify-clean: make verify passed in a fresh clone with no API keys"
+# each step timed: `== <step>: <seconds>s rc=<code>` lines are what docs/verification.md records
+step() {
+  local name="$1" start rc
+  shift
+  start=$(date +%s)
+  echo "== ${name}: started $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  set +e
+  "$@"
+  rc=$?
+  set -e
+  echo "== ${name}: $(( $(date +%s) - start ))s rc=${rc}"
+  return "$rc"
+}
+step bootstrap make bootstrap
+step up make up
+step verify make verify
+# §19 step 2 in the same clone: the scripted demo and every suite inside containers
+step demo make demo
+step test-docker make test-docker
+if [ -n "${VERIFY_OUT:-}" ]; then  # keep the clone's generated reports for docs/verification.md
+  mkdir -p "$VERIFY_OUT" && cp -r evals/REPORT.md evals/reports "$VERIFY_OUT/"
+fi
+echo "verify-clean: make verify, make demo and make test-docker passed in a fresh clone with no API keys"
