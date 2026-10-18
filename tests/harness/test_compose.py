@@ -108,3 +108,13 @@ def test_the_worker_healthcheck_does_not_import_the_worker() -> None:
     # `arq --check` imports the whole worker to read one Redis key: ~4 s of CPU every 10 s on the API's host
     test = _compose("compose.yaml")["services"]["worker"]["healthcheck"]["test"]
     assert test == ["CMD", "python", "/app/scripts/worker_healthcheck.py"]
+
+
+def test_python_healthchecks_are_frequent_only_while_starting() -> None:
+    # each check starts a Python process; every 5-10 s they took CPU from the API they share the host with
+    # (NFR-2), so they run every second while starting and every 30 s once the service is healthy
+    services = _compose("compose.yaml")["services"]
+    for name in ("api", "worker", "dev-oidc"):
+        check = services[name]["healthcheck"]
+        assert check["interval"] == "30s" and check["start_interval"] in ("1s", "2s"), name
+        assert "start_period" in check, name

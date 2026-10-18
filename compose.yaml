@@ -100,6 +100,12 @@ services:
     environment:
       DEV_OIDC_PUBLIC_URL: http://localhost:8612
     ports: ["127.0.0.1:8612:8612"]
+    healthcheck:  # the image's check, frequent only while starting (see api)
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 60s
+      start_interval: 1s
 
   migrate:
     image: compliance-rag/api:dev
@@ -136,6 +142,14 @@ services:
     ports: ["127.0.0.1:8610:8610"]
     # GET /v1/evals/latest serves what `make eval` last wrote (the image carries the committed copy)
     volumes: ["./evals/reports:/app/evals/reports:ro"]
+    # the image's check (a Python process): every second while starting, every 30 s once healthy, so checks do
+    # not take CPU from requests (NFR-2)
+    healthcheck:
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 120s
+      start_interval: 1s
     depends_on:
       seed: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
@@ -149,10 +163,11 @@ services:
     healthcheck:
       # the key `arq --check` reads, without importing the worker (about 4 s of CPU per check otherwise)
       test: ["CMD", "python", "/app/scripts/worker_healthcheck.py"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
-      retries: 12
-      start_period: 15s
+      retries: 3
+      start_period: 60s
+      start_interval: 2s
     depends_on:
       seed: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
