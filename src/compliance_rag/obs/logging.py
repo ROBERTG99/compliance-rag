@@ -10,7 +10,6 @@ SDKs, HTTP clients) only emit WARNING and above, since their DEBUG/INFO messages
 from __future__ import annotations
 
 import logging
-import re
 import sys
 import traceback
 from collections.abc import MutableMapping
@@ -76,8 +75,8 @@ def _chain(exc: BaseException) -> list[BaseException]:
     return seen
 
 
-def _type_and_frames(exc: BaseException) -> str:
-    parts = []
+def _type_and_frames(exc: BaseException, depth: int = 0) -> str:
+    parts: list[str] = []
     for item in reversed(_chain(exc)):  # outermost last, like Python's own traceback
         tb: TracebackType | None = item.__traceback__
         frames = "".join(  # file, line and function; no source text
@@ -86,63 +85,58 @@ def _type_and_frames(exc: BaseException) -> str:
         )
         name = type(item).__qualname__
         module = type(item).__module__
-        parts.append(
-            f"Traceback (most recent call last):\n{frames}{name if module == 'builtins' else f'{module}.{name}'}"
-        )
-    return "\n\nThe above exception led to:\n\n".join(parts)
+        part = f"{_TRACEBACK}\n{frames}{name if module == 'builtins' else f'{module}.{name}'}"
+        if isinstance(item, BaseExceptionGroup) and depth < _MAX_GROUP_DEPTH:
+            for number, sub in enumerate(item.exceptions, 1):
+                nested = _type_and_frames(sub, depth + 1).replace("\n", "\n  | ")
+                part += f"\n  +---------------- {number} ----------------\n  | {nested}"
+        if parts:  # how this exception relates to the one rendered before it, in Python's own words
+            parts.append(_CAUSE if item.__cause__ is not None else _CONTEXT)
+        parts.append(part)
+    return "\n\n".join(parts)
 
 
 _TRACEBACK = "Traceback (most recent call last):"
-_FRAME = re.compile(r'^\s*File "[^"]*", line \d+(?:, in .*)?$')
-_EXCEPTION_LINE = re.compile(r"^([A-Za-z_][\w.]*)(?::.*)?$")
-_CHAIN = ("During handling of the above exception", "The above exception was the direct cause")
-_GROUP_PREFIX = re.compile(r"^(?:\s*\|)+ ?")  # exception groups indent their sub-tracebacks with "  | "
+_MAX_GROUP_DEPTH = 5
+_CAUSE = "The above exception was the direct cause of the following exception:"
+_CONTEXT = "During handling of the above exception, another exception occurred:"
+_WITHHELD = "[traceback text withheld: no exception in context]"
 
 
-def _traceback_text_without_messages(text: str) -> str:
-    """A traceback logged as text (uvicorn's lifespan does): keep the logger's own lead-in, the headers, frame lines
-    and exception types. After an exception-type line everything (the rest of a multi-line message, notes) is
-    dropped until the next traceback, chain or exception-group header."""
-    lines = text.splitlines()
-    first = next(i for i, line in enumerate(lines) if _TRACEBACK in line)
-    kept = lines[:first]
-    in_message = False
-    for raw in lines[first:]:
-        body = _GROUP_PREFIX.sub("", raw)
-        stripped = body.strip()
-        if _TRACEBACK in raw or stripped.startswith(_CHAIN) or raw.strip().startswith("+-"):
-            kept.append(raw)
-            in_message = False
-        elif in_message:
-            continue
-        elif _FRAME.match(body):
-            kept.append(raw)
-        elif not body.startswith((" ", "\t")) and (match := _EXCEPTION_LINE.match(body)):
-            kept.append(
-                raw[: len(raw) - len(body)] + match.group(1)
-            )  # `psycopg.errors.X: ...` keeps the type
-            in_message = True
-    return "\n".join(kept)
+def _mask_messages(text: str, exc: BaseException, depth: int = 0) -> str:
+    for item in _chain(exc):
+        message = str(item)
+        if message:
+            text = text.replace(message, REDACTED)
+        if isinstance(item, BaseExceptionGroup) and depth < _MAX_GROUP_DEPTH:
+            for sub in item.exceptions:
+                text = _mask_messages(text, sub, depth + 1)
+    return text
 
 
 def _exceptions_without_messages(
     _logger: Any, _method: str, event: MutableMapping[str, Any]
 ) -> MutableMapping[str, Any]:
     """Exceptions as type and frames only: their messages can hold row values (psycopg ``DETAIL``), request
-    input (pydantic ``input_value``) or document text, also where a library puts them into its own message."""
+    input (pydantic ``input_value``) or document text, also where a library puts them into its own message.
+
+    A traceback logged as text (uvicorn's lifespan logs ``traceback.format_exc()`` from inside its ``except``) is
+    never parsed: its text is replaced by the active exception rendered the same way, or withheld when there is
+    none, since a message can imitate any traceback structure."""
     exc = _exception(event.pop("exc_info", None))
     message = event.get("event")
     if isinstance(message, str) and _TRACEBACK in message:
-        event["event"] = _traceback_text_without_messages(message)
+        lead_in = message[: message.index(_TRACEBACK)]
+        active = sys.exc_info()[1]
+        if active is None:
+            event["event"] = lead_in + _WITHHELD
+        else:
+            event["event"] = _mask_messages(lead_in, active) + _type_and_frames(active)
     if exc is None:
         return event
     message = event.get("event")
     if isinstance(message, str):
-        for item in _chain(exc):
-            text = str(item)
-            if text:
-                message = message.replace(text, REDACTED)
-        event["event"] = message
+        event["event"] = _mask_messages(message, exc)
     event["exception"] = _type_and_frames(exc)
     return event
 

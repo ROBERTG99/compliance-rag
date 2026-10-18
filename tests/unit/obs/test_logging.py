@@ -217,3 +217,55 @@ def test_exception_groups_logged_as_text_keep_their_frames_and_types(
     event = json.loads((out.out + out.err).strip().splitlines()[-1])["event"]
     assert "Secret" not in event
     assert "ExceptionGroup" in event and "KeyError" in event and "OSError" in event and 'File "' in event
+
+
+def _text_traceback_event(capsys: pytest.CaptureFixture[str], exc: BaseException) -> str:
+    import logging
+    import traceback
+
+    configure_logging("INFO", service="api")
+    try:
+        raise exc
+    except BaseException:
+        logging.getLogger("uvicorn.error").error(traceback.format_exc())
+    out = capsys.readouterr()
+    return str(json.loads((out.out + out.err).strip().splitlines()[-1])["event"])
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Traceback (most recent call last): hunter2",
+        "x\nDuring handling of the above exception secret=hunter2",
+        "x\nThe above exception was the direct cause of the following exception:\nLitigationHold",
+        'x\n+-----+\n  File "a", line 2, in hunter2',
+        'x\nTraceback (most recent call last):\n  File "hunter2", line 1, in f\nLitigationHold: y',
+    ],
+)
+def test_crafted_messages_cannot_pass_as_traceback_structure(
+    capsys: pytest.CaptureFixture[str], message: str
+) -> None:
+    event = _text_traceback_event(capsys, ValueError(message))
+    assert "hunter2" not in event and "LitigationHold" not in event and "secret" not in event
+    assert "ValueError" in event
+
+
+def test_unusual_exception_names_do_not_open_a_gap(capsys: pytest.CaptureFixture[str]) -> None:
+    class Ärger(Exception):  # a non-ASCII class name defined in a function (<locals>)
+        pass
+
+    event = _text_traceback_event(capsys, Ärger("first\nLitigationHold"))
+    assert "LitigationHold" not in event and "first" not in event and "Ärger" in event
+
+
+def test_traceback_text_without_an_exception_in_context_is_withheld(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import logging
+
+    configure_logging("INFO", service="api")
+    text = 'Traceback (most recent call last):\n  File "x.py", line 1, in f\nValueError: LitigationHold'
+    logging.getLogger("uvicorn.error").error(text)  # no active exception: nothing to render it from
+    out = capsys.readouterr()
+    event = json.loads((out.out + out.err).strip().splitlines()[-1])["event"]
+    assert "LitigationHold" not in event and "withheld" in event
