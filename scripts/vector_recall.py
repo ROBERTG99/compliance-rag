@@ -9,6 +9,7 @@ reproducible across machines while the configured search returns what exact sear
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import sys
 from datetime import date
@@ -38,7 +39,7 @@ async def exact_ids(pool: Any, embedding: Any, principal: Any, as_of: date) -> l
         return [str(r[0]) for r in await cur.fetchall()]
 
 
-async def main() -> int:
+async def main() -> str:
     rows = [
         json.loads(line) for line in (ROOT / "evals/datasets/questions.v1.jsonl").read_text().splitlines()
     ]
@@ -57,11 +58,10 @@ async def main() -> int:
                 differ[row["split"]].append(row["id"])
     finally:
         await system.close()
-    print(
-        f"vector top-{K} differs from exact search: dev {len(differ['dev'])} {differ['dev']}, test {len(differ['test'])}"
-    )
-    return 0
+    return f"vector top-{K} differs from exact search: dev {len(differ['dev'])} {differ['dev']}, test {len(differ['test'])}"
 
 
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main()))
+    with contextlib.redirect_stdout(sys.stderr):  # log lines go to stderr, results to stdout
+        summary = asyncio.run(main())
+    print(summary)

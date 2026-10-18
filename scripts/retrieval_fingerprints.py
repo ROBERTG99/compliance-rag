@@ -3,13 +3,15 @@
     uv run python scripts/retrieval_fingerprints.py > fingerprints.txt
 
 One line per stage: ``<stage> <id>:<hash> ...``. Stages: the query embedding (rounded to 1e-5), the BM25 top 50,
-the vector top 50, the fused list and the reranked top 10, each as chunk ids in order. Running it on two machines
-and diffing the output shows the first stage whose result differs.
+the vector top 50, the fused list and the reranked top 10, each as (document, version, offset) keys with
+rounded scores, in order. Running it on two machines (or two seeds) and diffing the output shows the first
+stage whose result differs.
 """
 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import sys
@@ -27,11 +29,16 @@ from compliance_rag.evals.system import build_system  # noqa: E402
 STAGES = ("embedding", "bm25", "vector", "fused", "rerank")
 
 
+def key(candidate: dict[str, object]) -> str:
+    """Readable and independent of how chunk ids are derived."""
+    return f"{candidate['document_id']}@{candidate['version']}#{candidate['char_start']}"
+
+
 def short(value: object) -> str:
     return hashlib.sha256(repr(value).encode()).hexdigest()[:8]
 
 
-async def main() -> int:
+async def main() -> list[str]:
     rows = [
         json.loads(line) for line in (ROOT / "evals/datasets/questions.v1.jsonl").read_text().splitlines()
     ]
@@ -47,19 +54,19 @@ async def main() -> int:
             ranked = system.reranker.rerank(question, list(result.fused)[:50], as_of)
             values = {
                 "embedding": np.round(np.asarray(embedding, dtype=np.float64), 5).tolist(),
-                "bm25": [c["chunk_id"] for c in result.bm25_hits],
-                "vector": [c["chunk_id"] for c in result.vector_hits],
-                "fused": [c["chunk_id"] for c in result.fused],
-                "rerank": [c["chunk_id"] for c in ranked[:10]],
+                "bm25": [(key(c), round(float(c["bm25"] or 0), 3)) for c in result.bm25_hits],
+                "vector": [(key(c), round(float(c["cosine"] or 0), 4)) for c in result.vector_hits],
+                "fused": [(key(c), round(float(c["rrf"]), 6)) for c in result.fused],
+                "rerank": [(key(c), round(float(c["rerank"] or 0), 4)) for c in ranked[:10]],
             }
             for stage in STAGES:
                 out[stage].append(f"{row['id']}:{short(values[stage])}")
     finally:
         await system.close()
-    for stage in STAGES:
-        print(stage, " ".join(out[stage]))
-    return 0
+    return [f"{stage} {' '.join(out[stage])}" for stage in STAGES]
 
 
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main()))
+    with contextlib.redirect_stdout(sys.stderr):  # log lines go to stderr, results to stdout
+        lines = asyncio.run(main())
+    print("\n".join(lines))

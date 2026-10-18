@@ -82,13 +82,3 @@ jobs:
               ]
               print(suite, low)
           PY
-      - name: Vector leg against exact search (HNSW graphs are built on this runner)
-        if: always()
-        env:
-          OPENBLAS_CORETYPE: Haswell
-        run: uv run python scripts/vector_recall.py
-      - name: Retrieval fingerprints per stage (diff against another machine's output)
-        if: always()
-        env:
-          OPENBLAS_CORETYPE: Haswell
-        run: uv run python scripts/retrieval_fingerprints.py
