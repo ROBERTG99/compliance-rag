@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.routing import Match
 
-from compliance_rag.auth.jwt import AuthError
+from compliance_rag.auth.jwt import AuthError, IdentityProviderUnavailable
 from compliance_rag.ingest.loaders import UnsupportedDocument
 from compliance_rag.ingest.pipeline import AclConflict, VersionConflict
 from compliance_rag.llm.gateway import GenerationUnavailable
@@ -84,6 +84,16 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(AuthError)
     async def _auth(request: Request, exc: AuthError) -> JSONResponse:
+        if isinstance(exc, IdentityProviderUnavailable):  # the token may be valid: retry, keep the session
+            return problem_response(
+                request,
+                503,
+                "Service Unavailable",
+                "the identity provider is unavailable",
+                "identity_provider_unavailable",
+                headers={"Retry-After": "10"},
+                retryable=True,
+            )
         return problem_response(
             request, 401, "Unauthorized", str(exc), "unauthorized", headers={"WWW-Authenticate": "Bearer"}
         )

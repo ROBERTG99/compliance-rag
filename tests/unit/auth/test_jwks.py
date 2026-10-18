@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 from typing import Any
 
 import httpx
@@ -38,7 +39,8 @@ class Issuer:
 @pytest.fixture
 def clock(monkeypatch: pytest.MonkeyPatch) -> list[float]:
     now = [1000.0]
-    monkeypatch.setattr(jwt_module.time, "monotonic", lambda: now[0])
+    # the module's own `time`, not the global one: asyncio's loop clock must keep running
+    monkeypatch.setattr(jwt_module, "time", SimpleNamespace(monotonic=lambda: now[0]))
     return now
 
 
@@ -91,3 +93,55 @@ async def test_stale_keys_are_not_served_forever(clock: list[float]) -> None:
     clock[0] += 3601  # past the maximum staleness while the issuer stays down
     with pytest.raises(AuthError, match="identity provider unavailable"):
         await cache.key("k1")
+
+
+async def test_an_unreachable_issuer_is_asked_once_per_interval_not_once_per_request() -> None:
+    # cold worker, issuer down: requests queued behind the first fetch must not each fetch in turn
+    issuer = Issuer()
+    issuer.up = False
+    issuer.delay_s = 0.05
+    cache = JWKSCache("http://oidc", client=httpx.AsyncClient(transport=httpx.MockTransport(issuer.handler)))
+    results = await asyncio.gather(*(cache.key("k1") for _ in range(5)), return_exceptions=True)
+    assert all(isinstance(r, AuthError) and "identity provider unavailable" in str(r) for r in results)
+    assert issuer.calls == 1
+
+
+async def test_a_known_key_is_served_while_another_request_refreshes(clock: list[float]) -> None:
+    # TTL expired and the issuer is slow: requests whose key is cached do not queue behind the refresh
+    issuer = Issuer()
+    cache = JWKSCache("http://oidc", client=httpx.AsyncClient(transport=httpx.MockTransport(issuer.handler)))
+    await cache.key("k1")
+    clock[0] += 301
+    issuer.delay_s = 0.2
+    refresh = asyncio.create_task(cache.key("k1"))
+    await asyncio.sleep(0.01)  # the refresh holds the lock now
+    started = asyncio.get_running_loop().time()
+    assert await cache.key("k1")
+    assert asyncio.get_running_loop().time() - started < 0.1
+    await refresh
+
+
+async def test_an_unavailable_issuer_answers_503_not_401() -> None:
+    # a 401 signs the user out of the web app: an issuer outage is not the user's fault and is retryable
+    from fastapi import FastAPI
+
+    from compliance_rag.api.errors import install_error_handlers
+    from compliance_rag.auth.jwt import IdentityProviderUnavailable
+
+    app = FastAPI()
+    install_error_handlers(app)
+
+    @app.get("/down")
+    async def down() -> None:
+        raise IdentityProviderUnavailable("identity provider unavailable")
+
+    @app.get("/forged")
+    async def forged() -> None:
+        raise AuthError("unknown signing key")
+
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://api") as client:
+        unavailable, unknown = await client.get("/down"), await client.get("/forged")
+    assert unavailable.status_code == 503 and unavailable.headers["retry-after"] == "10"
+    body = unavailable.json()
+    assert body["code"] == "identity_provider_unavailable" and body["retryable"] is True
+    assert unknown.status_code == 401

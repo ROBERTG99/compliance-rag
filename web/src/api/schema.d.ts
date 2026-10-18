@@ -1020,6 +1020,8 @@ export interface operations {
             /** @description Dependency unavailable */
             503: {
                 headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1077,6 +1079,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Dependency unavailable */
+            503: {
+                headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     list_documents_v1_documents_get: {
@@ -1118,6 +1131,17 @@ export interface operations {
             /** @description Validation error */
             422: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Dependency unavailable */
+            503: {
+                headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1216,6 +1240,8 @@ export interface operations {
             /** @description Dependency unavailable */
             503: {
                 headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1267,6 +1293,17 @@ export interface operations {
             /** @description Validation error */
             422: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Dependency unavailable */
+            503: {
+                headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1358,6 +1395,17 @@ export interface operations {
             /** @description Validation error */
             422: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Dependency unavailable */
+            503: {
+                headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1465,6 +1513,8 @@ export interface operations {
             /** @description Dependency unavailable */
             503: {
                 headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1505,6 +1555,17 @@ export interface operations {
             /** @description Not found or not authorized (indistinguishable) */
             404: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Dependency unavailable */
+            503: {
+                headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1569,6 +1630,8 @@ export interface operations {
             /** @description Dependency unavailable */
             503: {
                 headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1649,6 +1712,17 @@ export interface operations {
             /** @description Validation error */
             422: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Dependency unavailable */
+            503: {
+                headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1740,6 +1814,8 @@ export interface operations {
             /** @description Dependency unavailable */
             503: {
                 headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1780,6 +1856,17 @@ export interface operations {
             /** @description Role not allowed (admin routes only) */
             403: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Dependency unavailable */
+            503: {
+                headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1839,6 +1926,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Dependency unavailable */
+            503: {
+                headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     me_v1_me_get: {
@@ -1864,6 +1962,17 @@ export interface operations {
                 headers: {
                     /** @description Bearer challenge */
                     "WWW-Authenticate"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Dependency unavailable */
+            503: {
+                headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1921,6 +2030,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description Dependency unavailable */
+            503: {
+                headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     run_events_v1_runs__run_id__events_get: {
@@ -1968,6 +2088,17 @@ export interface operations {
             /** @description Validation error */
             422: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Dependency unavailable */
+            503: {
+                headers: {
+                    /** @description Seconds to wait */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
                 content: {

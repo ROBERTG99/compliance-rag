@@ -1759,7 +1759,16 @@
                 }
               }
             },
-            "description": "Dependency unavailable"
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1835,6 +1844,25 @@
               }
             },
             "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1999,6 +2027,25 @@
               }
             },
             "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2120,7 +2167,16 @@
                 }
               }
             },
-            "description": "Dependency unavailable"
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2197,6 +2253,25 @@
               }
             },
             "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2323,6 +2398,25 @@
               }
             },
             "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2456,7 +2550,16 @@
                 }
               }
             },
-            "description": "Dependency unavailable"
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2511,6 +2614,25 @@
               }
             },
             "description": "Not found or not authorized (indistinguishable)"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2680,7 +2802,16 @@
                 }
               }
             },
-            "description": "Dependency unavailable"
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2783,6 +2914,25 @@
               }
             },
             "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2908,7 +3058,16 @@
                 }
               }
             },
-            "description": "Dependency unavailable"
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2963,6 +3122,25 @@
               }
             },
             "description": "Role not allowed (admin routes only)"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3087,6 +3265,25 @@
               }
             },
             "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3128,6 +3325,25 @@
                 "description": "Bearer challenge",
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
                 }
               }
             }
@@ -3206,6 +3422,25 @@
               }
             },
             "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -3293,6 +3528,25 @@
               }
             },
             "description": "Validation error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Dependency unavailable",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait",
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
           }
         },
         "security": [

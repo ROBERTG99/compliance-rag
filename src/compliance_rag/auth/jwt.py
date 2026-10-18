@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from typing import Any
 
@@ -18,6 +19,10 @@ ALGORITHMS = ["RS256"]
 
 class AuthError(Exception):
     """Authentication failed (→ 401 problem+json)."""
+
+
+class IdentityProviderUnavailable(AuthError):
+    """The issuer's keys cannot be fetched and none are cached (→ 503: the token may be fine, retry)."""
 
 
 class JWKSCache:
@@ -51,24 +56,25 @@ class JWKSCache:
             self._attempted = time.monotonic()
 
     def _due(self, kid: str) -> bool:
+        """A fetch is due when the keys expired (an empty cache counts) or the kid is unknown, and no fetch
+        finished within ``min_refetch_s``: an unreachable issuer is asked once per interval, not per request."""
         now = time.monotonic()
-        if not self._keys:
-            return True
         expired = now - self._fetched > self.ttl_s
         return (expired or kid not in self._keys) and now - self._attempted >= self.min_refetch_s
 
+    def _usable(self, kid: str) -> bool:
+        return kid in self._keys and time.monotonic() - self._fetched <= self.max_stale_s
+
     async def key(self, kid: str) -> PyJWK:
-        if self._due(kid):
+        # a cached key is served while another request refreshes; only unknown kids wait for the fetch
+        if self._due(kid) and not (self._lock.locked() and self._usable(kid)):
             async with self._lock:  # one fetch at a time; requests that waited see its result
                 if self._due(kid):
-                    try:
+                    # on failure keep serving the keys we have: a brief issuer outage must not sign everyone out
+                    with contextlib.suppress(httpx.HTTPError):
                         await self._refresh()
-                    except httpx.HTTPError as exc:
-                        if not self._keys or time.monotonic() - self._fetched > self.max_stale_s:
-                            raise AuthError("identity provider unavailable") from exc
-                        # keep serving the keys we have: a brief issuer outage must not sign everyone out
-        if time.monotonic() - self._fetched > self.max_stale_s:
-            raise AuthError("identity provider unavailable")
+        if not self._keys or time.monotonic() - self._fetched > self.max_stale_s:
+            raise IdentityProviderUnavailable("identity provider unavailable")
         if kid not in self._keys:
             raise AuthError("unknown signing key")
         return self._keys[kid]

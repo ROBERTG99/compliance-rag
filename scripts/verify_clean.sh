@@ -7,8 +7,12 @@ if curl -sf -o /dev/null --max-time 2 http://localhost:8610/healthz; then
   echo "the dev stack is running on the shared ports: run \`make down\` first" >&2
   exit 2
 fi
+VERIFY_OUT="${VERIFY_OUT:+$(realpath -m "$VERIFY_OUT")}"  # resolved here: the script moves into the clone
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/crag-verify.XXXXXX")"
-trap 'cd /; (cd "$WORK/compliance-rag" 2>/dev/null && docker compose down -v --remove-orphans >/dev/null 2>&1); rm -rf "$WORK"' EXIT
+# tear down everything the run started, test container and profiles included (as `make down` does)
+trap 'cd /; (cd "$WORK/compliance-rag" 2>/dev/null && docker compose -f compose.yaml -f compose.test.yaml \
+  --profile qdrant --profile observability --profile langfuse down -v --remove-orphans >/dev/null 2>&1); \
+  rm -rf "$WORK"' EXIT
 git clone --quiet --no-hardlinks "$PWD" "$WORK/compliance-rag"
 cd "$WORK/compliance-rag"
 echo "fresh clone of $(git rev-parse --short HEAD) in $WORK"

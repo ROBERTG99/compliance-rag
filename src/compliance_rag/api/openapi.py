@@ -46,6 +46,7 @@ ERRORS: dict[tuple[str, str], list[int]] = {
 _HEADERS: dict[int, dict[str, Any]] = {
     401: {"WWW-Authenticate": {"schema": {"type": "string"}, "description": "Bearer challenge"}},
     429: {"Retry-After": {"schema": {"type": "integer", "minimum": 1}, "description": "Seconds to wait"}},
+    503: {"Retry-After": {"schema": {"type": "integer", "minimum": 1}, "description": "Seconds to wait"}},
 }
 
 
@@ -78,6 +79,8 @@ def build_openapi(app: FastAPI) -> dict[str, Any]:
             statuses = list(ERRORS.get((method, path), [401, 422] if path.startswith("/v1/") else []))
             if "requestBody" in op:
                 statuses += [400, 413]  # undecodable or oversized bodies are rejected before validation
+            if 401 in statuses:
+                statuses.append(503)  # token checks need the issuer's keys: identity provider unavailable
             for status in sorted(set(statuses)):
                 responses[str(status)] = _problem_response(status)
     return spec

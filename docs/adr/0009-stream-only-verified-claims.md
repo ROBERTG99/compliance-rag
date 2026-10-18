@@ -28,9 +28,9 @@ The generate step asks the model for structured JSON and parses the stream incre
 3. verified against the context chunks (`quote_not_found`, `chunk_not_in_context`, `numeric_mismatch`).
 
 Only a claim that passes all three is emitted as a `claim` event, followed by `token` events that
-re-split its already verified text into six-word pieces (`build.py:392-395`). A rejected claim emits
+re-split its already verified text into six-word pieces (`build.py:395-398`). A rejected claim emits
 `claim_rejected` with a reason and never its text (`build.py:362-365`). The final answer is built from
-exactly the claims that streamed (`build.py:462-490`). The SPA only renders `claim` events and ignores
+exactly the claims that streamed (`build.py:470-493`). The SPA only renders `claim` events and ignores
 `token` events (`web/src/routes/ask/run.ts:35`). Events go through Redis Streams with ids `0-<seq>` so a
 client can resume after a drop (`src/compliance_rag/api/sse.py:1-6`).
 
@@ -53,7 +53,7 @@ Positive:
   offline red-team reports 40 attacks with 0 failures (`evals/REPORT.md` "Red-team").
 - The streamed claims and the final answer agree
   (`test_final_answer_matches_streamed_claims_when_one_claim_is_invalid`).
-- Time to first token is measured at the first verified claim (`build.py:387-389`). Offline, p95 is
+- Time to first token is measured at the first verified claim (`build.py:390-392`). Offline, p95 is
   231.5 ms against a 300 ms budget, with a worst-run p95 of 289.7 ms (`evals/reports/bench.json`,
   `nfr2_ttft`). It uses the FakeLLM, so real model latency is not included.
 
@@ -64,9 +64,9 @@ Negative:
   (`docs/KNOWN_LIMITATIONS.md`, Evals rows).
 - A claim can still be withdrawn after it streamed: if the model refuses mid-stream, or the final
   re-check drops a claim, the server emits `claim_rejected` with reason `retracted`
-  (`build.py:405-407`, `build.py:477-478`) and the UI removes it by index
-  (`web/src/routes/ask/run.ts:75-78`). A `max_tokens` stop keeps the verified claims as a partial answer
-  flagged `generation_truncated` (`build.py:488-489`).
+  (`build.py:408-410`, `build.py:480-481`) and the UI removes it by index
+  (`web/src/routes/ask/run.ts:76-79`). A `max_tokens` stop keeps the verified claims as a partial answer
+  flagged `generation_truncated` (`build.py:491-492`).
 - The `token` events are a presentation effect over verified text, not model tokens, so they add
   events without adding information.
 - The parser skips an object that does not parse as JSON (`stream.py:53`) instead of reporting it. If the

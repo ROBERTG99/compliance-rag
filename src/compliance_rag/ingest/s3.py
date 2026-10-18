@@ -90,7 +90,8 @@ async def _move(deps: IngestDeps, key: str, prefix: str) -> None:
 
 def _reason(exc: BaseException) -> str:
     """What the error file says: the error type and, for a bad sidecar, each field's location and error type
-    (pydantic's ``input`` is never included: it is the submitted value)."""
+    (pydantic's ``input`` is never included: it is the submitted value; ``loc`` names fields, which for an
+    unexpected key is the key the sidecar sent, never its value)."""
     label = error_label(exc)
     if isinstance(exc, ValidationError):
         fields = "; ".join(

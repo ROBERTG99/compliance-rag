@@ -22,8 +22,8 @@ The BM25 leg runs on OpenSearch (`src/compliance_rag/retrieval/bm25.py`, `BM25In
 in `deploy/opensearch/crag-chunks-v1.json` sets BM25 similarity (`k1` 1.2, `b` 0.75) and the `english`
 analyzer on `text`, `title` and `section_path`. The query is a `multi_match` over
 `text`, `title^2` and `section_path^1.5` with the filters in the `bool.filter` clause
-(`bm25.py:166-173`), built from `AccessFilter.opensearch()` (`filters.py:37-52`). Writes and updates go
-through an alias, retry version conflicts and raise on failures (`bm25.py:203-219`).
+(`bm25.py:186-191`), built from `AccessFilter.opensearch()` (`filters.py:37-52`). Writes and updates go
+through an alias, retry version conflicts and raise on failures (`bm25.py:222-238`).
 
 ## Alternatives considered
 
@@ -56,6 +56,6 @@ Negative:
   (`hybrid.py:146-167`, `docs/DECISIONS.md` 2026-10-17 row on index re-checks). ACL changes are applied
   synchronously and retried by a cron until the index confirms (`src/compliance_rag/worker/main.py:123-129`).
 - Deleted documents still count in BM25 term statistics, so a reindex force-merges until no deleted
-  copies remain (`bm25.py:90-104`, `docs/DECISIONS.md` 2026-10-16 row on the 60 s client timeout).
+  copies remain (`bm25.py:109-123`, `docs/DECISIONS.md` 2026-10-16 row on the 60 s client timeout).
 - More operational weight (JVM heap, disk watermarks, mapping migrations). The strict mapping is
-  extended in place by `crag search init` (`bm25.py:73-76`).
+  extended in place by `crag search init` (`bm25.py:92-95`).

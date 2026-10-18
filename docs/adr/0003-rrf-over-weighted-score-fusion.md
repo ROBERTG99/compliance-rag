@@ -11,7 +11,7 @@ Accepted
 ## Context
 
 The two legs return scores on unrelated scales: OpenSearch BM25 scores are unbounded and depend on corpus
-statistics, pgvector returns cosine similarity in a narrow band (`bm25.py:193` and
+statistics, pgvector returns cosine similarity in a narrow band (`bm25.py:212` and
 `vector/pgvector.py:101` both store them in the candidate). The fused list feeds a reranker and a
 sufficiency check, and either leg can be missing when it fails or times out (`hybrid.py:124-139`).
 
