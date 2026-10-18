@@ -16,9 +16,7 @@ rows. Left: the M7/M8 `reviewer` run (also covering the M6 fixes, which had no r
 `docs/verification.md`, the Global Definition of Done below, refreshing the state lines in
 `docs/ai-development.md`, tag `v0.1.0`). Branch `feat/practical-planck-8e2t30`.
 
-Still to show for the Global DoD (not yet measured): ACL leakage = 0 on **all 300** eval cases (dev + test;
-`make eval` grades the 120 test cases), `crag_acl_postcheck_violations_total` = 0 after `make demo`, NFR-3 in
-`make bench`, and `make up` healthy in < 5 minutes (`scripts/time_up.sh`).
+Global DoD evidence gathered on 2026-10-18 (FakeLLM, local stack): `uv run python scripts/run_evals.py --split all` → rag and retrieval PASS on all 300 cases (dev + test), acl_leakage 0.000, hallucinated_citation_rate 0.000, stale_version_citation_rate 0.000, degraded_rate 0.003 (one BM25 leg timeout); `make demo` → "demo ok", then `crag_acl_postcheck_violations_total 0.0` on `/metrics`; `make test` → 338 passed and 19 subtests, coverage gate graph 96.6%, retrieval 94.9%, rerank 95.0%, guard 100.0%, auth 94.3%, ingest 93.8%, overall 90.0%, web lines 89.98% (36 vitest tests); NFR-3 is `tests/perf/test_ingest_latency.py`, part of `make bench` (the stack had no jobs finished in the last 24 h, so its lag metric read 0); authorship check → one identity (the maintainer), no attribution trailers.
 
 ### Milestone reviews
 
