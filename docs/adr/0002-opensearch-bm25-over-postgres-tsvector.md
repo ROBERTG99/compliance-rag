@@ -35,7 +35,7 @@ through an alias, retry version conflicts and raise on failures (`bm25.py:222-23
 - **BM25 inside the vector store only (Qdrant sparse vectors).** Rejected: it would tie the lexical leg
   to the optional vector store, which is not the default (ADR 0001).
 - **Dense-only retrieval.** Rejected: in the ablation the BM25 leg alone reaches recall@10 0.812 and
-  mrr@10 0.827, ahead of the pgvector leg alone at 0.756 and 0.681 (`evals/REPORT.md` "Retrieval
+  mrr@10 0.827, ahead of the pgvector leg alone at 0.744 and 0.670 (`evals/REPORT.md` "Retrieval
   ablation").
 
 ## Consequences

@@ -25,9 +25,9 @@ measure the pipeline around it. Test split, 120 questions.
 | ACL leakage (hard gate) | 0.000 over every retrieved, cited and listed document | [evals/REPORT.md](evals/REPORT.md) |
 | Hallucinated citations (hard gate) | 0.000; citation precision 1.000 | [evals/REPORT.md](evals/REPORT.md) |
 | Stale-version citations | 0.000 (gate < 0.01) | [evals/REPORT.md](evals/REPORT.md) |
-| Retrieval quality | recall@10 0.920, MRR@10 0.943 | [evals/REPORT.md](evals/REPORT.md) |
+| Retrieval quality | recall@10 0.915, MRR@10 0.932 | [evals/REPORT.md](evals/REPORT.md) |
 | Answers and abstention | key-fact accuracy 0.886, abstention accuracy 0.933 | [evals/REPORT.md](evals/REPORT.md) |
-| Reranking gain | recall@10 0.812 (BM25 alone) → 0.920 (hybrid + rerank) | [evals/REPORT.md](evals/REPORT.md#retrieval-ablation) |
+| Reranking gain | recall@10 0.812 (BM25 alone) → 0.915 (hybrid + rerank) | [evals/REPORT.md](evals/REPORT.md#retrieval-ablation) |
 | Prompt injection | 40 attacks, 0 failures; injected documents still answered 28 of 30 | [evals/reports/redteam.json](evals/reports/redteam.json) |
 | Retrieval latency under load | p95 156.8 ms in the verification run of `3be0036`, worst recorded run 224.1 ms (budget < 300) | [evals/reports/bench.json](evals/reports/bench.json) |
 | Time to first verified claim | p95 289.4 ms in the verification run of `3be0036`; recorded runs reach 395.7 ms, over the 300 ms budget | [evals/reports/bench.json](evals/reports/bench.json) |

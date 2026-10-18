@@ -45,15 +45,15 @@ Positive:
   order (`tests/unit/retrieval/test_hybrid.py::test_vector_failure_degrades`).
 - Fusion is cheap and testable by hand
   (`tests/unit/retrieval/test_hybrid.py::test_rrf_fusion_math_and_merge`).
-- Hybrid improves recall over either leg alone: recall@10 0.847 against 0.812 (BM25) and 0.756 (vector),
+- Hybrid improves recall over either leg alone: recall@10 0.841 against 0.812 (BM25) and 0.744 (vector),
   `evals/REPORT.md` "Retrieval ablation" (differences of one or two questions out of 88 are within noise,
   as that report says).
 
 Negative:
 
-- Rank-only fusion discards score magnitude. In the same ablation, hybrid mrr@10 is 0.781 while BM25
+- Rank-only fusion discards score magnitude. In the same ablation, hybrid mrr@10 is 0.766 while BM25
   alone is 0.827, so fusion without reranking does not improve ranking quality on this corpus. The
-  reranker closes the gap: hybrid+rerank reaches recall@10 0.920 and mrr@10 0.943
+  reranker closes the gap: hybrid+rerank reaches recall@10 0.915 and mrr@10 0.932
   (`evals/REPORT.md` "Retrieval ablation").
 - The `k = 60` constant is a default, not tuned on this corpus; it is a setting
   (`CRAG_RRF_K`) if a later ablation justifies another value.

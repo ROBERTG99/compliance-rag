@@ -38,7 +38,7 @@ implemented.
 - The Postgres re-check fails closed: if it cannot confirm the index hits, those legs are emptied and marked degraded (`src/compliance_rag/retrieval/hybrid.py:157-162`).
 - An all-unknown-terms question embeds to the zero vector and skips the vector leg without marking it degraded (`src/compliance_rag/retrieval/hybrid.py:103-105`).
 - Tests: `tests/unit/retrieval/test_hybrid.py:73` (BM25 timeout gives `degraded == ["bm25"]` and vector hits), `:83`, `:89` (both down raises), `:169` (re-check failure fails closed).
-- Evidence and limits: `degraded_rate` is 0.000 in `evals/REPORT.md`, but no eval injects a failure. The ablation measures single-leg retrieval without reranking only (BM25 recall@10 0.812, vector 0.756, `evals/REPORT.md` "Retrieval ablation"); answer quality with one leg and the reranker on is untested. Missing BM25 scores lower the reranker features, so degraded runs may abstain more; that is read from `src/compliance_rag/rerank/feature.py:98-99`, not measured.
+- Evidence and limits: `degraded_rate` is 0.000 in `evals/REPORT.md`, but no eval injects a failure. The ablation measures single-leg retrieval without reranking only (BM25 recall@10 0.812, vector 0.744, `evals/REPORT.md` "Retrieval ablation"); answer quality with one leg and the reranker on is untested. Missing BM25 scores lower the reranker features, so degraded runs may abstain more; that is read from `src/compliance_rag/rerank/feature.py:98-99`, not measured.
 - Cold caches can push both legs over 250 ms after a restart; the API warms up first (`src/compliance_rag/retrieval/warmup.py`, `docs/KNOWN_LIMITATIONS.md` "Retrieval" row).
 
 ## 4. How are quotes verified?
@@ -70,8 +70,8 @@ implemented.
 - Why rank fusion: BM25 scores are unbounded and corpus-dependent while cosine is bounded, so a weighted score sum needs normalisation and a tuned weight. Ranks need neither and still work when one leg is missing (question 3).
 - Why 60: it is the conventional default for RRF. The ranks decay gently, so a chunk found by both legs beats a chunk ranked first by one leg only (`tests/unit/retrieval/test_hybrid.py:95-102`).
 - Honest status: `k = 60` was not tuned on this corpus and no sweep over `k` exists in the repository (`docs/adr/0003-rrf-over-weighted-score-fusion.md`). Its effect is also bounded, because only the top `leg_k` fused candidates go to the reranker (`src/compliance_rag/graph/build.py:293`).
-- What the ablation shows (`evals/REPORT.md`, "Retrieval ablation", 88 questions, differences of one or two questions are noise): hybrid recall@10 0.847 against 0.812 for BM25 and 0.756 for vector, but hybrid mrr@10 0.781 is below BM25 alone at 0.827.
-- Reranking fixes the ordering: hybrid plus rerank reaches recall@10 0.920 and mrr@10 0.943 (same table). Fusion is a shortlist step here, not the ranking.
+- What the ablation shows (`evals/REPORT.md`, "Retrieval ablation", 88 questions, differences of one or two questions are noise): hybrid recall@10 0.841 against 0.812 for BM25 and 0.744 for vector, but hybrid mrr@10 0.766 is below BM25 alone at 0.827.
+- Reranking fixes the ordering: hybrid plus rerank reaches recall@10 0.915 and mrr@10 0.932 (same table). Fusion is a shortlist step here, not the ranking.
 - To change it, set `CRAG_RRF_K` and add an ablation row; none has been run.
 
 ## 7. How were reranker weights fitted without test leakage?
@@ -81,7 +81,7 @@ implemented.
 - The abstention threshold is calibrated on dev only: the intercept is shifted so that "top score below tau" best separates must-abstain from answerable dev questions (`scripts/fit_reranker.py:54-72`).
 - Tests: `tests/unit/rerank/test_feature.py:82-103` (only dev rows are requested, the fit is deterministic, test-only input raises).
 - Feedback cannot move a test question into dev: triage refuses any question whose normalised text is in a test split and fails closed without the registry (`src/compliance_rag/evals/splits.py:20-44`, `tests/unit/evals/test_splits.py:18`). Committed datasets are append-only by version (`.claude/rules/evals.md`).
-- Reported numbers use the test split (120 cases, `evals/REPORT.md`); tuning numbers are in `PROGRESS.md` ("Dev-split tuning numbers": recall@10 0.962 on dev against 0.920 on test).
+- Reported numbers use the test split (120 cases, `evals/REPORT.md`); tuning numbers are in `PROGRESS.md` ("Dev-split tuning numbers": recall@10 0.962 on dev against 0.915 on test).
 - Weak points: the split is stratified by question, not by document, and 52 of the 160 gold documents serve both splits (`docs/KNOWN_LIMITATIONS.md`, first "Evals" row). The features are document-agnostic, which limits the leak but does not remove it; a `questions.v2` split by document is the fix.
 - Labels are by construction and unreviewed (same file). `docs/DECISIONS.md` ("`RetrievalTarget` reranks only the top `leg_k`") records the one time a first test run exposed a harness mismatch, fixed without changing any system parameter.
 
@@ -92,7 +92,7 @@ implemented.
 - The model is saved as `.npz` without pickle (`src/compliance_rag/embed/lsa.py:71-98`) and fingerprinted (`src/compliance_rag/embed/lsa.py:100-111`); the index records which embedder built it and the API refuses a mismatch (`src/compliance_rag/embed/registry.py:36-63`). The fingerprint appears in every eval report (`lsa-384-c7bdfe8cf120e267`, `evals/REPORT.md`).
 - `crag reindex --reembed` refits it in seed order and reproduces the same model (`src/compliance_rag/ingest/reindex.py:91-107`, `tests/integration/test_reindex.py:71`).
 - The test socket guard blocks public network access, so an accidental provider call fails the suite (`tests/conftest.py:26-56`).
-- Cost: LSA is lexical and statistical, not a neural embedder. The vector leg is the weakest leg (recall@10 0.756 against 0.812 for BM25, `evals/REPORT.md` "Retrieval ablation"), so hybrid numbers say little about what a production embedder would add.
+- Cost: LSA is lexical and statistical, not a neural embedder. The vector leg is the weakest leg (recall@10 0.744 against 0.812 for BM25, `evals/REPORT.md` "Retrieval ablation"), so hybrid numbers say little about what a production embedder would add.
 - The Titan and OpenAI adapters exist (`src/compliance_rag/embed/titan.py`, `src/compliance_rag/embed/openai_embed.py`) but are tested against synthetic fixtures only (`PROGRESS.md`, "Needs the maintainer").
 - LSA and BM25 statistics are fitted over all chunks, including restricted ones (`docs/security.md`, "Known side channels and gaps").
 
