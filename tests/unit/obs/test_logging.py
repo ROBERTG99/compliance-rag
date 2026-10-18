@@ -269,3 +269,61 @@ def test_traceback_text_without_an_exception_in_context_is_withheld(
     out = capsys.readouterr()
     event = json.loads((out.out + out.err).strip().splitlines()[-1])["event"]
     assert "LitigationHold" not in event and "withheld" in event
+
+
+def test_a_message_holding_the_traceback_marker_is_masked_before_the_text_is_cut(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # arq logs "%6.2fs ! %s failed, %s: %s" with exc_info: the message precedes any marker it contains
+    import logging
+
+    configure_logging("INFO", service="worker")
+    error = RuntimeError(
+        "Failing row contains (LegalOnly: see Traceback (most recent call last): in the runbook)"
+    )
+    try:
+        raise error
+    except RuntimeError as exc:
+        logging.getLogger("arq.worker").exception(
+            "%6.2fs ! %s failed, %s: %s", 0.1, "job", type(exc).__name__, exc
+        )
+    logging.getLogger("arq.worker").error("failed: %s", error, exc_info=error)  # outside the except block
+    out = capsys.readouterr()
+    lines = (out.out + out.err).strip().splitlines()
+    for line in lines[-2:]:
+        event = json.loads(line)
+        assert "LegalOnly" not in event["event"] and "Failing row" not in event["event"]
+        assert "withheld" not in event["event"] and "RuntimeError" in event["exception"]
+
+
+def test_wide_exception_groups_are_capped(capsys: pytest.CaptureFixture[str]) -> None:
+    def nest(depth: int) -> BaseException:
+        if depth == 0:
+            return KeyError("leaf")
+        return ExceptionGroup("g", [nest(depth - 1) for _ in range(20)])
+
+    event = _text_traceback_event(capsys, nest(3))
+    assert "more exceptions" in event and len(event) < 200_000
+
+
+def test_an_exception_whose_str_fails_is_still_rendered(capsys: pytest.CaptureFixture[str]) -> None:
+    class Broken(Exception):
+        def __str__(self) -> str:
+            raise RuntimeError("LitigationHold")
+
+    event = _text_traceback_event(capsys, Broken())
+    assert "LitigationHold" not in event and "Broken" in event
+
+
+def test_plain_messages_inside_an_except_block_are_not_masked_by_the_active_exception(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import logging
+
+    configure_logging("INFO", service="api")
+    try:
+        raise ValueError("e")
+    except ValueError:
+        logging.getLogger("compliance_rag.test").warning("retrying the request")
+    out = capsys.readouterr()
+    assert json.loads((out.out + out.err).strip().splitlines()[-1])["event"] == "retrying the request"

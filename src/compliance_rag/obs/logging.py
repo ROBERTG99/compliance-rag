@@ -87,9 +87,11 @@ def _type_and_frames(exc: BaseException, depth: int = 0) -> str:
         module = type(item).__module__
         part = f"{_TRACEBACK}\n{frames}{name if module == 'builtins' else f'{module}.{name}'}"
         if isinstance(item, BaseExceptionGroup) and depth < _MAX_GROUP_DEPTH:
-            for number, sub in enumerate(item.exceptions, 1):
+            for number, sub in enumerate(item.exceptions[:_MAX_GROUP_WIDTH], 1):
                 nested = _type_and_frames(sub, depth + 1).replace("\n", "\n  | ")
                 part += f"\n  +---------------- {number} ----------------\n  | {nested}"
+            if (more := len(item.exceptions) - _MAX_GROUP_WIDTH) > 0:
+                part += f"\n  +---------------- ... ----------------\n  | and {more} more exceptions"
         if parts:  # how this exception relates to the one rendered before it, in Python's own words
             parts.append(_CAUSE if item.__cause__ is not None else _CONTEXT)
         parts.append(part)
@@ -98,19 +100,31 @@ def _type_and_frames(exc: BaseException, depth: int = 0) -> str:
 
 _TRACEBACK = "Traceback (most recent call last):"
 _MAX_GROUP_DEPTH = 5
+_MAX_GROUP_WIDTH = 10
 _CAUSE = "The above exception was the direct cause of the following exception:"
 _CONTEXT = "During handling of the above exception, another exception occurred:"
 _WITHHELD = "[traceback text withheld: no exception in context]"
 
 
-def _mask_messages(text: str, exc: BaseException, depth: int = 0) -> str:
+def _messages(exc: BaseException, depth: int = 0) -> list[str]:
+    found = []
     for item in _chain(exc):
-        message = str(item)
+        try:
+            message = str(item)
+        except Exception:  # a broken __str__ has no message to mask
+            message = ""
         if message:
-            text = text.replace(message, REDACTED)
+            found.append(message)
         if isinstance(item, BaseExceptionGroup) and depth < _MAX_GROUP_DEPTH:
             for sub in item.exceptions:
-                text = _mask_messages(text, sub, depth + 1)
+                found.extend(_messages(sub, depth + 1))
+    return found
+
+
+def _mask_messages(text: str, *excs: BaseException | None) -> str:
+    messages = {message for exc in excs if exc is not None for message in _messages(exc)}
+    for message in sorted(messages, key=len, reverse=True):  # a message inside a longer one is masked with it
+        text = text.replace(message, REDACTED)
     return text
 
 
@@ -122,22 +136,21 @@ def _exceptions_without_messages(
 
     A traceback logged as text (uvicorn's lifespan logs ``traceback.format_exc()`` from inside its ``except``) is
     never parsed: its text is replaced by the active exception rendered the same way, or withheld when there is
-    none, since a message can imitate any traceback structure."""
+    none, since a message can imitate any traceback structure. Messages are masked before the text is cut, so a
+    message that contains the traceback header is masked as a whole."""
     exc = _exception(event.pop("exc_info", None))
     message = event.get("event")
-    if isinstance(message, str) and _TRACEBACK in message:
-        lead_in = message[: message.index(_TRACEBACK)]
-        active = sys.exc_info()[1]
-        if active is None:
-            event["event"] = lead_in + _WITHHELD
-        else:
-            event["event"] = _mask_messages(lead_in, active) + _type_and_frames(active)
-    if exc is None:
-        return event
-    message = event.get("event")
     if isinstance(message, str):
-        event["event"] = _mask_messages(message, exc)
-    event["exception"] = _type_and_frames(exc)
+        message = _mask_messages(message, exc)
+        if _TRACEBACK in message:  # the active exception masks only text that holds a traceback
+            active = sys.exc_info()[1] or exc
+            message = _mask_messages(message, active)
+        if _TRACEBACK in message:
+            lead_in = message[: message.index(_TRACEBACK)]
+            message = lead_in + (_WITHHELD if active is None else _type_and_frames(active))
+        event["event"] = message
+    if exc is not None:
+        event["exception"] = _type_and_frames(exc)
     return event
 
 
