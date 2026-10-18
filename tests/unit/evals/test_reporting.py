@@ -113,3 +113,12 @@ def test_ablation_from_another_system_configuration_is_flagged() -> None:
     assert "| bm25 | 88 | 0.800 | 0.700 | 40 ms |" in text
     assert "differs from the suites above" in text and "reranker" in text
     assert "2026-10-17T09:00:00+00:00" in text
+
+
+def test_report_says_whether_live_evals_were_run() -> None:
+    # BUILD.md §19 step 4: without a provider key the report must say live evals were not run
+    text = render_report(summarize([RETRIEVAL]), failures=[])
+    assert "## Live evaluation" in text and "Not run" in text and "make eval-live" in text
+    live = {"date": "2026-10-18", "model": "claude-opus-5-5", "cost_usd": 0.42, "questions": 40}
+    text = render_report({**summarize([RETRIEVAL]), "live": live}, failures=[])
+    assert "claude-opus-5-5" in text and "0.42" in text and "Not run" not in text.split("## Live evaluation")[1]

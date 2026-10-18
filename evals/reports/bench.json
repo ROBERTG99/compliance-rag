@@ -3,12 +3,12 @@
     "budget_ms": 300,
     "concurrency": 4,
     "llm": "FakeLLM (offline)",
-    "max_ms": 190.9,
-    "measured_at": "2026-10-18T15:26:36+00:00",
+    "max_ms": 203.1,
+    "measured_at": "2026-10-18T15:56:44+00:00",
     "method": "unmeasured warm-up pass over other dev questions, then the measured pass",
     "n": 60,
-    "p50_ms": 81.9,
-    "p95_ms": 138.8,
+    "p50_ms": 75.4,
+    "p95_ms": 161.2,
     "passed": true,
     "runs": [
       {
@@ -59,6 +59,13 @@
         "p50_ms": 81.9,
         "p95_ms": 138.8,
         "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T15:56:44+00:00",
+        "n": 60,
+        "p50_ms": 75.4,
+        "p95_ms": 161.2,
+        "passed": true
       }
     ],
     "split": "dev",
@@ -68,13 +75,13 @@
     "budget_ms": 300,
     "concurrency": 4,
     "llm": "FakeLLM (offline)",
-    "max_ms": 342.7,
-    "measured_at": "2026-10-18T15:26:36+00:00",
+    "max_ms": 289.8,
+    "measured_at": "2026-10-18T15:56:44+00:00",
     "method": "unmeasured warm-up pass over other dev questions, then the measured pass",
     "n": 59,
-    "p50_ms": 191.8,
-    "p95_ms": 314.5,
-    "passed": false,
+    "p50_ms": 162.7,
+    "p95_ms": 260.6,
+    "passed": true,
     "runs": [
       {
         "measured_at": "2026-10-17T22:11:31+00:00",
@@ -124,6 +131,13 @@
         "p50_ms": 191.8,
         "p95_ms": 314.5,
         "passed": false
+      },
+      {
+        "measured_at": "2026-10-18T15:56:44+00:00",
+        "n": 59,
+        "p50_ms": 162.7,
+        "p95_ms": 260.6,
+        "passed": true
       }
     ],
     "split": "dev",
@@ -132,11 +146,11 @@
   "nfr3_ingestion_lag": {
     "budget_ms": 300000,
     "documents": 24,
-    "max_ms": 3957.4,
-    "measured_at": "2026-10-18T01:45:36+00:00",
+    "max_ms": 3305.8,
+    "measured_at": "2026-10-18T15:57:26+00:00",
     "n": 24,
-    "p50_ms": 3800.4,
-    "p95_ms": 3951.0,
+    "p50_ms": 2976.1,
+    "p95_ms": 3249.8,
     "passed": true,
     "path": "register_upload, Redis, Arq worker (default concurrency), testcontainers",
     "runs": [
@@ -146,6 +160,13 @@
         "p50_ms": 3800.4,
         "p95_ms": 3951.0,
         "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T15:57:26+00:00",
+        "n": 24,
+        "p50_ms": 2976.1,
+        "p95_ms": 3249.8,
+        "passed": true
       }
     ],
     "worst_p95_ms": 3951.0
@@ -153,11 +174,11 @@
   "nfr8_documents": {
     "budget_ms": 200,
     "concurrency": 4,
-    "max_ms": 34.9,
-    "measured_at": "2026-10-18T15:26:37+00:00",
+    "max_ms": 26.8,
+    "measured_at": "2026-10-18T15:56:45+00:00",
     "n": 120,
-    "p50_ms": 14.1,
-    "p95_ms": 25.8,
+    "p50_ms": 11.7,
+    "p95_ms": 17.5,
     "passed": true,
     "runs": [
       {
@@ -207,6 +228,13 @@
         "n": 120,
         "p50_ms": 14.1,
         "p95_ms": 25.8,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T15:56:45+00:00",
+        "n": 120,
+        "p50_ms": 11.7,
+        "p95_ms": 17.5,
         "passed": true
       }
     ],

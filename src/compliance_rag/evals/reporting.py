@@ -168,4 +168,17 @@ def render_report(latest: dict[str, Any], *, failures: list[str]) -> str:
             )
     else:
         lines.append("Not run yet: `make redteam` adds this section.")
+
+    lines += ["", "## Live evaluation", ""]
+    live = latest.get("live")
+    if live:
+        lines.append(
+            f"Labelled live: {live.get('questions')} questions on {live.get('date')} with `{live.get('model')}`, "
+            f"cost USD {live.get('cost_usd')} (`make eval-live`, within `LIVE_EVAL_BUDGET_USD`)."
+        )
+    else:
+        lines.append(
+            "Not run: `make eval-live` needs a provider key (`CRAG_LLM_PROVIDER` with credentials), and none was "
+            "set in the build environment. Every number above is offline (FakeLLM)."
+        )
     return "\n".join(lines) + "\n"

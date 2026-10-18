@@ -2,7 +2,7 @@
 
 This repository was built by an AI coding agent (Claude Code, running on the web) working from a written specification, inside a harness of rules, hooks, subagents and skills that the spec itself asked for. This page describes that process and the mistakes it produced and caught. It is written from the repository's own records: [PROGRESS.md](../PROGRESS.md), [DECISIONS.md](DECISIONS.md), [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md), the `.claude/` directory and `git log`. Where a claim comes from somewhere else, the text says so.
 
-State when this page was written: tasks T-01 to T-46 are marked done in [PROGRESS.md](../PROGRESS.md), T-47 to T-51 (images and compose, CI, documentation, final reviews, final verification) are still `todo`, and every box in the Global Definition of Done in that file is unchecked. The branch had 81 commits (`git log --oneline | wc -l`), of which 22 start with `fix` (`git log --oneline | grep -cE '^[0-9a-f]+ fix'`). This page describes a build in progress, not a finished and verified release.
+State at the final verification: tasks T-01 to T-51 are done in [PROGRESS.md](../PROGRESS.md), and the Global Definition of Done there is checked item by item with its evidence (the CI item waits for the pull request's runs). The verified commit `f636ecd` was the 101th (`git rev-list --count f636ecd`); 29 commit subjects up to it start with `fix` (`git log --oneline f636ecd | grep -cE '^[0-9a-f]+ fix'`). The fresh-clone run is in [verification.md](verification.md).
 
 ## 1. The spec as the driver
 
@@ -71,7 +71,7 @@ Rules written in prose can be ignored, so the important ones also exist as code.
 - **Import contract.** `[tool.importlinter]` in `pyproject.toml` forbids `anthropic` and `openai` imports everywhere except `llm/gateway.py`; `make typecheck` runs `lint-imports`, and `tests/harness/test_import_contract.py` covers it.
 - **Dataset immutability.** The pre-tool hook blocks edits to existing `evals/datasets/*.jsonl`, and a unit test fails if the committed datasets drift from the generator.
 - **`make check-fast`.** ruff, ruff format check, `mypy --strict` and the unit and harness tests (target under 60 seconds). The Stop hook and `scripts/task_commit.sh` both run it.
-- **`make verify`.** Chains lint, typecheck, security, test, e2e, eval, redteam and bench; `make verify-clean` runs it in a fresh clone. Neither had been run to completion when this page was written (Global Definition of Done unchecked in [PROGRESS.md](../PROGRESS.md)).
+- **`make verify`.** Chains lint, typecheck, security, test, e2e, eval, redteam and bench; `make verify-clean` runs it in a fresh clone. `make verify-clean` passed on 2026-10-18 after several failed attempts, each recorded with its fix in [DECISIONS.md](DECISIONS.md) ([verification.md](verification.md)).
 - **Eval gates.** `make eval` checks the thresholds in `evals/suites/*.yaml` and a stored baseline; ACL leakage and hallucinated citation rate are hard gates (T-39 row of [PROGRESS.md](../PROGRESS.md)).
 
 ## 4. Review cadence

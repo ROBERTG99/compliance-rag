@@ -4,9 +4,9 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 and the project uses [Semantic Versioning](https://semver.org/). Task numbers (T-xx) refer to
 [docs/specs/000-build-spec.md](docs/specs/000-build-spec.md); evidence per task is in [PROGRESS.md](PROGRESS.md).
 
-## [Unreleased]
+## [0.1.0] - 2026-10-18
 
-First complete version (to be tagged `v0.1.0` after final verification).
+First complete version, verified on a fresh clone with no API keys ([docs/verification.md](docs/verification.md)).
 
 ### Added
 
@@ -47,4 +47,6 @@ Findings from the milestone reviews, each with a regression test; see the `fix(.
 [docs/DECISIONS.md](docs/DECISIONS.md). Highlights: Postgres re-check of index hits and ACL changes audited in
 their transaction (M3); cached data cleared on every identity change in the web app (M4); budget refusal of
 unpriced models and gating of answered injections (M5); purge of graph checkpoints with expired conversations
-and aggregated metrics across API workers (M6).
+and aggregated metrics across API workers (M6); exception text kept out of logs and job rows, 503 when object
+storage or the identity provider is down, quotes under the output guard, serialised JWKS fetches and checkpointer
+migrations, and NFR-2 tail latency (final review and verification, M9).

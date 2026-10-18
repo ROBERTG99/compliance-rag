@@ -13,7 +13,7 @@ question at a time against the local stack (single client); throughput under loa
 ## Suite `rag`: PASS
 
 - Split: `test` (120 cases, dataset sha256 `3474f7519c05`)
-- Generated: 2026-10-17T22:14:25+00:00 in 8.0 s; errors: 0
+- Generated: 2026-10-18T15:55:27+00:00 in 10.1 s; errors: 0
 - embedder: lsa-384-09a9d7d3f5ee4d53
 - llm: FakeLLM (offline)
 - models: none (deterministic FakeLLM)
@@ -31,13 +31,13 @@ question at a time against the local stack (single client); throughput under loa
 | acl_leakage | 0.000 | = 0 | 120 | hard | pass |
 | stale_version_citation_rate | 0.000 | < 0.01 | 94 | yes | pass |
 | abstention_accuracy | 0.933 | ≥ 0.9 | 120 | yes | pass |
-| retrieval_p95 | 59 ms | < 300 | 120 | yes | pass |
+| retrieval_p95 | 80 ms | < 300 | 120 | yes | pass |
 | degraded_rate | 0.000 | — | 120 | no | pass |
 
 ## Suite `retrieval`: PASS
 
 - Split: `test` (120 cases, dataset sha256 `3474f7519c05`)
-- Generated: 2026-10-17T22:14:33+00:00 in 5.4 s; errors: 0
+- Generated: 2026-10-18T15:55:36+00:00 in 5.8 s; errors: 0
 - embedder: lsa-384-09a9d7d3f5ee4d53
 - llm: FakeLLM (offline)
 - models: none (deterministic FakeLLM)
@@ -50,7 +50,7 @@ question at a time against the local stack (single client); throughput under loa
 | recall@10 | 0.920 | ≥ 0.9 | 88 | yes | pass |
 | mrr@10 | 0.943 | ≥ 0.7 | 88 | yes | pass |
 | acl_leakage | 0.000 | = 0 | 120 | hard | pass |
-| retrieval_p95 | 60 ms | < 300 | 120 | yes | pass |
+| retrieval_p95 | 66 ms | < 300 | 120 | yes | pass |
 | degraded_rate | 0.000 | — | 120 | no | pass |
 
 ## Gate
@@ -84,3 +84,7 @@ Run 2026-10-17T15:29:03+00:00 on the `test` split (`make eval-ablation`); differ
 
 40 attacks, 0 failures (`make redteam`, Promptfoo).
 Injected documents still answered with their fact: 28 of 30 (gated: no drop below `evals/redteam/baseline.json`). The context guard keeps every injected document's fact sentence (`test_guard_keeps_every_injected_fact_and_removes_every_injection`); in the misses the document is not in the top 10.
+
+## Live evaluation
+
+Not run: `make eval-live` needs a provider key (`CRAG_LLM_PROVIDER` with credentials), and none was set in the build environment. Every number above is offline (FakeLLM).
