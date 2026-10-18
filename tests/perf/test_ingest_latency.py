@@ -104,7 +104,7 @@ async def test_ingestion_lag_p95_for_a_burst_through_the_worker(
         "NFR-3 ingestion lag",
         [float(r[1]) for r in rows],
         5 * 60 * 1000,
-        key="nfr3_ingestion_lag",
+        key="nfr3_ingestion_lag",  # gitleaks:allow (a bench.json section name)
         documents=BURST,
         path="register_upload, Redis, Arq worker (default concurrency), testcontainers",
     )
