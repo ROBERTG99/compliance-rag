@@ -15,7 +15,7 @@ from compliance_rag.api.errors import Problem, not_found
 from compliance_rag.api.schemas import ChunkOut, DocumentDetail, DocumentPage
 from compliance_rag.api.state import AppState
 from compliance_rag.db.audit import append_audit
-from compliance_rag.ingest.objectstore import ObjectNotFound
+from compliance_rag.ingest.objectstore import ObjectNotFound, StorageUnavailable
 from compliance_rag.ingest.pipeline import RegisteredJob, idempotency_key, register_upload
 from compliance_rag.ingest.s3 import DocumentMetadata, format_for
 from compliance_rag.retrieval.types import Principal
@@ -41,6 +41,12 @@ class FromS3Request(BaseModel):
     model_config = ConfigDict(extra="forbid")
     key: SafeText = Field(min_length=1, max_length=512)
     metadata: DocumentMetadata
+
+
+def _storage_unavailable() -> Problem:
+    return Problem(
+        503, "Service Unavailable", "object storage is unavailable", "storage_unavailable", retryable=True
+    )
 
 
 def _queue_unavailable() -> Problem:
@@ -77,10 +83,8 @@ async def _register(
         job = await register_upload(
             state.services.ingest_deps(), doc_meta, blob, principal["sub"], actor_role=principal["role"]
         )
-    except (ConnectionError, OSError) as exc:
-        raise Problem(
-            503, "Service Unavailable", "object storage is unavailable", "storage_unavailable", retryable=True
-        ) from exc
+    except (ConnectionError, OSError) as exc:  # StorageUnavailable is an OSError
+        raise _storage_unavailable() from exc
     await _enqueue(state, job, hashlib.sha256(blob).hexdigest())
     return UploadAccepted(job_id=job.job_id, document_id=job.document_id, version=job.version)
 
@@ -156,6 +160,8 @@ async def import_from_s3(
         blob = await state.services.objects.get(req.key)
     except ObjectNotFound as exc:
         raise not_found("object") from exc
+    except StorageUnavailable as exc:
+        raise _storage_unavailable() from exc
     if len(blob) > state.settings.max_upload_bytes:  # replaced between HEAD and GET
         raise Problem(413, "Content Too Large", "object exceeds the upload limit", "upload_too_large")
     return await _register(state, principal, req.metadata, blob, fmt)
@@ -199,6 +205,11 @@ async def list_documents(
         "EXISTS (SELECT 1 FROM document_acl a WHERE a.document_id = d.document_id AND a.group_name = ANY(%(groups)s))",
         "d.document_id > %(after)s",
     ]
+    params["admin"] = principal["role"] == "content_admin"
+    if not params["admin"]:  # as in the document view: unfinished versions are the admin's
+        where.append(
+            "EXISTS (SELECT 1 FROM document_versions v WHERE v.document_id = d.document_id AND v.status = 'active')"
+        )
     if domain:
         where.append("d.domain = %(domain)s")
         params["domain"] = domain
@@ -217,7 +228,8 @@ async def list_documents(
                (SELECT array_agg(group_name ORDER BY group_name) FROM document_acl a WHERE a.document_id = d.document_id),
                (SELECT max(version) FROM document_versions v WHERE v.document_id = d.document_id AND v.status = 'active'
                   AND v.valid_from <= %(today)s AND (v.valid_to IS NULL OR v.valid_to > %(today)s)),
-               (SELECT count(*) FROM document_versions v WHERE v.document_id = d.document_id)
+               (SELECT count(*) FROM document_versions v WHERE v.document_id = d.document_id
+                  AND (%(admin)s OR v.status = 'active'))
         FROM documents d WHERE {" AND ".join(where)} ORDER BY d.document_id LIMIT %(limit)s"""  # noqa: S608
     async with state.services.pool.connection() as conn:
         rows = await (await conn.execute(sql, params)).fetchall()

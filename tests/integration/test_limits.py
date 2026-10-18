@@ -152,3 +152,48 @@ async def test_s3_import_checks_the_size_before_downloading(api_env: ApiEnv) -> 
         )
     assert resp.status_code == 413
     assert await state.services.objects.size("inbox/huge.md") == 20 * 1024 * 1024 + 1
+
+
+async def test_object_storage_down_answers_503_retryable(api_env: ApiEnv) -> None:
+    # BUILD.md §4.7: MinIO down → upload 503 (botocore's connection errors are not OSError)
+    from compliance_rag.ingest.objectstore import S3ObjectStore
+
+    services = api_env.app.state.crag.services
+    original = services.objects
+    services.objects = S3ObjectStore("http://127.0.0.1:9", "k", "s", bucket=original.bucket)  # closed port
+    meta = {
+        "document_id": "TST-0102",  # a document of its own: no version check stands before the storage call
+        "version": "1",
+        "title": "Storage Outage Test Document",
+        "domain": "aml",
+        "owner": "MLRO",
+        "valid_from": "2027-01-01",
+        "acl_groups": "compliance",
+    }
+    try:
+        async with await api_env.client("admin") as admin:
+            upload = await admin.post(
+                "/v1/documents",
+                data=meta,
+                files={"file": ("x.md", b"# Article 1\n\nText.\n", "text/markdown")},
+            )
+            imported = await admin.post(
+                "/v1/documents:from-s3",
+                json={"key": "inbox/x.md", "metadata": meta},
+            )
+    finally:
+        services.objects = original
+    for resp in (upload, imported):
+        assert resp.status_code == 503, resp.text
+        body = resp.json()
+        assert body["code"] == "storage_unavailable" and body["retryable"] is True
+
+
+async def test_a_repeated_query_parameter_is_refused(api_env: ApiEnv) -> None:
+    # no query parameter of the API is a list: `?q=a&q=b` is malformed, not "the last one wins"
+    async with await api_env.client("analyst") as analyst:
+        resp = await analyst.get("/v1/documents", params=[("q", "kyc"), ("q", "aml")])
+        single = await analyst.get("/v1/documents", params={"q": "kyc"})
+    assert resp.status_code == 422 and resp.json()["code"] == "validation"
+    assert resp.headers["content-type"].startswith("application/problem+json")
+    assert single.status_code == 200

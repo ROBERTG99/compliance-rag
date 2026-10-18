@@ -29,3 +29,25 @@ def test_query_has_boosts_and_filters_inside_bool() -> None:
     assert {"terms": {"acl_groups": ["all", "support"]}} in filters
     assert {"term": {"visible": True}} in filters
     assert {"range": {"valid_from": {"lte": "2026-10-16"}}} in filters
+
+
+async def test_opensearch_errors_carry_the_type_not_the_reason() -> None:
+    import httpx
+    import pytest
+
+    from compliance_rag.retrieval.bm25 import BM25Index, OpenSearchError
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        reason = "failed to parse query [What is the litigation hold for Legal-only files?]"
+        return httpx.Response(
+            400, json={"error": {"type": "search_phase_execution_exception", "reason": reason}}
+        )
+
+    index = BM25Index("http://opensearch:9200", index="i", alias="a")
+    index.client = httpx.AsyncClient(
+        base_url="http://opensearch:9200", transport=httpx.MockTransport(handler)
+    )
+    with pytest.raises(OpenSearchError) as raised:
+        await index._req("POST", "/a/_search", json={})
+    await index.close()
+    assert "search_phase_execution_exception" in str(raised.value) and "litigation" not in str(raised.value)

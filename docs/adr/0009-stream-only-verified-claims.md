@@ -21,7 +21,7 @@ taken back, so unverified text on the wire is a risk in both correctness and sec
 The generate step asks the model for structured JSON and parses the stream incrementally: a
 `ClaimStreamParser` yields each `claims[i]` object as soon as it closes
 (`src/compliance_rag/graph/stream.py:10-61`). Each closed claim is then, in this order
-(`src/compliance_rag/graph/build.py:367-395`):
+(`src/compliance_rag/graph/build.py:367-396`):
 
 1. schema-checked (`schema_invalid`);
 2. run through the output guard against the context (`output_guard`);

@@ -25,6 +25,7 @@ from compliance_rag.guard.context_guard import injection_score
 from compliance_rag.ingest.chunker import Chunk, chunk_text
 from compliance_rag.ingest.loaders import FORMATS, extract_text, sniff_format
 from compliance_rag.ingest.objectstore import ObjectStore
+from compliance_rag.obs.logging import error_label
 from compliance_rag.retrieval.bm25 import BM25Index
 from compliance_rag.retrieval.types import ChunkRecord
 from compliance_rag.retrieval.vector.pgvector import PgVectorStore
@@ -398,7 +399,7 @@ async def _current_acl(pool: AsyncConnectionPool, document_id: str) -> list[str]
     return list(row[0]) if row else []
 
 
-async def _sync_document_acl(deps: IngestDeps, document_id: str) -> None:
+async def sync_document_acl(deps: IngestDeps, document_id: str) -> None:
     """Push the document's current ACL to the search indexes until it stops changing under us."""
     groups = await _current_acl(deps.pool, document_id)
     for _ in range(3):
@@ -416,7 +417,7 @@ async def sync_activation(deps: IngestDeps, act: Activation) -> None:
     """Idempotently mirror the Postgres activation into OpenSearch and Qdrant."""
     await deps.bm25.refresh()  # update-by-query only sees refreshed documents
     if act.document_id:
-        await _sync_document_acl(deps, act.document_id)  # before the version becomes visible
+        await sync_document_acl(deps, act.document_id)  # before the version becomes visible
     if act.closed_version_id and act.closed_valid_to:
         await deps.bm25.close_version(act.closed_version_id, act.closed_valid_to)
         if deps.qdrant:
@@ -502,7 +503,7 @@ async def ingest_document(deps: IngestDeps, job_id: str) -> JobResult:
             await conn.execute(
                 "UPDATE ingestion_jobs SET error = %s, status = CASE WHEN %s THEN 'failed' ELSE status END, "
                 "finished_at = CASE WHEN %s THEN now() ELSE finished_at END WHERE id = %s",
-                (f"{type(exc).__name__}: {exc}"[:2000], final, final, job_id),
+                (error_label(exc), final, final, job_id),
             )
             if final:
                 await conn.execute(

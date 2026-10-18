@@ -25,7 +25,7 @@ The principal's filter is part of the query, never applied afterwards:
   Qdrant `Filter` (`filters.py:55-66`). A principal without groups raises `PermissionError`
   (`filters.py:25-27`).
 - Every search function takes a `Principal` and builds the filter itself
-  (`retrieval/bm25.py:179`, `retrieval/vector/pgvector.py:80`, `retrieval/vector/qdrant.py:84`); no
+  (`retrieval/bm25.py:190`, `retrieval/vector/pgvector.py:80`, `retrieval/vector/qdrant.py:84`); no
   unfiltered search exists. `HybridRetriever.run_legs` validates the principal before any I/O
   (`retrieval/hybrid.py:117`).
 - Defence in depth, counted: index hits are re-checked against Postgres, the authoritative copy

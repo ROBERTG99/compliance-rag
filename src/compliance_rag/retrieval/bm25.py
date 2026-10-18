@@ -31,6 +31,17 @@ def index_body() -> dict[str, Any]:
         )
 
 
+def _error_type(resp: httpx.Response) -> str:
+    """The OpenSearch error type only: the reason text can echo the query (the question) or document fields."""
+    try:
+        error = resp.json().get("error")
+    except ValueError:
+        return "unparseable error body"
+    if isinstance(error, dict):
+        return str(error.get("type", "unknown"))
+    return "unknown"
+
+
 class OpenSearchError(RuntimeError):
     pass
 
@@ -52,7 +63,7 @@ class BM25Index:
     async def _req(self, method: str, path: str, **kw: Any) -> httpx.Response:
         resp = await self.client.request(method, path, **kw)
         if resp.status_code >= 400:
-            raise OpenSearchError(f"{method} {path} -> {resp.status_code}: {resp.text[:300]}")
+            raise OpenSearchError(f"{method} {path} -> {resp.status_code}: {_error_type(resp)}")
         return resp
 
     async def ping(self) -> bool:
@@ -68,7 +79,7 @@ class BM25Index:
         if (await self.client.head(f"/{self.index}")).status_code == 404:
             resp = await self.client.put(f"/{self.index}", json=index_body())
             if resp.status_code >= 400 and "resource_already_exists" not in resp.text:
-                raise OpenSearchError(resp.text[:300])
+                raise OpenSearchError(f"PUT /{self.index} -> {resp.status_code}: {_error_type(resp)}")
             created = True
         else:  # add fields introduced since the index was created (allowed under "dynamic": "strict")
             await self._req(

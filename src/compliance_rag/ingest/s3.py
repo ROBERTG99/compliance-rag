@@ -23,6 +23,7 @@ from compliance_rag.ingest.pipeline import (
     RegisteredJob,
     register_upload,
 )
+from compliance_rag.obs.logging import error_label
 from compliance_rag.validation import DOCUMENT_ID_PATTERN, Domain, Group, IsoDate, SafeText
 
 log = structlog.get_logger(__name__)
@@ -112,7 +113,7 @@ async def poll_inbox(
             )
         except (ValidationError, ValueError, json.JSONDecodeError, psycopg.errors.IntegrityError) as exc:
             # the file itself is wrong: park it with the reason so it never blocks the inbox again
-            await deps.objects.put(f"failed/{key.removeprefix(INBOX)}.error.txt", str(exc)[:2000].encode())
+            await deps.objects.put(f"failed/{key.removeprefix(INBOX)}.error.txt", error_label(exc).encode())
             failed += 1
             await _move(deps, key, "failed/")
             await _move(deps, sidecar, "failed/")

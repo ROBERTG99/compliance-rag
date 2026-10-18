@@ -375,7 +375,10 @@ def build_graph(deps: GraphDeps, checkpointer: Any | None = None) -> Any:
             if len(verified) >= MAX_CLAIMS:
                 await reject(index, "schema_invalid")
                 return
-            if not check_output(claim.text, context_texts).ok:
+            # quotes stream too: a canary quoted verbatim from a missed injection would otherwise verify
+            if not check_output(
+                "\n".join([claim.text, *(c.quote for c in claim.citations)]), context_texts
+            ).ok:
                 await reject(index, "output_guard")
                 return
             vc, reason = verify_claim(claim, by_id, numbering, len(verified))

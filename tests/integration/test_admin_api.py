@@ -30,14 +30,18 @@ async def test_index_lag_reports_pending(api_env: ApiEnv) -> None:
                 "VALUES (%s, 'reindex', 'KYC-0042', 'queued', 'test')",
                 (uuid.uuid4().hex * 2,),
             )
-    assert await _pending(api_env) == before + 3
-    async with await api_env.client("admin") as admin:
-        jobs = (await admin.get("/v1/ingestion-jobs", params={"status": "queued", "kind": "reindex"})).json()
-    assert len(jobs["items"]) >= 3 and all(j["status"] == "queued" for j in jobs["items"])
-    async with state.services.pool.connection() as conn:
-        await conn.execute(
-            "UPDATE ingestion_jobs SET status = 'done', finished_at = now() WHERE requested_by = 'test'"
-        )
+    try:
+        assert await _pending(api_env) == before + 3
+        async with await api_env.client("admin") as admin:
+            jobs = (
+                await admin.get("/v1/ingestion-jobs", params={"status": "queued", "kind": "reindex"})
+            ).json()
+        assert len(jobs["items"]) >= 3 and all(j["status"] == "queued" for j in jobs["items"])
+    finally:  # later tests count pending jobs too
+        async with state.services.pool.connection() as conn:
+            await conn.execute(
+                "UPDATE ingestion_jobs SET status = 'done', finished_at = now() WHERE requested_by = 'test'"
+            )
     async with await api_env.client("analyst") as analyst:
         assert (await analyst.get("/v1/index/lag")).status_code == 403
 

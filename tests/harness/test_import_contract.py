@@ -22,3 +22,19 @@ def test_import_linter_contract_passes() -> None:
         ["uv", "run", "lint-imports", "--no-cache"], cwd=ROOT, capture_output=True, text=True, check=False
     )
     assert proc.returncode == 0, proc.stdout[-2000:]
+
+
+BEDROCK_CLIENT = re.compile(r"""client\(\s*["']bedrock(?:-runtime)?["']""")
+
+
+def test_only_gateway_creates_bedrock_runtime_clients() -> None:
+    # boto3 is also the S3 client, so the import contract cannot fence Bedrock off; the client call can be
+    offenders = [
+        str(p.relative_to(ROOT))
+        for p in (ROOT / "src").rglob("*.py")
+        if BEDROCK_CLIENT.search(p.read_text()) and p.name != "gateway.py"
+    ]
+    assert offenders == []
+    assert BEDROCK_CLIENT.search(
+        (ROOT / "src/compliance_rag/llm/gateway.py").read_text()
+    )  # the pattern still matches

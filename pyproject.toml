@@ -71,7 +71,6 @@ dev = [
     "bandit>=1.7",
     "pip-audit>=2.7",
     "pip-licenses>=5.0",
-    "locust>=2.31",
     "pre-commit>=3.8",
     "types-PyYAML",
     "boto3-stubs[s3]",

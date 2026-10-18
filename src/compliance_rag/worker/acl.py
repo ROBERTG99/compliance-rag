@@ -8,7 +8,8 @@ import uuid
 from dataclasses import dataclass
 
 from compliance_rag.db.audit import append_audit
-from compliance_rag.ingest.pipeline import IngestDeps
+from compliance_rag.ingest.pipeline import IngestDeps, sync_document_acl
+from compliance_rag.obs.logging import error_label
 
 VALID_GROUPS = {"all", "compliance", "legal", "support"}
 
@@ -78,24 +79,21 @@ async def sync_acl(deps: IngestDeps, job_id: str) -> bool:
     async with deps.pool.connection() as conn:
         row = await (
             await conn.execute(
-                """UPDATE ingestion_jobs SET attempts = attempts + 1 WHERE id = %s
-               RETURNING document_id, (SELECT array_agg(group_name ORDER BY group_name) FROM document_acl a
-                                        WHERE a.document_id = ingestion_jobs.document_id)""",
+                "UPDATE ingestion_jobs SET attempts = attempts + 1 WHERE id = %s RETURNING document_id",
                 (job_id,),
             )
         ).fetchone()
     if row is None:
         raise KeyError(job_id)
-    document_id, groups = row[0], list(row[1] or [])
     try:
-        await deps.bm25.update_acl(document_id, groups)
-        if deps.qdrant is not None:
-            await deps.qdrant.update_acl(document_id, groups)
+        # writes, then re-reads Postgres and writes again while the ACL changed meanwhile: an older, slower
+        # sync cannot leave its groups in the indexes after a newer change committed
+        await sync_document_acl(deps, row[0])
     except Exception as exc:
         async with deps.pool.connection() as conn:
             await conn.execute(
                 "UPDATE ingestion_jobs SET error = %s WHERE id = %s",
-                (f"{type(exc).__name__}: {exc}"[:2000], job_id),
+                (error_label(exc), job_id),
             )
         return False
     async with deps.pool.connection() as conn:

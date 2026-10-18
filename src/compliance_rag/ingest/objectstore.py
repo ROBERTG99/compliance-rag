@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from typing import Any, Protocol
+
+from botocore.exceptions import BotoCoreError, ClientError
+
+NOT_FOUND = {"404", "NoSuchKey", "NotFound"}
 
 
 class ObjectStore(Protocol):
@@ -20,6 +25,32 @@ class ObjectStore(Protocol):
 
 class ObjectNotFound(KeyError):
     pass
+
+
+class StorageUnavailable(OSError):
+    """S3/MinIO cannot be reached or refused the request (BUILD.md §4.7: uploads answer 503)."""
+
+
+def _not_found(exc: ClientError) -> bool:
+    return exc.response.get("Error", {}).get("Code") in NOT_FOUND
+
+
+async def _call[T](fn: Callable[[], T]) -> T:
+    """Run a boto3 call off the event loop; botocore's own errors become StorageUnavailable."""
+
+    def run() -> T:
+        try:
+            return fn()
+        except ObjectNotFound:
+            raise
+        except ClientError as exc:
+            if _not_found(exc):
+                raise ObjectNotFound(str(exc.operation_name)) from exc
+            raise StorageUnavailable(type(exc).__name__) from exc
+        except BotoCoreError as exc:  # EndpointConnectionError, ConnectTimeoutError, ...
+            raise StorageUnavailable(type(exc).__name__) from exc
+
+    return await asyncio.to_thread(run)
 
 
 class S3ObjectStore:
@@ -60,21 +91,23 @@ class S3ObjectStore:
             if self.bucket not in existing:
                 self.client.create_bucket(Bucket=self.bucket)
 
-        await asyncio.to_thread(_ensure)
+        await _call(_ensure)
 
     async def put(self, key: str, data: bytes, content_type: str = "application/octet-stream") -> None:
-        await asyncio.to_thread(
-            self.client.put_object, Bucket=self.bucket, Key=key, Body=data, ContentType=content_type
+        await _call(
+            lambda: self.client.put_object(Bucket=self.bucket, Key=key, Body=data, ContentType=content_type)
         )
 
     async def get(self, key: str) -> bytes:
         def _get() -> bytes:
             try:
                 return bytes(self.client.get_object(Bucket=self.bucket, Key=key)["Body"].read())
-            except self.client.exceptions.NoSuchKey as exc:
-                raise ObjectNotFound(key) from exc
+            except ClientError as exc:
+                if _not_found(exc):
+                    raise ObjectNotFound(key) from exc
+                raise
 
-        return await asyncio.to_thread(_get)
+        return await _call(_get)
 
     async def size(self, key: str) -> int:
         """Object size from a HEAD request (no download); ObjectNotFound when missing."""
@@ -82,22 +115,24 @@ class S3ObjectStore:
         def _size() -> int:
             try:
                 return int(self.client.head_object(Bucket=self.bucket, Key=key)["ContentLength"])
-            except self.client.exceptions.ClientError as exc:
-                if exc.response.get("Error", {}).get("Code") in {"404", "NoSuchKey", "NotFound"}:
+            except ClientError as exc:
+                if _not_found(exc):
                     raise ObjectNotFound(key) from exc
                 raise
 
-        return await asyncio.to_thread(_size)
+        return await _call(_size)
 
     async def exists(self, key: str) -> bool:
         def _head() -> bool:
             try:
                 self.client.head_object(Bucket=self.bucket, Key=key)
                 return True
-            except Exception:
-                return False
+            except ClientError as exc:
+                if _not_found(exc):
+                    return False
+                raise  # an outage is not "missing": StorageUnavailable
 
-        return await asyncio.to_thread(_head)
+        return await _call(_head)
 
     async def list(self, prefix: str) -> list[str]:
         def _list() -> list[str]:
@@ -107,7 +142,7 @@ class S3ObjectStore:
                 keys += [o["Key"] for o in page.get("Contents", [])]
             return keys
 
-        return await asyncio.to_thread(_list)
+        return await _call(_list)
 
     async def delete(self, key: str) -> None:
-        await asyncio.to_thread(self.client.delete_object, Bucket=self.bucket, Key=key)
+        await _call(lambda: self.client.delete_object(Bucket=self.bucket, Key=key))

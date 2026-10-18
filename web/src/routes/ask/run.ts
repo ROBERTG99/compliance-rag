@@ -82,8 +82,10 @@ function applyEvent(state: RunState, { event, data }: RunEvent): RunState {
       return { ...state, phase: "done", final, claims: final.claims, runId: final.run_id };
     }
     case "error":
+      // the run ended without a final answer: claims streamed so far are not an answer
       return {
         ...state,
+        claims: [],
         phase: "error",
         error: {
           code: String(data.code),

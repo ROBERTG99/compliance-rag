@@ -31,7 +31,7 @@ survives only if, for every citation (`src/compliance_rag/graph/verify.py:87-118
 Offsets of the matched span are mapped back into the extracted document text (`verify.py:105-117`) so
 the UI can highlight them. The summary `answer` is kept only if each number in it is backed by a verified
 claim, otherwise the verified claims are joined (`verify.py:121-127`). No verified claim means
-abstention with `no_verified_claims` (`src/compliance_rag/graph/build.py:452-459`). Rejections are
+abstention with `no_verified_claims` (`src/compliance_rag/graph/build.py:453-460`). Rejections are
 reported with a reason and counted, not hidden (`build.py:362-365`).
 
 ## Alternatives considered

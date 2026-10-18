@@ -7,10 +7,11 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
 from compliance_rag import __version__
 from compliance_rag.api.correlation import CorrelationId
+from compliance_rag.api.deps import single_valued_query
 from compliance_rag.api.errors import install_error_handlers
 from compliance_rag.api.limits import BodyLimit
 from compliance_rag.api.openapi import install_openapi
@@ -51,6 +52,7 @@ def create_app(settings: Settings | None = None, *, state: AppState | None = Non
         version=__version__,
         lifespan=lifespan,
         description="Compliance policy Q&A with verified citations, ACL and version validity.",
+        dependencies=[Depends(single_valued_query)],
     )
     if state is not None:
         app.state.crag = state  # tests drive the app without running the lifespan

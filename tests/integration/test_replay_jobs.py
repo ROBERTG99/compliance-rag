@@ -139,4 +139,4 @@ async def test_the_last_attempt_raises_a_final_failure(ingest_deps: IngestDeps) 
     assert (status, attempts) == (
         "failed",
         MAX_ATTEMPTS,
-    ) and error == "RuntimeError: simulated crash after Postgres commit"
+    ) and error == "RuntimeError"  # the type, never the message

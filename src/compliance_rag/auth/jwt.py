@@ -21,26 +21,40 @@ class AuthError(Exception):
 
 class JWKSCache:
     def __init__(
-        self, issuer_url: str, client: httpx.AsyncClient | None = None, ttl_s: float = 300.0
+        self,
+        issuer_url: str,
+        client: httpx.AsyncClient | None = None,
+        ttl_s: float = 300.0,
+        min_refetch_s: float = 10.0,
     ) -> None:
         self.issuer_url = issuer_url.rstrip("/")
         self.client = client or httpx.AsyncClient(timeout=3.0)
         self.ttl_s = ttl_s
+        self.min_refetch_s = (
+            min_refetch_s  # unknown key ids (rotation, or forged tokens) refetch at most this often
+        )
         self._keys: dict[str, PyJWK] = {}
         self._fetched = 0.0
+        self._attempted = float("-inf")
 
     async def _refresh(self) -> None:
+        self._attempted = time.monotonic()
         resp = await self.client.get(f"{self.issuer_url}/jwks.json")
         resp.raise_for_status()
         self._keys = {k["kid"]: PyJWK(k) for k in resp.json()["keys"] if k.get("kid")}
         self._fetched = time.monotonic()
 
     async def key(self, kid: str) -> PyJWK:
-        if kid not in self._keys or time.monotonic() - self._fetched > self.ttl_s:
+        now = time.monotonic()
+        expired = now - self._fetched > self.ttl_s
+        unknown = kid not in self._keys
+        if (expired or unknown) and now - self._attempted >= self.min_refetch_s:
             try:
                 await self._refresh()
             except httpx.HTTPError as exc:
-                raise AuthError("identity provider unavailable") from exc
+                if not self._keys:
+                    raise AuthError("identity provider unavailable") from exc
+                # keep serving the keys we have: a brief issuer outage must not sign everyone out
         if kid not in self._keys:
             raise AuthError("unknown signing key")
         return self._keys[kid]

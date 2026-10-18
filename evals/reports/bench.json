@@ -73,6 +73,27 @@
     "split": "dev",
     "worst_p95_ms": 289.7
   },
+  "nfr3_ingestion_lag": {
+    "budget_ms": 300000,
+    "documents": 24,
+    "max_ms": 3957.4,
+    "measured_at": "2026-10-18T01:45:36+00:00",
+    "n": 24,
+    "p50_ms": 3800.4,
+    "p95_ms": 3951.0,
+    "passed": true,
+    "path": "register_upload, Redis, Arq worker (default concurrency), testcontainers",
+    "runs": [
+      {
+        "measured_at": "2026-10-18T01:45:36+00:00",
+        "n": 24,
+        "p50_ms": 3800.4,
+        "p95_ms": 3951.0,
+        "passed": true
+      }
+    ],
+    "worst_p95_ms": 3951.0
+  },
   "nfr8_documents": {
     "budget_ms": 200,
     "concurrency": 4,

@@ -101,3 +101,47 @@ def test_uvicorn_loggers_go_through_the_json_pipeline(capsys: pytest.CaptureFixt
     out = capsys.readouterr()
     line = json.loads((out.out + out.err).strip().splitlines()[-1])
     assert line["event"] == "Application startup complete." and line["service"] == "api"
+
+
+def _raise_chained() -> None:
+    try:
+        raise ValueError("CAUSE-SECRET Complaint files under a litigation hold")
+    except ValueError as cause:
+        raise RuntimeError("SECRET-TEXT-123 Failing row contains (Legal-only chunk text)") from cause
+
+
+def test_exception_messages_never_reach_the_logs(capsys: pytest.CaptureFixture[str]) -> None:
+    # tracebacks keep their type and frames; messages (psycopg row details, pydantic input values, document
+    # text) are dropped, also where a library interpolates the exception into its own message (arq)
+    import logging
+
+    configure_logging("INFO", service="api")
+    try:
+        _raise_chained()
+    except RuntimeError as exc:
+        logging.getLogger("uvicorn.error").error("Exception in ASGI application\n", exc_info=exc)
+        logging.getLogger("arq.worker").exception(
+            "%6.2fs ! %s failed, %s: %s", 0.1, "job", type(exc).__name__, exc
+        )
+        structlog.get_logger("compliance_rag.api").exception("unhandled")
+    out = capsys.readouterr()
+    raw = out.out + out.err
+    assert "SECRET" not in raw and "litigation" not in raw and "Legal-only" not in raw
+    events = [json.loads(line) for line in raw.strip().splitlines()]
+    assert len(events) == 3
+    for event in events:
+        assert "RuntimeError" in event["exception"] and "ValueError" in event["exception"]
+        assert "_raise_chained" in event["exception"]  # the frames are kept
+    assert events[1]["event"].startswith("  0.10s ! job failed, RuntimeError: ")
+
+
+def test_error_labels_name_the_type_and_sqlstate_never_the_message() -> None:
+    import psycopg
+
+    from compliance_rag.obs.logging import error_label
+
+    assert error_label(RuntimeError("Failing row contains (Legal-only chunk text)")) == "RuntimeError"
+    check = psycopg.errors.CheckViolation(
+        "new row violates check constraint; DETAIL: Failing row contains (...)"
+    )
+    assert error_label(check) == "CheckViolation (SQLSTATE 23514)"

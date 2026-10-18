@@ -52,6 +52,27 @@ async def test_upload_is_idempotent_by_hash(api_env: ApiEnv) -> None:
     state = api_env.app.state.crag
     assert await state.services.objects.exists("raw/AML-0107/v4.md")
 
+    # the spec's case: a content admin uploads a PDF
+    policy = next(p for p in build_corpus(SEED) if p.document_id == "AML-0107")
+    v3 = policy.versions[2]
+    v3.version = 6
+    pdf = render_version(policy, v3, "pdf")
+    assert pdf.startswith(b"%PDF")
+    async with await api_env.client("admin") as admin:
+        pdf_first = await admin.post(
+            "/v1/documents",
+            data={**META, "version": "6"},
+            files={"file": ("aml-0107-v6.pdf", pdf, "application/pdf")},
+        )
+        pdf_again = await admin.post(
+            "/v1/documents",
+            data={**META, "version": "6"},
+            files={"file": ("aml-0107-v6.pdf", pdf, "application/pdf")},
+        )
+    assert pdf_first.status_code == 202, pdf_first.text
+    assert pdf_first.json()["job_id"] == pdf_again.json()["job_id"]
+    assert await state.services.objects.exists("raw/AML-0107/v6.pdf")
+
 
 async def test_upload_errors(api_env: ApiEnv) -> None:
     async with await api_env.client("admin") as admin:
@@ -226,3 +247,30 @@ async def test_library_search_escapes_wildcards_and_hides_unfinished_versions(ap
     assert wildcard["items"] == [] and underscore["items"] == []  # literal characters, not wildcards
     assert 16 in {v["version"] for v in admin_view["versions"]}
     assert {v["status"] for v in analyst_view["versions"]} == {"active"}
+
+
+async def test_the_library_shows_non_admins_only_published_versions(api_env: ApiEnv) -> None:
+    # consistent with the document view: unfinished versions (and documents with no active version) are the
+    # admin's; the library neither lists them nor counts them for anyone else
+    blob = b"# Article 1 \xe2\x80\x94 Scope\n\nA pending-only test document for the library view.\n"
+    meta = {**META, "document_id": "TST-0101", "version": "1", "title": "Pending Library Document"}
+    async with await api_env.client("admin") as admin:
+        accepted = await admin.post(
+            "/v1/documents", data=meta, files={"file": ("tst.md", blob, "text/markdown")}
+        )
+        assert accepted.status_code == 202
+        pending = await admin.post(
+            "/v1/documents",
+            data={**META, "version": "17"},
+            files={"file": ("v17.md", _aml0107_v4() + b"\nlibrary-count", "text/markdown")},
+        )
+        assert pending.status_code == 202
+        admin_new = (await admin.get("/v1/documents", params={"q": "TST-0101"})).json()["items"]
+        admin_aml = (await admin.get("/v1/documents", params={"q": "AML-0107"})).json()["items"]
+    async with await api_env.client("analyst") as analyst:
+        analyst_new = (await analyst.get("/v1/documents", params={"q": "TST-0101"})).json()["items"]
+        analyst_aml = (await analyst.get("/v1/documents", params={"q": "AML-0107"})).json()["items"]
+        analyst_doc = (await analyst.get("/v1/documents/AML-0107")).json()
+    assert [d["document_id"] for d in admin_new] == ["TST-0101"] and analyst_new == []
+    assert admin_aml[0]["versions"] > analyst_aml[0]["versions"]
+    assert analyst_aml[0]["versions"] == len(analyst_doc["versions"])

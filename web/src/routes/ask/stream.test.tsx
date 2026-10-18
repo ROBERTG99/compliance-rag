@@ -273,3 +273,29 @@ test("an answer is not shown to the next persona", async () => {
   expect(screen.queryByText(/KYC-0042 v3/)).toBeNull();
   expect(screen.getByLabelText(/question/i)).toHaveValue("");
 });
+
+test("claims streamed before an error do not stay on screen as a partial answer", async () => {
+  const stream = controlledStream();
+  mockFetch((url) =>
+    url === "/v1/ask"
+      ? { status: 202, body: { run_id: "r4", events_url: "/v1/runs/r4/events" } }
+      : stream.response,
+  );
+  renderApp("/");
+  const user = userEvent.setup();
+  await ask(user);
+  stream.push(sse(1, "claim", CLAIM));
+  expect(
+    await screen.findByText(/must not be older than 90 days at the date/i),
+  ).toBeInTheDocument();
+  stream.push(
+    sse(2, "error", {
+      code: "generation_unavailable",
+      message: "generation is unavailable",
+      retryable: true,
+    }),
+  );
+  stream.close();
+  expect(await screen.findByRole("alert")).toHaveTextContent(/generation is unavailable/i);
+  expect(screen.queryByText(/must not be older than 90 days at the date/i)).not.toBeInTheDocument();
+});

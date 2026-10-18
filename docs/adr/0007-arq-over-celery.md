@@ -24,7 +24,7 @@ and `reindex_all` and four crons, all `unique=True`: `poll_s3_inbox` (every 30 s
 (every 15 s), `reconcile_acl` (every minute) and `purge_expired` (daily, 03:10 UTC). Jobs are coroutines
 that reuse the same `Services` container as the API (`worker/main.py:20-27`). Failed jobs are
 retried with exponential backoff (`Retry`) until the job's attempts in Postgres reach `MAX_ATTEMPTS`; the last
-attempt raises `FinalIngestFailure`, which is not retried (`worker/main.py:49-52`, `ingest/pipeline.py:513`). Idempotency comes from the upload
+attempt raises `FinalIngestFailure`, which is not retried (`worker/main.py:49-52`, `ingest/pipeline.py:514`). Idempotency comes from the upload
 key `sha256(kind|document_id|version|content_sha256)`, which is also the Arq `_job_id`
 (`worker/main.py:100-104`, `docs/specs/000-build-spec.md` §4 on idempotency); activation is replay-safe.
 The worker runs from the API image with its own metrics port, 8611 (`worker/main.py:17`).
