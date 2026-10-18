@@ -2,6 +2,7 @@
 
 ## Needs the maintainer
 
+- `.env.example`: the `OTEL_EXPORTER_OTLP_ENDPOINT` line has an inline comment after an empty value, which Docker Compose reads as the value (`# e.g. http://localhost:8681 …`). The app now ignores any non-URL value (`Settings._url_or_none`), but the line should put the comment on its own line. Reading and editing `.env*` files is denied to the agent in this environment.
 - Switch `third_party/evalgate/` to `evalgate @ git+https://github.com/ROBERTG99/evalgate@v0.1.0` once that tag is published (the repository currently has no tag).
 - Maintainer review of 40 questions from `evals/datasets/questions.v1.jsonl` (labels are by construction).
 - Live evals (`make eval-live`, `make record-fixtures`): need `CRAG_LLM_PROVIDER=anthropic` (or bedrock) and credentials; never run in this build (no key). The budget stop is tested offline (`tests/unit/evals/test_budget.py`); the live judge must reach agreement ≥ 0.8 with `make calibrate-judge` against a live `judge` before its numbers are used.

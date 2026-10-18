@@ -10,7 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AliasChoices, Field, SecretStr
+from pydantic import AliasChoices, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _SHARED = {
@@ -97,6 +97,17 @@ class Settings(BaseSettings):
         None, validation_alias=_shared("otel_exporter_otlp_endpoint")
     )
     log_level: str = Field("INFO", validation_alias=_shared("log_level"))
+
+    @field_validator("otel_exporter_otlp_endpoint", "langfuse_host", mode="before")
+    @classmethod
+    def _url_or_none(cls, value: object) -> object:
+        """Optional service URLs: anything that is not an http(s) URL (blank, or a comment that Compose read
+        from `KEY=   # e.g. ...` in .env) means "not configured"."""
+        if isinstance(value, str):
+            value = value.strip()
+            return value if value.startswith(("http://", "https://")) else None
+        return value
+
     # set for the multi-process API (WEB_CONCURRENCY > 1): prometheus_client keeps per-process files there
     prometheus_multiproc_dir: str | None = Field(None, validation_alias=_shared("prometheus_multiproc_dir"))
 

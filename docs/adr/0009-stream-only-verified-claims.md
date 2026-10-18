@@ -65,7 +65,7 @@ Negative:
 - A claim can still be withdrawn after it streamed: if the model refuses mid-stream, or the final
   re-check drops a claim, the server emits `claim_rejected` with reason `retracted`
   (`build.py:408-410`, `build.py:480-481`) and the UI removes it by index
-  (`web/src/routes/ask/run.ts:76-79`). A `max_tokens` stop keeps the verified claims as a partial answer
+  (`web/src/routes/ask/run.ts:76-80`). A `max_tokens` stop keeps the verified claims as a partial answer
   flagged `generation_truncated` (`build.py:491-492`).
 - The `token` events are a presentation effect over verified text, not model tokens, so they add
   events without adding information.

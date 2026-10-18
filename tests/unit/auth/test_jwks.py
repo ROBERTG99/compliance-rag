@@ -145,3 +145,20 @@ async def test_an_unavailable_issuer_answers_503_not_401() -> None:
     body = unavailable.json()
     assert body["code"] == "identity_provider_unavailable" and body["retryable"] is True
     assert unknown.status_code == 401
+
+
+async def test_a_malformed_jwks_body_counts_as_unavailable(clock: list[float]) -> None:
+    # a proxy error page or a body without keys is an outage, not a server error
+    issuer = Issuer()
+    cache = JWKSCache("http://oidc", client=httpx.AsyncClient(transport=httpx.MockTransport(issuer.handler)))
+    assert await cache.key("k1")
+    clock[0] += 301
+    issuer.body = {"unexpected": True}  # missing "keys"
+    assert await cache.key("k1")  # cached keys still served
+
+    def html(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="<html>bad gateway</html>")
+
+    cold = JWKSCache("http://oidc", client=httpx.AsyncClient(transport=httpx.MockTransport(html)))
+    with pytest.raises(AuthError, match="identity provider unavailable"):
+        await cold.key("k1")

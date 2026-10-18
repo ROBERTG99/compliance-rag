@@ -71,7 +71,10 @@ class JWKSCache:
             async with self._lock:  # one fetch at a time; requests that waited see its result
                 if self._due(kid):
                     # on failure keep serving the keys we have: a brief issuer outage must not sign everyone out
-                    with contextlib.suppress(httpx.HTTPError):
+                    # an unreachable issuer or a malformed body (proxy error page, no "keys", bad JWK) is an outage
+                    with contextlib.suppress(
+                        httpx.HTTPError, ValueError, KeyError, TypeError, jwt.PyJWTError
+                    ):
                         await self._refresh()
         if not self._keys or time.monotonic() - self._fetched > self.max_stale_s:
             raise IdentityProviderUnavailable("identity provider unavailable")

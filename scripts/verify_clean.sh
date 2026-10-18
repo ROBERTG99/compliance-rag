@@ -2,16 +2,16 @@
 # `make verify-clean` (BUILD.md §19): `make verify` in a fresh clone of the committed HEAD, with no provider
 # keys and its own compose project (fresh volumes). The dev stack must be down first: the ports are shared.
 set -euo pipefail
+VERIFY_OUT="${VERIFY_OUT:+$(realpath -m "$VERIFY_OUT")}"  # resolved against the caller's directory
 cd "$(dirname "$0")/.."
 if curl -sf -o /dev/null --max-time 2 http://localhost:8610/healthz; then
   echo "the dev stack is running on the shared ports: run \`make down\` first" >&2
   exit 2
 fi
-VERIFY_OUT="${VERIFY_OUT:+$(realpath -m "$VERIFY_OUT")}"  # resolved here: the script moves into the clone
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/crag-verify.XXXXXX")"
 # tear down everything the run started, test container and profiles included (as `make down` does)
 trap 'cd /; (cd "$WORK/compliance-rag" 2>/dev/null && docker compose -f compose.yaml -f compose.test.yaml \
-  --profile qdrant --profile observability --profile langfuse down -v --remove-orphans >/dev/null 2>&1); \
+  --profile qdrant --profile observability --profile langfuse down -v --remove-orphans >/dev/null 2>&1) || true; \
   rm -rf "$WORK"' EXIT
 git clone --quiet --no-hardlinks "$PWD" "$WORK/compliance-rag"
 cd "$WORK/compliance-rag"

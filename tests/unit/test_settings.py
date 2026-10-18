@@ -60,3 +60,18 @@ def test_no_stale_variables_in_env_example() -> None:
     example = (ROOT / ".env.example").read_text()
     documented = set(re.findall(r"^(CRAG_[A-Z0-9_]+)=", example, flags=re.M))
     assert documented <= set(Settings.env_names())
+
+
+def test_url_settings_ignore_a_comment_left_where_a_url_belongs(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Compose reads `KEY=   # e.g. http://...` from .env as the value: the exporter must not try to post there
+    monkeypatch.setenv(
+        "OTEL_EXPORTER_OTLP_ENDPOINT", "# e.g. http://localhost:8681 with the observability profile"
+    )
+    monkeypatch.setenv("LANGFUSE_HOST", "  ")
+    settings = Settings(_env_file=None)
+    assert settings.otel_exporter_otlp_endpoint is None and settings.langfuse_host is None
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4318")
+    monkeypatch.setenv("LANGFUSE_HOST", "http://langfuse:3000")
+    settings = Settings(_env_file=None)
+    assert settings.otel_exporter_otlp_endpoint == "http://otel-collector:4318"
+    assert settings.langfuse_host == "http://langfuse:3000"

@@ -3,7 +3,15 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 start=$(date +%s)
-docker compose up -d --wait --build "$@"
+if ! docker compose up -d --wait --build "$@"; then
+  # leave evidence before anything tears the stack down: states, then the logs of every service not running
+  docker compose ps -a
+  for svc in $(docker compose ps -a --format '{{.Service}} {{.State}}' | awk '$2 != "running" {print $1}'); do
+    echo "---- logs: $svc"
+    docker compose logs --tail 80 "$svc"
+  done
+  exit 1
+fi
 elapsed=$(( $(date +%s) - start ))
 mkdir -p evals/reports
 printf '{"command": "docker compose up -d --wait --build", "seconds": %d, "budget_seconds": 300, "measured_at": "%s"}\n' \

@@ -155,7 +155,7 @@ implemented.
 ## 14. What changes for multi-tenancy?
 
 - Not implemented. This is a design answer: the system serves one fictional tenant, and nothing below exists in the code.
-- Identity: add a verified `tenant_id` to `Principal` (`src/compliance_rag/retrieval/types.py:15-18`) and map it from a token claim in `src/compliance_rag/auth/jwt.py:119-126`. Roles and groups are fixed constants today (`src/compliance_rag/auth/personas.py:7-12`) and the groups are a `CHECK` list (`migrations/versions/0001_core.py:37`); per-tenant groups need a table.
+- Identity: add a verified `tenant_id` to `Principal` (`src/compliance_rag/retrieval/types.py:15-18`) and map it from a token claim in `src/compliance_rag/auth/jwt.py:122-129`. Roles and groups are fixed constants today (`src/compliance_rag/auth/personas.py:7-12`) and the groups are a `CHECK` list (`migrations/versions/0001_core.py:37`); per-tenant groups need a table.
 - The filter is the single choke point: add a mandatory tenant term to the SQL, OpenSearch and Qdrant predicates and to `allows` in `src/compliance_rag/retrieval/filters.py:31-75`. Add `tenant_id` to `documents` and `chunks`, and Postgres row-level security as a second barrier.
 - Indexes: index or alias per tenant for OpenSearch (`src/compliance_rag/retrieval/bm25.py:20`, `src/compliance_rag/retrieval/bm25.py:57-66`), a tenant payload index or collection for Qdrant (`src/compliance_rag/retrieval/vector/qdrant.py:36-44`).
 - Statistics: BM25 IDF and the LSA fit are corpus-wide, which is today's side channel; across tenants it would be a leak. Fit and register one embedder per tenant (`src/compliance_rag/embed/registry.py:36-63`, which keeps a single `embedder` row).
