@@ -74,6 +74,14 @@ async def test_purge_keeps_what_is_still_in_its_retention_window(migrated_db) ->
                     "VALUES (%s, '1', 't', 0, 'context', '\\x00')",
                     (thread,),
                 )
+            # runs that ended before writing an answer (generation or retrieval unavailable) leave graph state
+            # with no answers row: purged once their newest checkpoint is past the answer window
+            orphan_old, orphan_recent = str(uuid.uuid4()), str(uuid.uuid4())
+            for thread, days in ((orphan_old, 100), (orphan_old, 95), (orphan_recent, 1)):
+                await conn.execute(
+                    "INSERT INTO checkpoints (thread_id, checkpoint_id, checkpoint) VALUES (%s, %s, %s)",
+                    (thread, str(days), Jsonb({"ts": (NOW - timedelta(days=days)).isoformat()})),
+                )
             audit_before = (await (await conn.execute("SELECT count(*) FROM audit")).fetchone() or [0])[0]
 
         report = await purge_expired(pool, now=NOW)
@@ -94,8 +102,9 @@ async def test_purge_keeps_what_is_still_in_its_retention_window(migrated_db) ->
                 threads = {
                     r[0] for r in await (await conn.execute(f"SELECT thread_id FROM {table}")).fetchall()
                 }
-                assert threads == {recent}, table  # the purged conversation's graph state is gone too
-        assert report.conversations == 2  # `old` and `ancient_feedback` have no answer left
+                expected = {recent, orphan_recent} if table == "checkpoints" else {recent}
+                assert threads == expected, table  # the purged conversations' graph state is gone too
+        assert report.conversations == 3  # `old`, `ancient_feedback` and `orphan_old` have no answer left
         assert (
             audit_after == audit_before + 1
         )  # one audit row records the purge; nothing is removed from audit

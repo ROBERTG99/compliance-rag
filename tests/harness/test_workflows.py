@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import yaml
@@ -24,7 +25,7 @@ def test_the_six_workflows_and_no_terraform() -> None:
 
 def test_required_checks_run_on_pull_requests_and_call_the_make_targets() -> None:
     expected = {
-        "ci.yml": ["make lint", "make typecheck", "make test"],
+        "ci.yml": ["make lint", "make typecheck", "make test", "gitleaks git", "fetch-depth: 0"],
         "e2e.yml": ["make up", "make demo", "make e2e"],
         "evals.yml": ["make eval", "make redteam"],
         "docker.yml": ["trivy", "--exit-code 1", "HIGH,CRITICAL"],
@@ -34,6 +35,12 @@ def test_required_checks_run_on_pull_requests_and_call_the_make_targets() -> Non
         assert "pull_request" in _load(name)["on"], name
         for needle in needles:
             assert needle in text, (name, needle)
+
+
+def test_tools_are_downloaded_not_piped_into_a_shell() -> None:
+    piped = re.compile(r"\|\s*(?:sudo\s+)?(?:ba)?sh(?:\s|$)", re.MULTILINE)
+    for path in WORKFLOWS.glob("*.yml"):
+        assert not piped.search(path.read_text()), path.name
 
 
 def test_release_only_on_version_tags_and_least_privilege() -> None:

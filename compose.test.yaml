@@ -9,7 +9,7 @@ services:
       args:
         HTTPS_PROXY: "${HTTPS_PROXY:-}"
     image: compliance-rag/tests:dev
-    profiles: ["qdrant"]
+    profiles: ["qdrant"]  # deliberate: the tests need the qdrant service, and a plain `up` never starts them
     volumes: [".:/repo:ro"]
     tmpfs: ["/tmp"]
     environment:
@@ -29,7 +29,6 @@ services:
       - tests/harness
       - tests/integration
       - tests/contract
-      - -q
       - -p
       - no:cacheprovider
     depends_on:

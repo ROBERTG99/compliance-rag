@@ -99,3 +99,62 @@ async def test_the_gateway_reports_each_call_when_configured(monkeypatch: Any) -
     await Gateway(Settings(_env_file=None)).stream(req)  # not configured: nothing reported
     await asyncio.sleep(0)
     assert reported == ["condense_followup"]
+
+
+def _configured() -> Any:
+    from compliance_rag.settings import Settings
+
+    return Settings(
+        _env_file=None,
+        langfuse_host="http://langfuse:3000",
+        langfuse_public_key="pk",
+        langfuse_secret_key="sk",  # type: ignore[arg-type]
+    )
+
+
+async def test_any_reporter_error_stays_out_of_the_call_path(monkeypatch: Any) -> None:
+    from compliance_rag.llm.gateway import Gateway
+    from compliance_rag.obs import langfuse
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise RuntimeError("unexpected")
+
+    reporter = LangfuseReporter("http://langfuse:3000", "pk", "sk", transport=httpx.MockTransport(handler))
+    await reporter.report(RESULT, run_id=None)  # not an httpx error: still swallowed
+    await reporter.close()
+
+    class Broken:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            raise httpx.InvalidURL("malformed LANGFUSE_HOST")
+
+    monkeypatch.setattr(langfuse, "LangfuseReporter", Broken)
+    Gateway(_configured())._report(RESULT)  # a successful LLM call must not fail because of reporting
+
+
+async def test_reports_in_flight_are_capped_and_closed_with_the_gateway(monkeypatch: Any) -> None:
+    import asyncio
+
+    from compliance_rag.llm.gateway import MAX_REPORTS_IN_FLIGHT, Gateway
+    from compliance_rag.obs import langfuse
+
+    release = asyncio.Event()
+    closed: list[bool] = []
+
+    class Slow:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            pass
+
+        async def report(self, result: LLMResult, *, run_id: str | None) -> None:
+            await release.wait()
+
+        async def close(self) -> None:
+            closed.append(True)
+
+    monkeypatch.setattr(langfuse, "LangfuseReporter", Slow)
+    gateway = Gateway(_configured())
+    for _ in range(MAX_REPORTS_IN_FLIGHT + 10):
+        gateway._report(RESULT)
+    assert len(gateway._reports) == MAX_REPORTS_IN_FLIGHT  # a slow Langfuse cannot grow memory without bound
+    release.set()
+    await gateway.aclose()
+    assert not gateway._reports and closed == [True]

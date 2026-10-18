@@ -17,8 +17,9 @@ x-app-env: &app-env
   CRAG_OIDC_ISSUER: http://dev-oidc:8612
   CRAG_OIDC_PUBLIC_ISSUER: http://localhost:8612
   OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-}"  # profile observability: http://otel-collector:4318
-  # profile langfuse: LANGFUSE_HOST=http://langfuse:3000 with the profile's dev project keys (compose below)
-  LANGFUSE_HOST: "${LANGFUSE_HOST:-}"
+  # profile langfuse: set the profile's dev project keys (compose below) to report; containers always reach
+  # Langfuse inside the compose network (a host-side LANGFUSE_HOST such as localhost:8693 would be their own)
+  LANGFUSE_HOST: http://langfuse:3000
   LANGFUSE_PUBLIC_KEY: "${LANGFUSE_PUBLIC_KEY:-}"
   LANGFUSE_SECRET_KEY: "${LANGFUSE_SECRET_KEY:-}"
 

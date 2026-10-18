@@ -21,7 +21,10 @@ jobs:
         run: docker compose build api dev-oidc web minio
       - name: Trivy (HIGH/CRITICAL with a fix fails)
         run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/v0.66.0/contrib/install.sh | sh -s -- -b "$HOME/.local/bin" v0.66.0
+          v=0.76.0; base="https://github.com/aquasecurity/trivy/releases/download/v${v}"
+          curl -sfLO "${base}/trivy_${v}_Linux-64bit.tar.gz" && curl -sfLO "${base}/trivy_${v}_checksums.txt"
+          grep " trivy_${v}_Linux-64bit.tar.gz$" "trivy_${v}_checksums.txt" | sha256sum -c -
+          mkdir -p "$HOME/.local/bin" && tar -xzf "trivy_${v}_Linux-64bit.tar.gz" -C "$HOME/.local/bin" trivy
           for image in $(docker compose config --images | grep '^compliance-rag/' | sort -u); do
             "$HOME/.local/bin/trivy" image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
               --ignorefile .trivyignore --exit-code 1 "$image"

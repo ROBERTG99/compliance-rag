@@ -46,13 +46,10 @@ async def ingest_document(ctx: dict[str, Any], job_id: str) -> dict[str, Any]:
         await services.reload_embedder()
     try:
         result = await pipeline.ingest_document(services.ingest_deps(), job_id)
-    except pipeline.EmbedderNotReady:
-        raise
+    except (pipeline.EmbedderNotReady, pipeline.FinalIngestFailure):
+        raise  # the job's attempts in Postgres decide, not Arq's try count (a re-uploaded job starts at try 1)
     except Exception as exc:
-        tries = int(ctx.get("job_try", 1))
-        if tries < pipeline.MAX_ATTEMPTS:
-            raise Retry(defer=2**tries) from exc
-        raise
+        raise Retry(defer=2 ** min(int(ctx.get("job_try", 1)), 5)) from exc
     return {
         "job_id": result.job_id,
         "status": result.status,

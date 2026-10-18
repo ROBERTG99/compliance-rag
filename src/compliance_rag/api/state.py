@@ -89,6 +89,7 @@ class AppState:
     async def close(self) -> None:
         for task in list(self.background):
             task.cancel()
+        await self.gateway.aclose()
         await self.services.close()
         await self.checkpoint_pool.close()
         if self.redis is not None:

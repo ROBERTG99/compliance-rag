@@ -112,6 +112,9 @@ def migrated_db(empty_db: Database) -> Database:
     return empty_db
 
 
+TEST_REDIS_DB = 15
+
+
 @pytest.fixture(scope="session")
 def redis_url() -> Iterator[str]:
     url = os.environ.get("CRAG_TEST_REDIS_URL")
@@ -119,7 +122,9 @@ def redis_url() -> Iterator[str]:
         import redis
 
         # a dedicated DB of the stack's Redis: start empty, or Arq results kept from an earlier run
-        # deduplicate this run's jobs (same idempotency keys)
+        # deduplicate this run's jobs (same idempotency keys); never flush any other DB (the dev queue is DB 0)
+        if not url.rstrip("/").endswith(f"/{TEST_REDIS_DB}"):
+            raise RuntimeError(f"CRAG_TEST_REDIS_URL must use the dedicated test DB {TEST_REDIS_DB}: {url}")
         with redis.Redis.from_url(url) as client:
             client.flushdb()
         yield url

@@ -137,29 +137,38 @@ def jobs_replay_failed() -> None:
     from arq import create_pool as arq_pool
     from arq.connections import RedisSettings
 
-    from compliance_rag.db.pool import create_pool
-    from compliance_rag.ingest.pipeline import replay_failed_jobs
+    from compliance_rag.db import pool as db_pool
+    from compliance_rag.ingest import pipeline
 
     settings = get_settings()
+    requeued: list[str] = []
 
-    async def _run() -> list[str]:
+    async def _run() -> None:
         redis = await arq_pool(RedisSettings.from_dsn(settings.redis_url))
-        pool = await create_pool(settings.psycopg_url, max_size=2)
+        pool = await db_pool.create_pool(settings.psycopg_url, max_size=2)
         try:
 
             async def enqueue(job_id: str) -> None:
                 # a fresh Arq job id: the failed run's result is still kept under the original one
                 await redis.enqueue_job("ingest_document", job_id)
+                requeued.append(job_id)
+                typer.echo(f"re-queued {job_id}")
 
-            return await replay_failed_jobs(pool, enqueue)
+            await pipeline.replay_failed_jobs(pool, enqueue)
         finally:
             await pool.close()
             await redis.aclose()
 
-    replayed = asyncio.run(_run())
-    for job_id in replayed:
-        typer.echo(f"re-queued {job_id}")
-    typer.echo(f"{len(replayed)} failed job(s) re-queued")
+    try:
+        asyncio.run(_run())
+    except Exception as exc:
+        # the job being enqueued is back to `failed`; the ones listed above are queued
+        typer.echo(
+            f"stopped after {len(requeued)} job(s): {type(exc).__name__}: {exc}; run it again once the queue is up",
+            err=True,
+        )
+        raise typer.Exit(1) from exc
+    typer.echo(f"{len(requeued)} failed job(s) re-queued")
 
 
 @search_app.command("init")

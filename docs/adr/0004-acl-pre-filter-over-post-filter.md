@@ -66,7 +66,7 @@ Negative:
   three and runs the same behavioural tests on both vector stores.
 - Index copies of the ACL can lag a revocation. ACL changes commit together with their audit row, are
   pushed synchronously, and a minute-cron retries failed index updates
-  (`src/compliance_rag/worker/main.py:126-132`, `docs/DECISIONS.md` 2026-10-16 row on synchronous ACL
+  (`src/compliance_rag/worker/main.py:123-129`, `docs/DECISIONS.md` 2026-10-16 row on synchronous ACL
   changes and 2026-10-17 row on index re-checks). Until the index catches up, the Postgres re-check
   drops the stale hit and counts it in `crag_stale_index_hits_total`; if the re-check itself fails, the
   index legs are dropped (fail closed, `hybrid.py:157-162`).

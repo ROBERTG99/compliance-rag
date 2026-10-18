@@ -9,10 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 INC = "from compliance_rag.obs.metrics import ACL_POSTCHECK_VIOLATIONS as c; c.inc()"
-SCRAPE = (
-    "import asyncio; from compliance_rag.api.routes.health import metrics; "
-    "print(asyncio.run(metrics()).body.decode())"
-)
+SCRAPE = "from compliance_rag.api.routes.health import metrics; print(metrics().body.decode())"
 
 
 def _run(code: str, env: dict[str, str]) -> str:

@@ -63,3 +63,40 @@ def test_stdlib_loggers_go_through_the_same_json_pipeline(capsys: pytest.Capture
     line = json.loads((out.out + out.err).strip().splitlines()[-1])
     assert line["event"] == "request failed" and line["logger"] == "httpx" and line["service"] == "api"
     assert "litigation" not in out.out + out.err
+
+
+def test_third_party_debug_records_never_reach_the_logs(capsys: pytest.CaptureFixture[str]) -> None:
+    # provider SDKs log whole request bodies (system prompt, <document> chunks, question) at DEBUG; the
+    # redaction works on keys, not on formatted messages, so their DEBUG/INFO records must not be emitted
+    import logging
+
+    configure_logging("DEBUG", service="api")
+    body = {"messages": [{"content": "<document>Complaint files under a litigation hold</document>"}]}
+    logging.getLogger("anthropic._base_client").debug("Request options: %s", body)
+    logging.getLogger("botocore.endpoint").debug("Making request %s", body)
+    logging.getLogger("httpx").info("HTTP Request: POST https://api.example/v1/messages?q=litigation")
+    logging.getLogger("compliance_rag.retrieval").debug("leg finished", extra={"leg": "bm25"})
+    logging.getLogger("anthropic._base_client").warning("retrying request")
+    out = capsys.readouterr()
+    raw = out.out + out.err
+    assert "litigation" not in raw
+    events = [json.loads(line) for line in raw.strip().splitlines()]
+    assert [(e["logger"], e["event"]) for e in events] == [
+        ("compliance_rag.retrieval", "leg finished"),
+        ("anthropic._base_client", "retrying request"),
+    ]
+
+
+def test_uvicorn_loggers_go_through_the_json_pipeline(capsys: pytest.CaptureFixture[str]) -> None:
+    # uvicorn's default config gives its loggers their own plain-text handlers with propagate=False
+    import logging
+
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        lg = logging.getLogger(name)
+        lg.handlers = [logging.StreamHandler()]
+        lg.propagate = False
+    configure_logging("INFO", service="api")
+    logging.getLogger("uvicorn.error").info("Application startup complete.")
+    out = capsys.readouterr()
+    line = json.loads((out.out + out.err).strip().splitlines()[-1])
+    assert line["event"] == "Application startup complete." and line["service"] == "api"

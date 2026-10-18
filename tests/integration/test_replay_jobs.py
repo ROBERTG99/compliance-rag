@@ -7,7 +7,9 @@ from datetime import date
 import pytest
 
 from compliance_rag.ingest.pipeline import (
+    MAX_ATTEMPTS,
     DocumentMeta,
+    FinalIngestFailure,
     IngestDeps,
     RegisteredJob,
     ingest_document,
@@ -116,3 +118,25 @@ async def _visible_chunks(deps: IngestDeps, version_id: str) -> int:
         ).fetchone()
     assert row is not None
     return int(row[0])
+
+
+async def test_the_last_attempt_raises_a_final_failure(ingest_deps: IngestDeps) -> None:
+    job = await _failed_job(ingest_deps, "AML-0028")
+    async with ingest_deps.pool.connection() as conn:  # one attempt left, as after earlier failed tries
+        await conn.execute(
+            "UPDATE ingestion_jobs SET status = 'queued', attempts = %s WHERE id = %s",
+            (MAX_ATTEMPTS - 1, job.job_id),
+        )
+
+    async def crash(_: str) -> None:
+        raise RuntimeError("simulated crash after Postgres commit")
+
+    ingest_deps.after_pg_activation = crash
+    with pytest.raises(FinalIngestFailure):
+        await ingest_document(ingest_deps, job.job_id)
+    ingest_deps.after_pg_activation = None
+    status, attempts, error, _, _ = await _state(ingest_deps, job.job_id)
+    assert (status, attempts) == (
+        "failed",
+        MAX_ATTEMPTS,
+    ) and error == "RuntimeError: simulated crash after Postgres commit"

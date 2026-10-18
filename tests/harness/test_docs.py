@@ -58,7 +58,7 @@ def test_readme_sections_in_portfolio_order() -> None:
 
 
 def test_readme_numbers_cite_sources() -> None:
-    sources = "\n".join((ROOT / p).read_text(encoding="utf-8") for p in REPORTS)
+    texts = {p: (ROOT / p).read_text(encoding="utf-8") for p in REPORTS}
     unsourced, unknown = [], []
     for line in (ROOT / "README.md").read_text(encoding="utf-8").splitlines():
         numbers = NUMBER.findall(line)
@@ -66,6 +66,9 @@ def test_readme_numbers_cite_sources() -> None:
             continue
         if not SOURCE.search(line):
             unsourced.append(line)
-        unknown += [n for n in numbers if n.split(" ")[0] not in sources]
+        # a number must appear in the report its own line links to (any report for a make target or a doc)
+        linked = [p for p in REPORTS if f"]({p}" in line]
+        sources = "\n".join(texts[p] for p in linked or REPORTS)
+        unknown += [(n, linked) for n in numbers if n.split(" ")[0] not in sources]
     assert not unsourced, f"numbers without a linked report or make target: {unsourced}"
-    assert not unknown, f"numbers that appear in no report: {unknown}"
+    assert not unknown, f"numbers missing from the report their line links to: {unknown}"

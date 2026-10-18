@@ -45,8 +45,9 @@ async def readyz(state: AppState = Depends(get_state)) -> Response:
 
 
 @router.get("/metrics", response_class=PlainTextResponse)
-async def metrics() -> Response:
-    # several uvicorn workers: each scrape must sum every process, not report the one that answered
+def metrics() -> Response:
+    # several uvicorn workers: each scrape must sum every process, not report the one that answered; reading
+    # every per-process file is blocking I/O, so this is a sync route (FastAPI runs it in the threadpool)
     if get_settings().prometheus_multiproc_dir:
         registry = CollectorRegistry()
         multiprocess.MultiProcessCollector(registry)  # type: ignore[no-untyped-call]

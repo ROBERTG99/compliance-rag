@@ -67,7 +67,7 @@ class LangfuseReporter:
             resp = await self.client.post("/api/public/ingestion", json=batch)
             if resp.status_code >= 300 and resp.status_code != 207:
                 log.warning("langfuse_rejected", status=resp.status_code)
-        except httpx.HTTPError as exc:
+        except Exception as exc:  # best effort: never an unretrieved task exception, only the type is logged
             log.warning("langfuse_unavailable", error=type(exc).__name__)
 
     async def close(self) -> None:

@@ -54,7 +54,7 @@ Negative:
   treats Postgres as authoritative: every index hit is re-checked against it in one query per ask, drops
   are counted in `crag_stale_index_hits_total`, and if the check fails the index legs are dropped
   (`hybrid.py:146-167`, `docs/DECISIONS.md` 2026-10-17 row on index re-checks). ACL changes are applied
-  synchronously and retried by a cron until the index confirms (`src/compliance_rag/worker/main.py:126-132`).
+  synchronously and retried by a cron until the index confirms (`src/compliance_rag/worker/main.py:123-129`).
 - Deleted documents still count in BM25 term statistics, so a reindex force-merges until no deleted
   copies remain (`bm25.py:90-104`, `docs/DECISIONS.md` 2026-10-16 row on the 60 s client timeout).
 - More operational weight (JVM heap, disk watermarks, mapping migrations). The strict mapping is

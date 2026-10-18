@@ -2,7 +2,8 @@
 
 Question, answer, quote, comment, prompt and document text never reach a log line: those keys are replaced by
 ``[redacted]`` at any depth, whatever the call site passes. Standard-library loggers (uvicorn, httpx, arq)
-go through the same processors, so they are JSON and redacted too.
+go through the same processors, so they are JSON and redacted too; libraries outside ``APP_LOGGERS`` (provider
+SDKs, HTTP clients) only emit WARNING and above, since their DEBUG/INFO messages embed request bodies and URLs.
 """
 
 from __future__ import annotations
@@ -78,6 +79,18 @@ class _StdoutHandler(logging.StreamHandler):  # type: ignore[type-arg]
         super().emit(record)
 
 
+# loggers whose INFO/DEBUG records are ours to emit; every other library is held at WARNING, because provider
+# SDKs and HTTP clients log whole request bodies and URLs (prompt, chunks, question) in formatted messages
+APP_LOGGERS = ("compliance_rag", "evalgate", "arq", "uvicorn")
+
+
+class _ThirdPartyAtWarning(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.levelno >= logging.WARNING:
+            return True
+        return any(record.name == name or record.name.startswith(f"{name}.") for name in APP_LOGGERS)
+
+
 class _RedactExtras(logging.Filter):
     """stdlib ``extra={...}`` fields become record attributes: drop the text-bearing ones."""
 
@@ -100,6 +113,7 @@ def configure_logging(level: str = "INFO", *, service: str = "api") -> None:
         cache_logger_on_first_use=False,
     )
     handler = _StdoutHandler(sys.stdout)
+    handler.addFilter(_ThirdPartyAtWarning())
     handler.addFilter(_RedactExtras())
     handler.setFormatter(
         structlog.stdlib.ProcessorFormatter(
@@ -118,6 +132,10 @@ def configure_logging(level: str = "INFO", *, service: str = "api") -> None:
     root = logging.getLogger()
     root.handlers = [handler]
     root.setLevel(numeric)
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):  # uvicorn installs its own plain handlers
+        uvicorn_logger = logging.getLogger(name)
+        uvicorn_logger.handlers = []
+        uvicorn_logger.propagate = True
 
 
 def bind_correlation(correlation_id: str) -> None:

@@ -3,7 +3,8 @@ ingestion jobs 30; the audit log is kept (one row records each purge).
 
 An answer that still has feedback inside its own window is kept until that feedback expires, and newer
 follow-ups of a purged answer are unlinked rather than deleted. When a conversation has no answer left, its
-LangGraph checkpoints (question, context chunk text, drafts) are deleted too.
+LangGraph checkpoints (question, context chunk text, drafts) are deleted too, as are the checkpoints of runs
+that never wrote an answer once their newest checkpoint is older than the answer window.
 """
 
 from __future__ import annotations
@@ -48,23 +49,35 @@ async def purge_expired(pool: AsyncConnectionPool, *, now: datetime | None = Non
         run_ids = [r[0] for r in expired]
         await conn.execute("UPDATE answers SET follow_up_of = NULL WHERE follow_up_of = ANY(%s)", (run_ids,))
         answers = await conn.execute("DELETE FROM answers WHERE run_id = ANY(%s)", (run_ids,))
-        touched = sorted({str(r[1]) for r in expired})
+        candidates = {str(r[1]) for r in expired}
+        has_checkpoints = (
+            await (await conn.execute("SELECT to_regclass('public.checkpoints')")).fetchone() or [None]
+        )[0]
+        if has_checkpoints:
+            # threads whose newest checkpoint is past the answer window: a run that ended before writing an
+            # answer (generation or retrieval unavailable) left graph state with no answers row
+            candidates |= {
+                str(r[0])
+                for r in await (
+                    await conn.execute(
+                        "SELECT thread_id FROM checkpoints GROUP BY thread_id "
+                        "HAVING max((checkpoint->>'ts')::timestamptz) < %s",
+                        (answers_cutoff,),
+                    )
+                ).fetchall()
+            }
+        touched = sorted(candidates)
         alive = {
             str(r[0])
             for r in await (
                 await conn.execute(
-                    "SELECT DISTINCT conversation_id FROM answers WHERE conversation_id::text = ANY(%s)",
+                    "SELECT DISTINCT conversation_id FROM answers WHERE conversation_id = ANY(%s::uuid[])",
                     (touched,),
                 )
             ).fetchall()
         }
         gone = [c for c in touched if c not in alive]
-        if (
-            gone
-            and (await (await conn.execute("SELECT to_regclass('public.checkpoints')")).fetchone() or [None])[
-                0
-            ]
-        ):
+        if gone and has_checkpoints:
             for table in CHECKPOINT_TABLES:  # constant names
                 await conn.execute(f"DELETE FROM {table} WHERE thread_id = ANY(%s)", (gone,))  # noqa: S608
         jobs = await conn.execute(

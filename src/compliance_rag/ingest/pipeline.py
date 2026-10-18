@@ -50,6 +50,10 @@ class EmbedderNotReady(RuntimeError):
     """The embedder has not been fitted; run `crag seed` or `make reindex` first."""
 
 
+class FinalIngestFailure(RuntimeError):
+    """The job used its last attempt and is marked ``failed``; the worker must not retry it."""
+
+
 @dataclass(frozen=True)
 class DocumentMeta:
     document_id: str
@@ -505,6 +509,8 @@ async def ingest_document(deps: IngestDeps, job_id: str) -> JobResult:
                     "UPDATE document_versions SET status = 'failed' WHERE id = %s AND status <> 'active'",
                     (version_id,),
                 )
+        if final:
+            raise FinalIngestFailure(job_id) from exc
         raise
 
 

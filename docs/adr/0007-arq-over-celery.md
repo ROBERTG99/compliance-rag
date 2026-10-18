@@ -19,13 +19,14 @@ pools, httpx clients for OpenSearch and Qdrant, async object-store and Redis cli
 ## Decision
 
 Background work runs on Arq with Redis as the broker. `WorkerSettings` in
-`src/compliance_rag/worker/main.py:152-166` registers the job functions `ingest_document`, `sync_acl`
+`src/compliance_rag/worker/main.py:149-163` registers the job functions `ingest_document`, `sync_acl`
 and `reindex_all` and four crons, all `unique=True`: `poll_s3_inbox` (every 30 s), `refresh_lag_metric`
 (every 15 s), `reconcile_acl` (every minute) and `purge_expired` (daily, 03:10 UTC). Jobs are coroutines
-that reuse the same `Services` container as the API (`worker/main.py:20-27`). Retries use
-`Retry(defer=2**tries)` up to `MAX_ATTEMPTS` (`worker/main.py:51-55`). Idempotency comes from the upload
+that reuse the same `Services` container as the API (`worker/main.py:20-27`). Failed jobs are
+retried with exponential backoff (`Retry`) until the job's attempts in Postgres reach `MAX_ATTEMPTS`; the last
+attempt raises `FinalIngestFailure`, which is not retried (`worker/main.py:49-52`, `ingest/pipeline.py:513`). Idempotency comes from the upload
 key `sha256(kind|document_id|version|content_sha256)`, which is also the Arq `_job_id`
-(`worker/main.py:103-107`, `docs/specs/000-build-spec.md` §4 on idempotency); activation is replay-safe.
+(`worker/main.py:100-104`, `docs/specs/000-build-spec.md` §4 on idempotency); activation is replay-safe.
 The worker runs from the API image with its own metrics port, 8611 (`worker/main.py:17`).
 
 ## Alternatives considered
@@ -54,10 +55,10 @@ Negative:
 
 - Redis is a single point for job delivery. The repo does not rely on Redis for truth: job rows live in
   Postgres, uploads are idempotent, a lost ACL enqueue is finished by the `reconcile_acl` cron
-  (`worker/main.py:126-132`), and `purge_expired` and `poll_s3_inbox` re-derive their work from the
+  (`worker/main.py:123-129`), and `purge_expired` and `poll_s3_inbox` re-derive their work from the
   database and the bucket. Redis loss does degrade run event resume, which falls back to process memory
   (`sse.py:1-6`).
 - Fewer features than Celery (no workflow primitives, a smaller ecosystem). None are used here.
 - Arq job spans are not linked to the API trace that enqueued them, because the trace context is not
   passed through the job payload (`docs/KNOWN_LIMITATIONS.md`, Observability row).
-- `job_timeout` is 600 s (`worker/main.py:164`): an ingestion that runs longer is stopped by Arq.
+- `job_timeout` is 600 s (`worker/main.py:161`): an ingestion that runs longer is stopped by Arq.

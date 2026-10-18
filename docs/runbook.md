@@ -18,8 +18,8 @@ per-chunk caches); a cold API would answer its first questions with `retrieval_u
 
 Profiles: `qdrant` (vector store alternative and ablation), `observability` (start with
 `OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318` to export traces; Grafana on 8690, Prometheus 8691,
-Jaeger 8692), `langfuse` (8693; set `LANGFUSE_HOST=http://langfuse:3000` and the profile's dev project keys
-from `compose.yaml`), `live` (a second API on 8614 with `DEMO_MODE=live`; needs a provider key).
+Jaeger 8692), `langfuse` (8693; set `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` to the profile's dev project keys
+from `compose.yaml`; the containers use `http://langfuse:3000`), `live` (a second API on 8614 with `DEMO_MODE=live`; needs a provider key).
 
 ## Reindexing
 

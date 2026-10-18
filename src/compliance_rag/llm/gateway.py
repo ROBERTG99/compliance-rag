@@ -32,6 +32,8 @@ from compliance_rag.obs.tracing import tracer
 from compliance_rag.settings import Settings, get_settings
 
 ROUTING_FILE = Path(__file__).with_name("routing.yaml")
+MAX_REPORTS_IN_FLIGHT = 64  # Langfuse reports pending at once; beyond it reports are dropped, never queued
+log = structlog.get_logger(__name__)
 
 
 class LLMError(RuntimeError):
@@ -151,20 +153,37 @@ class Gateway:
         self._reports: set[asyncio.Task[None]] = set()
 
     def _report(self, result: LLMResult) -> None:
-        """Langfuse (profile ``langfuse``) when configured: fire and forget, numbers only."""
+        """Langfuse (profile ``langfuse``) when configured: fire and forget, numbers only, never fails the call."""
         s = self.settings
         if not (s.langfuse_host and s.langfuse_public_key and s.langfuse_secret_key):
             return
-        if self._langfuse is None:
-            from compliance_rag.obs.langfuse import LangfuseReporter
+        if len(self._reports) >= MAX_REPORTS_IN_FLIGHT:
+            log.warning("langfuse_report_dropped", in_flight=len(self._reports))
+            return
+        try:
+            if self._langfuse is None:
+                from compliance_rag.obs.langfuse import LangfuseReporter
 
-            self._langfuse = LangfuseReporter(
-                s.langfuse_host, s.langfuse_public_key, s.langfuse_secret_key.get_secret_value()
-            )
-        run_id = structlog.contextvars.get_contextvars().get("run_id")
-        task = asyncio.create_task(self._langfuse.report(result, run_id=run_id))
+                self._langfuse = LangfuseReporter(
+                    s.langfuse_host, s.langfuse_public_key, s.langfuse_secret_key.get_secret_value()
+                )
+            run_id = structlog.contextvars.get_contextvars().get("run_id")
+            task = asyncio.create_task(self._langfuse.report(result, run_id=run_id))
+        except Exception as exc:  # reporting is best effort: the LLM call itself succeeded
+            log.warning("langfuse_unavailable", error=type(exc).__name__)
+            return
         self._reports.add(task)
         task.add_done_callback(self._reports.discard)
+
+    async def aclose(self) -> None:
+        """Let pending reports finish (briefly), then close the reporter's HTTP client."""
+        if self._reports:
+            _, pending = await asyncio.wait(set(self._reports), timeout=5.0)
+            for task in pending:
+                task.cancel()
+        if self._langfuse is not None:
+            await self._langfuse.close()
+            self._langfuse = None
 
     # -- provider ------------------------------------------------------------------------------
     @property

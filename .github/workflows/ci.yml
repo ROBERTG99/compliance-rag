@@ -39,3 +39,19 @@ jobs:
         run: make typecheck
       - name: Tests with coverage gates (testcontainers)
         run: make test
+  secrets:
+    # gitleaks over the whole history (BUILD.md §15: pre-commit and CI)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - name: gitleaks
+        run: |
+          GOBIN="$HOME/.local/bin" go install github.com/zricethezav/gitleaks/v8@v8.30.1
+          PATH="$HOME/.local/bin:$PATH" gitleaks git --no-banner --redact --log-level warn .
