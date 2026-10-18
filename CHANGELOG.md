@@ -49,5 +49,6 @@ their transaction (M3); cached data cleared on every identity change in the web 
 unpriced models and gating of answered injections (M5); purge of graph checkpoints with expired conversations
 and aggregated metrics across API workers (M6); exception text kept out of logs and job rows, 503 when object
 storage or the identity provider is down, quotes under the output guard, serialised JWKS fetches and checkpointer
-migrations, tracebacks logged as text rendered from the exception itself, and NFR-2 tail latency (reduced;
+migrations, tracebacks logged as text rendered from the exception itself, a worker healthcheck that no longer imports the worker, and NFR-2
+tail latency (reduced;
 still at its budget, see [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md)) (final review and verification, M9).
