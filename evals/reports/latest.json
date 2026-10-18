@@ -1,23 +1,23 @@
 {
-  "generated_at": "2026-10-18T20:41:59+00:00",
+  "generated_at": "2026-10-18T21:15:53+00:00",
   "split": "test",
   "llm": "FakeLLM (offline)",
   "passed": true,
   "metrics": {
-    "recall@10": 0.9204545454545454,
-    "mrr@10": 0.9431818181818182,
+    "recall@10": 0.9147727272727273,
+    "mrr@10": 0.9318181818181818,
     "key_fact_accuracy": 0.8863636363636364,
     "citation_precision": 1.0,
     "hallucinated_citation_rate": 0.0,
     "acl_leakage": 0.0,
     "stale_version_citation_rate": 0.0,
     "abstention_accuracy": 0.9333333333333333,
-    "retrieval_p95_ms": 72.926,
+    "retrieval_p95_ms": 69.07900000000001,
     "degraded_rate": 0.0,
-    "retrieval.recall@10": 0.9204545454545454,
-    "retrieval.mrr@10": 0.9431818181818182,
+    "retrieval.recall@10": 0.9147727272727273,
+    "retrieval.mrr@10": 0.9318181818181818,
     "retrieval.acl_leakage": 0.0,
-    "retrieval.retrieval_p95_ms": 70.74222200003533,
+    "retrieval.retrieval_p95_ms": 62.22804899971379,
     "retrieval.degraded_rate": 0.0
   },
   "ablation": [
@@ -26,44 +26,44 @@
       "n": 88,
       "recall@10": 0.8125,
       "mrr@10": 0.8267045454545454,
-      "p95_ms": 19.977269000037268,
+      "p95_ms": 21.826615999998467,
       "degraded_rate": 0.0
     },
     {
       "config": "vector-pgvector",
       "n": 88,
-      "recall@10": 0.7556818181818182,
-      "mrr@10": 0.6814213564213564,
-      "p95_ms": 64.68335099998512,
+      "recall@10": 0.7443181818181818,
+      "mrr@10": 0.67005772005772,
+      "p95_ms": 58.23437799972453,
       "degraded_rate": 0.0
     },
     {
       "config": "vector-qdrant",
       "n": 88,
-      "recall@10": 0.7670454545454546,
-      "mrr@10": 0.6927849927849927,
-      "p95_ms": 36.801233000005595,
+      "recall@10": 0.7556818181818182,
+      "mrr@10": 0.6814213564213564,
+      "p95_ms": 33.174796999901446,
       "degraded_rate": 0.0
     },
     {
       "config": "hybrid",
       "n": 88,
-      "recall@10": 0.8465909090909091,
-      "mrr@10": 0.7812003968253969,
-      "p95_ms": 73.24388699998963,
+      "recall@10": 0.8409090909090909,
+      "mrr@10": 0.7663194444444446,
+      "p95_ms": 60.9755719997338,
       "degraded_rate": 0.0
     },
     {
       "config": "hybrid+rerank",
       "n": 88,
-      "recall@10": 0.9204545454545454,
-      "mrr@10": 0.9431818181818182,
-      "p95_ms": 79.43611399991823,
+      "recall@10": 0.9147727272727273,
+      "mrr@10": 0.9318181818181818,
+      "p95_ms": 60.96531499997582,
       "degraded_rate": 0.0
     }
   ],
   "ablation_meta": {
-    "generated_at": "2026-10-18T20:43:08+00:00",
+    "generated_at": "2026-10-18T21:16:47+00:00",
     "split": "test",
     "target": {
       "llm": "FakeLLM (offline)",
@@ -102,7 +102,7 @@
       },
       "multi_hop": {
         "n": 16,
-        "recall@10": 0.8125,
+        "recall@10": 0.78125,
         "key_fact_accuracy": 0.625,
         "abstention_accuracy": 0.875
       },
@@ -138,8 +138,8 @@
       "suite": "rag",
       "description": "Full graph per question against the seeded stack; thresholds from BUILD.md §11.",
       "split": "test",
-      "generated_at": "2026-10-18T20:41:50+00:00",
-      "duration_s": 9.1,
+      "generated_at": "2026-10-18T21:15:45+00:00",
+      "duration_s": 8.6,
       "dataset": {
         "path": "evals/datasets/questions.v1.jsonl",
         "sha256": "3474f7519c05c7c2c5a8bddcbfefc40ee6fb99cc5fd68028c01fd5196d6ba78b",
@@ -155,7 +155,7 @@
       },
       "metrics": {
         "recall@10": {
-          "value": 0.9204545454545454,
+          "value": 0.9147727272727273,
           "n": 88,
           "unit": "rate",
           "threshold": {
@@ -170,7 +170,7 @@
           "description": "gold span in a top-10 reranked chunk (answerable questions)"
         },
         "mrr@10": {
-          "value": 0.9431818181818182,
+          "value": 0.9318181818181818,
           "n": 88,
           "unit": "rate",
           "threshold": {
@@ -275,7 +275,7 @@
           "description": ""
         },
         "retrieval_p95": {
-          "value": 72.926,
+          "value": 69.07900000000001,
           "n": 120,
           "unit": "ms",
           "threshold": {
@@ -310,8 +310,8 @@
       "suite": "retrieval",
       "description": "Recall, MRR and latency of retrieval alone, with the persona's ACL and as_of.",
       "split": "test",
-      "generated_at": "2026-10-18T20:41:59+00:00",
-      "duration_s": 5.8,
+      "generated_at": "2026-10-18T21:15:53+00:00",
+      "duration_s": 5.2,
       "dataset": {
         "path": "evals/datasets/questions.v1.jsonl",
         "sha256": "3474f7519c05c7c2c5a8bddcbfefc40ee6fb99cc5fd68028c01fd5196d6ba78b",
@@ -327,7 +327,7 @@
       },
       "metrics": {
         "recall@10": {
-          "value": 0.9204545454545454,
+          "value": 0.9147727272727273,
           "n": 88,
           "unit": "rate",
           "threshold": {
@@ -342,7 +342,7 @@
           "description": ""
         },
         "mrr@10": {
-          "value": 0.9431818181818182,
+          "value": 0.9318181818181818,
           "n": 88,
           "unit": "rate",
           "threshold": {
@@ -372,7 +372,7 @@
           "description": ""
         },
         "retrieval_p95": {
-          "value": 70.74222200003533,
+          "value": 62.22804899971379,
           "n": 120,
           "unit": "ms",
           "threshold": {

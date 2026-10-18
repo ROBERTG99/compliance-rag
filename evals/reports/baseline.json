@@ -4,8 +4,8 @@
     "suite": "rag",
     "description": "Full graph per question against the seeded stack; thresholds from BUILD.md §11.",
     "split": "test",
-    "generated_at": "2026-10-17T14:43:32+00:00",
-    "duration_s": 12.6,
+    "generated_at": "2026-10-18T21:15:18+00:00",
+    "duration_s": 9.0,
     "dataset": {
       "path": "evals/datasets/questions.v1.jsonl",
       "sha256": "3474f7519c05c7c2c5a8bddcbfefc40ee6fb99cc5fd68028c01fd5196d6ba78b",
@@ -17,11 +17,11 @@
       "prompts": "condense_followup.v1.md=36111b4f091e, generate_answer.v1.md=b22c1594c169, judge_answer.v1.md=7763f3667861",
       "reranker": "feature weights=653d45703369",
       "vector_store": "pgvector",
-      "embedder": "lsa-384-09a9d7d3f5ee4d53"
+      "embedder": "lsa-384-c7bdfe8cf120e267"
     },
     "metrics": {
       "recall@10": {
-        "value": 0.9204545454545454,
+        "value": 0.9147727272727273,
         "n": 88,
         "unit": "rate",
         "threshold": {
@@ -36,7 +36,7 @@
         "description": "gold span in a top-10 reranked chunk (answerable questions)"
       },
       "mrr@10": {
-        "value": 0.9431818181818182,
+        "value": 0.9318181818181818,
         "n": 88,
         "unit": "rate",
         "threshold": {
@@ -141,19 +141,19 @@
         "description": ""
       },
       "retrieval_p95": {
-        "value": 101.972,
+        "value": 69.258,
         "n": 120,
         "unit": "ms",
         "threshold": {
           "max": 300.0,
-          "exclusive": false
+          "exclusive": true
         },
-        "threshold_text": "≤ 300",
+        "threshold_text": "< 300",
         "gate": true,
         "hard": false,
         "higher_is_better": false,
         "passed": true,
-        "description": ""
+        "description": "legs + fusion + rerank per question, sequential single client (load is `make bench`)"
       },
       "degraded_rate": {
         "value": 0.0,
@@ -176,8 +176,8 @@
     "suite": "retrieval",
     "description": "Recall, MRR and latency of retrieval alone, with the persona's ACL and as_of.",
     "split": "test",
-    "generated_at": "2026-10-17T14:43:42+00:00",
-    "duration_s": 9.1,
+    "generated_at": "2026-10-18T21:15:27+00:00",
+    "duration_s": 5.5,
     "dataset": {
       "path": "evals/datasets/questions.v1.jsonl",
       "sha256": "3474f7519c05c7c2c5a8bddcbfefc40ee6fb99cc5fd68028c01fd5196d6ba78b",
@@ -189,11 +189,11 @@
       "prompts": "condense_followup.v1.md=36111b4f091e, generate_answer.v1.md=b22c1594c169, judge_answer.v1.md=7763f3667861",
       "reranker": "feature weights=653d45703369",
       "vector_store": "pgvector",
-      "embedder": "lsa-384-09a9d7d3f5ee4d53"
+      "embedder": "lsa-384-c7bdfe8cf120e267"
     },
     "metrics": {
       "recall@10": {
-        "value": 0.9204545454545454,
+        "value": 0.9147727272727273,
         "n": 88,
         "unit": "rate",
         "threshold": {
@@ -208,7 +208,7 @@
         "description": ""
       },
       "mrr@10": {
-        "value": 0.9431818181818182,
+        "value": 0.9318181818181818,
         "n": 88,
         "unit": "rate",
         "threshold": {
@@ -238,19 +238,19 @@
         "description": ""
       },
       "retrieval_p95": {
-        "value": 100.13337199995931,
+        "value": 62.81609600000593,
         "n": 120,
         "unit": "ms",
         "threshold": {
           "max": 300.0,
-          "exclusive": false
+          "exclusive": true
         },
-        "threshold_text": "≤ 300",
+        "threshold_text": "< 300",
         "gate": true,
         "hard": false,
         "higher_is_better": false,
         "passed": true,
-        "description": ""
+        "description": "legs + fusion + rerank per question, sequential single client (load is `make bench`)"
       },
       "degraded_rate": {
         "value": 0.0,
