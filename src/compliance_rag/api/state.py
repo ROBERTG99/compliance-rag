@@ -89,13 +89,15 @@ class AppState:
     async def close(self) -> None:
         for task in list(self.background):
             task.cancel()
-        await self.gateway.aclose()
-        await self.services.close()
-        await self.checkpoint_pool.close()
-        if self.redis is not None:
-            await self.redis.aclose()
-        if self.arq is not None:
-            await self.arq.aclose()
+        try:
+            await self.gateway.aclose()
+        finally:
+            await self.services.close()
+            await self.checkpoint_pool.close()
+            if self.redis is not None:
+                await self.redis.aclose()
+            if self.arq is not None:
+                await self.arq.aclose()
 
 
 async def build_state(settings: Settings, *, validator: TokenValidator | None = None) -> AppState:

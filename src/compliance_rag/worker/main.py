@@ -157,7 +157,9 @@ class WorkerSettings:
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = redis_settings()
-    max_tries = pipeline.MAX_ATTEMPTS
+    # Postgres `attempts` decides when an ingest job is final (FinalIngestFailure); a try that fails before it
+    # counts (Postgres down) must not exhaust Arq first. sync_acl keeps its own limit on `job_try`.
+    max_tries = pipeline.MAX_ATTEMPTS + 2
     job_timeout = 600
     keep_result = 3600
     health_check_interval = 10

@@ -9,6 +9,7 @@ that never wrote an answer once their newest checkpoint is older than the answer
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -28,6 +29,14 @@ class PurgeReport:
 
 
 CHECKPOINT_TABLES = ("checkpoint_writes", "checkpoint_blobs", "checkpoints")
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(value)
+    except ValueError:
+        return False
+    return True
 
 
 async def purge_expired(pool: AsyncConnectionPool, *, now: datetime | None = None) -> PurgeReport:
@@ -66,7 +75,9 @@ async def purge_expired(pool: AsyncConnectionPool, *, now: datetime | None = Non
                     )
                 ).fetchall()
             }
-        touched = sorted(candidates)
+        touched = sorted(
+            c for c in candidates if _is_uuid(c)
+        )  # one foreign thread id must not abort the purge
         alive = {
             str(r[0])
             for r in await (

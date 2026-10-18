@@ -77,7 +77,13 @@ async def test_purge_keeps_what_is_still_in_its_retention_window(migrated_db) ->
             # runs that ended before writing an answer (generation or retrieval unavailable) leave graph state
             # with no answers row: purged once their newest checkpoint is past the answer window
             orphan_old, orphan_recent = str(uuid.uuid4()), str(uuid.uuid4())
-            for thread, days in ((orphan_old, 100), (orphan_old, 95), (orphan_recent, 1)):
+            # a foreign thread id (not one of ours) is left alone and must not abort the purge
+            for thread, days in (
+                (orphan_old, 100),
+                (orphan_old, 95),
+                (orphan_recent, 1),
+                ("not-a-uuid", 200),
+            ):
                 await conn.execute(
                     "INSERT INTO checkpoints (thread_id, checkpoint_id, checkpoint) VALUES (%s, %s, %s)",
                     (thread, str(days), Jsonb({"ts": (NOW - timedelta(days=days)).isoformat()})),
@@ -102,7 +108,7 @@ async def test_purge_keeps_what_is_still_in_its_retention_window(migrated_db) ->
                 threads = {
                     r[0] for r in await (await conn.execute(f"SELECT thread_id FROM {table}")).fetchall()
                 }
-                expected = {recent, orphan_recent} if table == "checkpoints" else {recent}
+                expected = {recent, orphan_recent, "not-a-uuid"} if table == "checkpoints" else {recent}
                 assert threads == expected, table  # the purged conversations' graph state is gone too
         assert report.conversations == 3  # `old`, `ancient_feedback` and `orphan_old` have no answer left
         assert (

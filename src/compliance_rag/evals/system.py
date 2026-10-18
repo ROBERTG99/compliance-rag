@@ -29,9 +29,14 @@ class System:
     reranker: Reranker
     graph: Any
     settings: Settings
+    gateway: Gateway | None = None
 
     async def close(self) -> None:
-        await self.services.close()
+        try:
+            if self.gateway is not None:
+                await self.gateway.aclose()  # pending Langfuse reports, when configured
+        finally:
+            await self.services.close()
 
 
 class IdentityReranker:
@@ -68,10 +73,9 @@ async def build_system(
     reranker: Reranker = (
         create_reranker(settings.reranker, embedder=services.embedder) if rerank else IdentityReranker()
     )
-    graph = build_graph(
-        GraphDeps(retriever, reranker, gateway or Gateway(settings), settings), InMemorySaver()
-    )
-    return System(services, retriever, reranker, graph, settings)
+    gateway = gateway or Gateway(settings)
+    graph = build_graph(GraphDeps(retriever, reranker, gateway, settings), InMemorySaver())
+    return System(services, retriever, reranker, graph, settings, gateway)
 
 
 async def answer_row(system: System, row_input: dict[str, Any]) -> dict[str, Any]:

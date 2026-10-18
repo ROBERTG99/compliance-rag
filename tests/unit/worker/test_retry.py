@@ -34,3 +34,9 @@ async def test_a_non_final_failure_is_retried_with_backoff(monkeypatch: pytest.M
     monkeypatch.setattr(pipeline, "ingest_document", transient)
     with pytest.raises(Retry):
         await worker_main.ingest_document(_ctx(job_try=1), "job-1")
+
+
+def test_arq_never_stops_a_job_before_postgres_marks_it_failed() -> None:
+    # a try can fail before it increments `attempts` (Postgres briefly down): Arq must allow more tries than
+    # the pipeline's limit, or the job would stop non-terminal where neither replay nor a cron sees it
+    assert worker_main.WorkerSettings.max_tries > pipeline.MAX_ATTEMPTS

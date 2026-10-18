@@ -75,6 +75,7 @@ def test_third_party_debug_records_never_reach_the_logs(capsys: pytest.CaptureFi
     logging.getLogger("anthropic._base_client").debug("Request options: %s", body)
     logging.getLogger("botocore.endpoint").debug("Making request %s", body)
     logging.getLogger("httpx").info("HTTP Request: POST https://api.example/v1/messages?q=litigation")
+    logging.getLogger("uvicorn.access").info('"GET /v1/documents?q=litigation HTTP/1.1" 200')
     logging.getLogger("compliance_rag.retrieval").debug("leg finished", extra={"leg": "bm25"})
     logging.getLogger("anthropic._base_client").warning("retrying request")
     out = capsys.readouterr()

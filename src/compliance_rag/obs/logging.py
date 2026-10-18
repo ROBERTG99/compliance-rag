@@ -88,6 +88,8 @@ class _ThirdPartyAtWarning(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         if record.levelno >= logging.WARNING:
             return True
+        if record.name == "uvicorn.access":  # its INFO lines carry query strings (titles, search terms)
+            return False
         return any(record.name == name or record.name.startswith(f"{name}.") for name in APP_LOGGERS)
 
 
