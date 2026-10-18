@@ -147,7 +147,8 @@ services:
     environment: *app-env
     ports: ["127.0.0.1:8611:8611"]
     healthcheck:
-      test: ["CMD", "arq", "--check", "compliance_rag.worker.main.WorkerSettings"]
+      # the key `arq --check` reads, without importing the worker (about 4 s of CPU per check otherwise)
+      test: ["CMD", "python", "/app/scripts/worker_healthcheck.py"]
       interval: 10s
       timeout: 5s
       retries: 12

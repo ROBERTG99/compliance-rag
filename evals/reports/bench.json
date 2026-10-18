@@ -3,12 +3,12 @@
     "budget_ms": 300,
     "concurrency": 4,
     "llm": "FakeLLM (offline)",
-    "max_ms": 203.1,
-    "measured_at": "2026-10-18T15:56:44+00:00",
+    "max_ms": 155.4,
+    "measured_at": "2026-10-18T17:37:10+00:00",
     "method": "unmeasured warm-up pass over other dev questions, then the measured pass",
     "n": 60,
-    "p50_ms": 75.4,
-    "p95_ms": 161.2,
+    "p50_ms": 74.1,
+    "p95_ms": 135.8,
     "passed": true,
     "runs": [
       {
@@ -66,6 +66,27 @@
         "p50_ms": 75.4,
         "p95_ms": 161.2,
         "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T17:35:09+00:00",
+        "n": 60,
+        "p50_ms": 69.9,
+        "p95_ms": 133.2,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T17:36:10+00:00",
+        "n": 60,
+        "p50_ms": 80.7,
+        "p95_ms": 148.6,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T17:37:10+00:00",
+        "n": 60,
+        "p50_ms": 74.1,
+        "p95_ms": 135.8,
+        "passed": true
       }
     ],
     "split": "dev",
@@ -75,12 +96,12 @@
     "budget_ms": 300,
     "concurrency": 4,
     "llm": "FakeLLM (offline)",
-    "max_ms": 289.8,
-    "measured_at": "2026-10-18T15:56:44+00:00",
+    "max_ms": 268.0,
+    "measured_at": "2026-10-18T17:37:10+00:00",
     "method": "unmeasured warm-up pass over other dev questions, then the measured pass",
     "n": 59,
-    "p50_ms": 162.7,
-    "p95_ms": 260.6,
+    "p50_ms": 158.9,
+    "p95_ms": 262.5,
     "passed": true,
     "runs": [
       {
@@ -138,6 +159,27 @@
         "p50_ms": 162.7,
         "p95_ms": 260.6,
         "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T17:35:09+00:00",
+        "n": 59,
+        "p50_ms": 151.6,
+        "p95_ms": 225.7,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T17:36:10+00:00",
+        "n": 59,
+        "p50_ms": 157.2,
+        "p95_ms": 255.9,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T17:37:10+00:00",
+        "n": 59,
+        "p50_ms": 158.9,
+        "p95_ms": 262.5,
+        "passed": true
       }
     ],
     "split": "dev",
@@ -174,11 +216,11 @@
   "nfr8_documents": {
     "budget_ms": 200,
     "concurrency": 4,
-    "max_ms": 26.8,
-    "measured_at": "2026-10-18T15:56:45+00:00",
+    "max_ms": 20.2,
+    "measured_at": "2026-10-18T17:37:11+00:00",
     "n": 120,
-    "p50_ms": 11.7,
-    "p95_ms": 17.5,
+    "p50_ms": 7.7,
+    "p95_ms": 12.2,
     "passed": true,
     "runs": [
       {
@@ -235,6 +277,27 @@
         "n": 120,
         "p50_ms": 11.7,
         "p95_ms": 17.5,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T17:35:09+00:00",
+        "n": 120,
+        "p50_ms": 8.7,
+        "p95_ms": 13.4,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T17:36:10+00:00",
+        "n": 120,
+        "p50_ms": 9.1,
+        "p95_ms": 14.4,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T17:37:11+00:00",
+        "n": 120,
+        "p50_ms": 7.7,
+        "p95_ms": 12.2,
         "passed": true
       }
     ],

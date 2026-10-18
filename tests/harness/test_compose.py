@@ -91,3 +91,9 @@ def test_test_compose_runs_the_suites_against_the_stack_services() -> None:
     for suite in ("tests/unit", "tests/harness", "tests/integration", "tests/contract"):
         assert suite in command, suite
     assert set(tests["depends_on"]) >= {"postgres", "redis", "opensearch", "minio", "qdrant"}
+
+
+def test_the_worker_healthcheck_does_not_import_the_worker() -> None:
+    # `arq --check` imports the whole worker to read one Redis key: ~4 s of CPU every 10 s on the API's host
+    test = _compose("compose.yaml")["services"]["worker"]["healthcheck"]["test"]
+    assert test == ["CMD", "python", "/app/scripts/worker_healthcheck.py"]
