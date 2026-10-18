@@ -28,6 +28,17 @@ make seed          # synthetic corpus (seed 2026)
 
 See `CONTRIBUTING.md` for the workflow and `docs/runbook.md` for operations.
 
+## Variables the Makefile sets
+
+- `OPENBLAS_CORETYPE=Haswell`: OpenBLAS picks kernels per CPU, and they round differently, so the LSA embedder
+  fitted at seed time (and every offline eval number) would differ between an AVX-512 laptop and an AVX2 CI
+  runner. The images set it too. Commands run outside `make` (`uv run pytest`, `uv run python
+  scripts/run_evals.py`, `uv run crag reindex`) need it in the environment to fit the same model.
+- `BUILD_NETWORK`: `host` when `HTTPS_PROXY` is set (a build proxy listening on the host), `default`
+  otherwise. Plain `docker compose build` behind such a proxy needs `BUILD_NETWORK=host`.
+- `DEV_OIDC_REDIRECT_URIS` (dev-oidc container, comma-separated): the redirect URIs the dev issuer accepts,
+  matched exactly; the default is the SPA callback on port 8600.
+
 ## Signing in locally
 
 The SPA (<http://localhost:8600>) signs in with authorization code + PKCE against the dev OIDC issuer
