@@ -337,6 +337,9 @@ async def make_api_env(
         oidc_issuer="http://localhost:8612",
         oidc_public_issuer="http://localhost:8612",
         rate_limit_per_min=100_000,  # the shared session app; test_limits swaps in a 30/min limiter
+        # functional tests assert behaviour, not latency: with the production 250 ms both legs timed out once on a
+        # host shared with a full stack (503 `retrieval_unavailable` in test_limits); `make bench` measures budgets
+        leg_timeout_ms=2000,
     )
     oidc_app = create_oidc(public_url="http://localhost:8612")
     oidc = httpx.AsyncClient(transport=httpx.ASGITransport(app=oidc_app), base_url="http://localhost:8612")
