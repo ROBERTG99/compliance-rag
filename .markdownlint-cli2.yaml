@@ -10,7 +10,6 @@ globs:
   - "../**/*.md"
 ignores:
   - "../**/node_modules/**"
-  - "../BUILD.md"
   - "../docs/specs/**"
   - "../web/playwright-report/**"
   - "../.venv/**"
