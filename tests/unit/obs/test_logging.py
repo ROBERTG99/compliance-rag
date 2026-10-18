@@ -365,3 +365,15 @@ def test_deeply_nested_exception_groups_render_a_bounded_number_of_members(
 
     event = _text_traceback_event(capsys, nest(5))  # 6**5 leaves within the depth and width caps
     assert event.count("KeyError") <= 100 and "more exceptions" in event and len(event) < 100_000
+
+
+@pytest.mark.parametrize(
+    "message", ["Traceback (most recent call last):", 'Traceback (most recent call last):\n  File "']
+)
+def test_a_message_equal_to_the_start_of_the_traceback_cannot_hide_it(
+    capsys: pytest.CaptureFixture[str], message: str
+) -> None:
+    error = ValueError(message)
+    error.add_note("NoteSecret")
+    event = _text_traceback_event(capsys, error)
+    assert "NoteSecret" not in event and "raise exc" not in event and "ValueError" in event

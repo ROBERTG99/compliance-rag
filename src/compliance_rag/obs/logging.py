@@ -149,22 +149,20 @@ def _spans(text: str, messages: set[str]) -> list[tuple[int, int]]:
 
 
 def _traceback_start(text: str, messages: set[str]) -> int | None:
-    """Where logged traceback text begins: the first header that is not part of an exception message, moved back
-    to the start of any message it cuts through. Decided on the unmasked text, so a message cannot hide it."""
+    """Where logged traceback text begins: the first header, moved back to the start of every exception message
+    that contains or crosses it. Decided on the unmasked text, and a header is never skipped: whether it belongs
+    to a message cannot be told from the text, and cutting early only drops message text."""
+    cut = text.find(_TRACEBACK)
+    if cut < 0:
+        return None
     spans = _spans(text, messages)
-    header = text.find(_TRACEBACK)
-    while header >= 0:
-        end = header + len(_TRACEBACK)
-        if not any(start <= header and end <= stop for start, stop in spans):  # not inside a message
-            cut, moved = header, True
-            while moved:
-                moved = False
-                for start, stop in spans:
-                    if start < cut < stop:
-                        cut, moved = start, True
-            return cut
-        header = text.find(_TRACEBACK, header + 1)
-    return None
+    moved = True
+    while moved:
+        moved = False
+        for start, stop in spans:
+            if start < cut < stop:
+                cut, moved = start, True
+    return cut
 
 
 def _exceptions_without_messages(
