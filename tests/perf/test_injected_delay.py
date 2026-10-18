@@ -21,6 +21,9 @@ ROW = {
 async def _measure(api_env: ApiEnv) -> tuple[list[float], list[float]]:
     token = await api_env.token("analyst")
     async with await api_env.client() as client:
+        # unmeasured first ask, as in the stack bench: the in-process app has no start-up warm-up, and with six
+        # samples p95 is the maximum, so a cold first request would decide the baseline
+        await ask_once(client, token, ROW, strict=False)
         results = [await ask_once(client, token, ROW) for _ in range(6)]
     return [r for _, r in results], [t for t, _ in results if t is not None]
 
