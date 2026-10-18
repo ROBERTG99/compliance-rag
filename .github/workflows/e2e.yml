@@ -34,6 +34,8 @@ jobs:
           pnpm -C web exec playwright install --with-deps chromium
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "0"
+      - name: Build the MinIO image (compiled from a pinned release; the one first-build step outside NFR-7)
+        run: docker compose build minio
       - name: Start the stack (healthchecks, seed) within 5 minutes
         run: make up
       - name: Demo scenario

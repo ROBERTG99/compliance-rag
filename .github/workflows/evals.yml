@@ -32,6 +32,8 @@ jobs:
         run: |
           uv sync --frozen
           pnpm -C evals/redteam install --frozen-lockfile
+      - name: Build the MinIO image (compiled from a pinned release; the one first-build step outside NFR-7)
+        run: docker compose build minio
       - name: Start the stack
         run: make up
       - name: Offline evals (fail on any gate or baseline regression)
