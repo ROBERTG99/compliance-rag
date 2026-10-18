@@ -13,7 +13,8 @@ COPY data ./data
 RUN uv sync --frozen --no-dev --no-editable
 
 FROM python:3.12.15-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 AS runtime
-ENV PATH=/opt/venv/bin:$PATH PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 CRAG_APP_ROOT=/app
+# the same BLAS kernels on every AVX2 host, so the seed fits the same LSA model everywhere (docs/DECISIONS.md)
+ENV PATH=/opt/venv/bin:$PATH PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 CRAG_APP_ROOT=/app OPENBLAS_CORETYPE=Haswell
 RUN useradd --uid 10001 --create-home --shell /usr/sbin/nologin crag
 WORKDIR /app
 COPY --from=build /opt/venv /opt/venv

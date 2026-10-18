@@ -14,6 +14,9 @@ export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD ?= 1
 # image builds reach a build proxy on the host only through the host network; without a proxy (CI) they use the
 # default network, since `network: host` needs an entitlement that buildx bake refuses on GitHub runners
 export BUILD_NETWORK ?= $(if $(HTTPS_PROXY),host,default)
+# OpenBLAS picks kernels per CPU and they round differently: the fitted LSA model (and every eval number) would
+# differ between this host (AVX-512) and CI runners (AVX2); Haswell kernels run on every AVX2 x86-64 host
+export OPENBLAS_CORETYPE ?= Haswell
 
 .PHONY: help bootstrap up down seed demo logs check-fast test test-docker e2e eval eval-live bench \
 	lint typecheck security verify verify-clean docs clean migrate corpus fit-reranker reindex \

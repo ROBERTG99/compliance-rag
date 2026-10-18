@@ -19,7 +19,7 @@ credentials and network, and their vectors can change between provider versions.
 
 `LocalLSAEmbedder` is the default (`CRAG_EMBEDDER=lsa`, `src/compliance_rag/settings.py:56`): TF-IDF over
 unigrams and bigrams (English stop words, sublinear TF, at most 60,000 features) followed by
-`TruncatedSVD` to 384 dimensions with seed 2026 (`src/compliance_rag/embed/lsa.py:18-26`, `lsa.py:47`).
+`TruncatedSVD` to 384 dimensions with seed 2026 (`src/compliance_rag/embed/lsa.py:21-29`, `lsa.py:47`).
 Output vectors are L2-normalised (`lsa.py:65`). The fitted model is serialised as `.npz` (vocabulary, IDF,
 components), never pickle (`lsa.py:67-94`), stored in the object store and recorded in `index_meta`.
 At start-up the configured embedder must match the index metadata or `EmbedderMismatch` is raised
@@ -45,12 +45,16 @@ Positive:
 
 - Deterministic and offline: fitting twice on the same corpus gives matching vectors
   (`tests/unit/embed/test_lsa_embedder.py::test_fit_is_deterministic`), so eval numbers are reproducible.
+  Across machines this needs the same BLAS arithmetic: the SVD runs on one BLAS thread
+  (`test_fit_does_not_depend_on_the_number_of_blas_threads`) and OpenBLAS is pinned to its Haswell kernels
+  (`OPENBLAS_CORETYPE` in the Makefile and the images), so every AVX2 x86-64 host fits the same model
+  (`docs/DECISIONS.md`, 2026-10-18).
 - No data leaves the machine, and no cost or latency from a provider.
 
 Negative:
 
 - LSA is a corpus-specific representation built from term co-occurrence; it is expected to generalise
-  less well on paraphrase than a neural embedding, but that is not measured here. In the ablation the vector leg alone has recall@10 0.756 and mrr@10 0.681 against 0.812 and 0.825 for
+  less well on paraphrase than a neural embedding, but that is not measured here. In the ablation the vector leg alone has recall@10 0.756 and mrr@10 0.681 against 0.812 and 0.830 for
   BM25 alone (`evals/REPORT.md` "Retrieval ablation"). The repo has not measured a neural embedder, so
   how much is lost against one is unknown.
 - The model is fitted on the corpus: vocabulary introduced by later documents is unknown to it until it

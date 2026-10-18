@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-18T17:52:50+00:00",
+  "generated_at": "2026-10-18T18:54:58+00:00",
   "split": "test",
   "llm": "FakeLLM (offline)",
   "passed": true,
@@ -12,12 +12,12 @@
     "acl_leakage": 0.0,
     "stale_version_citation_rate": 0.0,
     "abstention_accuracy": 0.9333333333333333,
-    "retrieval_p95_ms": 70.697,
+    "retrieval_p95_ms": 70.95,
     "degraded_rate": 0.0,
     "retrieval.recall@10": 0.9204545454545454,
     "retrieval.mrr@10": 0.9431818181818182,
     "retrieval.acl_leakage": 0.0,
-    "retrieval.retrieval_p95_ms": 72.2470250002516,
+    "retrieval.retrieval_p95_ms": 70.20598100007192,
     "retrieval.degraded_rate": 0.0
   },
   "ablation": [
@@ -25,8 +25,8 @@
       "config": "bm25",
       "n": 88,
       "recall@10": 0.8125,
-      "mrr@10": 0.8252840909090909,
-      "p95_ms": 18.684519000089495,
+      "mrr@10": 0.8295454545454546,
+      "p95_ms": 23.2468130000143,
       "degraded_rate": 0.0
     },
     {
@@ -34,7 +34,7 @@
       "n": 88,
       "recall@10": 0.7556818181818182,
       "mrr@10": 0.6814213564213564,
-      "p95_ms": 59.459544000219466,
+      "p95_ms": 54.4744690000698,
       "degraded_rate": 0.0
     },
     {
@@ -42,15 +42,15 @@
       "n": 88,
       "recall@10": 0.7556818181818182,
       "mrr@10": 0.6814213564213564,
-      "p95_ms": 36.0501509999267,
+      "p95_ms": 34.90975299996535,
       "degraded_rate": 0.0
     },
     {
       "config": "hybrid",
       "n": 88,
-      "recall@10": 0.8295454545454546,
-      "mrr@10": 0.7626713564213564,
-      "p95_ms": 70.01165200017567,
+      "recall@10": 0.8409090909090909,
+      "mrr@10": 0.763379329004329,
+      "p95_ms": 66.74624500010395,
       "degraded_rate": 0.0
     },
     {
@@ -58,12 +58,12 @@
       "n": 88,
       "recall@10": 0.9204545454545454,
       "mrr@10": 0.9431818181818182,
-      "p95_ms": 106.85727400004907,
+      "p95_ms": 72.96396400010963,
       "degraded_rate": 0.0
     }
   ],
   "ablation_meta": {
-    "generated_at": "2026-10-17T15:29:03+00:00",
+    "generated_at": "2026-10-18T18:57:00+00:00",
     "split": "test",
     "target": {
       "llm": "FakeLLM (offline)",
@@ -71,7 +71,7 @@
       "prompts": "condense_followup.v1.md=36111b4f091e, generate_answer.v1.md=b22c1594c169, judge_answer.v1.md=7763f3667861",
       "reranker": "feature weights=653d45703369",
       "vector_store": "pgvector",
-      "embedder": "lsa-384-09a9d7d3f5ee4d53",
+      "embedder": "lsa-384-c7bdfe8cf120e267",
       "configuration": "bm25=True, vector=True, vector_store=pgvector, rerank=True"
     }
   },
@@ -138,8 +138,8 @@
       "suite": "rag",
       "description": "Full graph per question against the seeded stack; thresholds from BUILD.md §11.",
       "split": "test",
-      "generated_at": "2026-10-18T17:52:41+00:00",
-      "duration_s": 9.4,
+      "generated_at": "2026-10-18T18:54:49+00:00",
+      "duration_s": 9.0,
       "dataset": {
         "path": "evals/datasets/questions.v1.jsonl",
         "sha256": "3474f7519c05c7c2c5a8bddcbfefc40ee6fb99cc5fd68028c01fd5196d6ba78b",
@@ -151,7 +151,7 @@
         "prompts": "condense_followup.v1.md=36111b4f091e, generate_answer.v1.md=b22c1594c169, judge_answer.v1.md=7763f3667861",
         "reranker": "feature weights=653d45703369",
         "vector_store": "pgvector",
-        "embedder": "lsa-384-09a9d7d3f5ee4d53"
+        "embedder": "lsa-384-c7bdfe8cf120e267"
       },
       "metrics": {
         "recall@10": {
@@ -275,7 +275,7 @@
           "description": ""
         },
         "retrieval_p95": {
-          "value": 70.697,
+          "value": 70.95,
           "n": 120,
           "unit": "ms",
           "threshold": {
@@ -310,7 +310,7 @@
       "suite": "retrieval",
       "description": "Recall, MRR and latency of retrieval alone, with the persona's ACL and as_of.",
       "split": "test",
-      "generated_at": "2026-10-18T17:52:50+00:00",
+      "generated_at": "2026-10-18T18:54:58+00:00",
       "duration_s": 5.8,
       "dataset": {
         "path": "evals/datasets/questions.v1.jsonl",
@@ -323,7 +323,7 @@
         "prompts": "condense_followup.v1.md=36111b4f091e, generate_answer.v1.md=b22c1594c169, judge_answer.v1.md=7763f3667861",
         "reranker": "feature weights=653d45703369",
         "vector_store": "pgvector",
-        "embedder": "lsa-384-09a9d7d3f5ee4d53"
+        "embedder": "lsa-384-c7bdfe8cf120e267"
       },
       "metrics": {
         "recall@10": {
@@ -372,7 +372,7 @@
           "description": ""
         },
         "retrieval_p95": {
-          "value": 72.2470250002516,
+          "value": 70.20598100007192,
           "n": 120,
           "unit": "ms",
           "threshold": {

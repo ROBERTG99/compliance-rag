@@ -4,7 +4,8 @@ FROM python:3.12.15-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df27
 ARG HTTPS_PROXY
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never UV_NO_SYNC=1 UV_FROZEN=1 \
     PATH=/opt/venv/bin:$PATH PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/repo/src:/repo/third_party/evalgate/src:/repo PIP_DISABLE_PIP_VERSION_CHECK=1
+    PYTHONPATH=/repo/src:/repo/third_party/evalgate/src:/repo PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    OPENBLAS_CORETYPE=Haswell
 RUN pip install --no-cache-dir uv==0.11.32 && useradd --uid 10001 --create-home --shell /usr/sbin/nologin tester
 WORKDIR /deps
 COPY pyproject.toml uv.lock README.md ./

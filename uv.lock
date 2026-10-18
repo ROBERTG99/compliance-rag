@@ -748,6 +748,7 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "structlog" },
+    { name = "threadpoolctl" },
     { name = "typer" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -816,6 +817,7 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.5" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.30" },
     { name = "structlog", specifier = ">=24.1" },
+    { name = "threadpoolctl", specifier = ">=3.7.0" },
     { name = "typer", specifier = ">=0.12" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]

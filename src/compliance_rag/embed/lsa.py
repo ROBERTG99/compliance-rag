@@ -1,6 +1,8 @@
 """LocalLSAEmbedder: TF-IDF + TruncatedSVD (384 dims, seed 2026), fully offline and deterministic.
 
-Serialised as an ``.npz`` (vocabulary, idf, SVD components) — never pickle.
+Serialised as an ``.npz`` (vocabulary, idf, SVD components) — never pickle. The SVD runs on one BLAS thread: a
+threaded BLAS sums in a thread-dependent order, so the model would depend on the core count. The BLAS kernels
+are pinned outside the process (``OPENBLAS_CORETYPE=Haswell`` in the Makefile and the images).
 """
 
 from __future__ import annotations
@@ -12,6 +14,7 @@ import json
 import numpy as np
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
+from threadpoolctl import threadpool_limits
 
 from compliance_rag.embed.base import Embedder, Matrix, l2_normalize
 
@@ -45,7 +48,8 @@ class LocalLSAEmbedder(Embedder):
         x = vectorizer.fit_transform(texts)
         k = max(1, min(self.dim, x.shape[0] - 1, x.shape[1] - 1))
         svd = TruncatedSVD(n_components=k, algorithm="randomized", n_iter=7, random_state=self.seed)
-        svd.fit(x)
+        with threadpool_limits(limits=1):
+            svd.fit(x)
         components = np.zeros((self.dim, x.shape[1]), dtype=np.float32)
         components[:k] = svd.components_.astype(np.float32)
         self._vectorizer = vectorizer

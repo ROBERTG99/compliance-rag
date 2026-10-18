@@ -57,3 +57,15 @@ def test_factory_checks_index_meta() -> None:
     emb = create_embedder("lsa", dim=384)
     with pytest.raises(EmbedderMismatch):
         emb.check_compatible({"name": "titan", "dim": 512, "fingerprint": "x"})
+
+
+def test_fit_does_not_depend_on_the_number_of_blas_threads(texts: list[str]) -> None:
+    # threaded BLAS sums in a thread-dependent order: the fitted model (and every eval number) would then depend
+    # on the machine's core count; CI runners and laptops must fit the same model from the same corpus
+    from threadpoolctl import threadpool_limits
+
+    fingerprints = set()
+    for threads in (1, 4):
+        with threadpool_limits(limits=threads):
+            fingerprints.add(LocalLSAEmbedder().fit(texts).fingerprint())
+    assert len(fingerprints) == 1
