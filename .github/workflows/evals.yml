@@ -55,6 +55,11 @@ jobs:
               ]
               print(suite, low)
           PY
+      - name: Vector leg against exact search (HNSW graphs are built on this runner)
+        if: always()
+        env:
+          OPENBLAS_CORETYPE: Haswell
+        run: uv run python scripts/vector_recall.py
       - name: Per-case eval results
         if: always()
         uses: actions/upload-artifact@v4
