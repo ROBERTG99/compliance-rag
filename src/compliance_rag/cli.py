@@ -16,6 +16,8 @@ search_app = typer.Typer(help="OpenSearch index commands", no_args_is_help=True)
 app.add_typer(search_app, name="search")
 corpus_app = typer.Typer(help="Synthetic corpus commands", no_args_is_help=True)
 app.add_typer(corpus_app, name="corpus")
+jobs_app = typer.Typer(help="Ingestion job commands", no_args_is_help=True)
+app.add_typer(jobs_app, name="jobs")
 
 
 @app.command()
@@ -127,6 +129,37 @@ def reindex(
             await services.close()
 
     asyncio.run(_run())
+
+
+@jobs_app.command("replay-failed")
+def jobs_replay_failed() -> None:
+    """Re-queue every failed ingestion job (attempts reset; the pipeline steps are idempotent)."""
+    from arq import create_pool as arq_pool
+    from arq.connections import RedisSettings
+
+    from compliance_rag.db.pool import create_pool
+    from compliance_rag.ingest.pipeline import replay_failed_jobs
+
+    settings = get_settings()
+
+    async def _run() -> list[str]:
+        redis = await arq_pool(RedisSettings.from_dsn(settings.redis_url))
+        pool = await create_pool(settings.psycopg_url, max_size=2)
+        try:
+
+            async def enqueue(job_id: str) -> None:
+                # a fresh Arq job id: the failed run's result is still kept under the original one
+                await redis.enqueue_job("ingest_document", job_id)
+
+            return await replay_failed_jobs(pool, enqueue)
+        finally:
+            await pool.close()
+            await redis.aclose()
+
+    replayed = asyncio.run(_run())
+    for job_id in replayed:
+        typer.echo(f"re-queued {job_id}")
+    typer.echo(f"{len(replayed)} failed job(s) re-queued")
 
 
 @search_app.command("init")

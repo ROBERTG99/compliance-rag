@@ -506,3 +506,60 @@ async def ingest_document(deps: IngestDeps, job_id: str) -> JobResult:
                     (version_id,),
                 )
         raise
+
+
+async def replay_failed_jobs(
+    pool: AsyncConnectionPool, enqueue: Callable[[str], Awaitable[None]]
+) -> list[str]:
+    """Re-queue every failed ingest job (``crag jobs replay-failed``); every pipeline step is idempotent.
+
+    Each job is reset (attempts 0, no error) and its version back to ``pending`` before it is enqueued; a job
+    whose version is already active (it failed while syncing the indexes) resumes at ``activating``. If the
+    queue refuses a job, its failed state is restored so a later replay picks it up again.
+    """
+    async with pool.connection() as conn:
+        rows = await (
+            await conn.execute(
+                "SELECT id FROM ingestion_jobs WHERE kind = 'ingest' AND status = 'failed' ORDER BY enqueued_at"
+            )
+        ).fetchall()
+    replayed: list[str] = []
+    for (job_id,) in rows:
+        async with pool.connection() as conn, conn.transaction():
+            saved = await (
+                await conn.execute(
+                    "SELECT j.attempts, j.error, j.finished_at, v.status FROM ingestion_jobs j "
+                    "JOIN document_versions v ON v.id = j.version_id WHERE j.id = %s AND j.status = 'failed' "
+                    "FOR UPDATE OF j",
+                    (job_id,),
+                )
+            ).fetchone()
+            if saved is None:  # replayed concurrently
+                continue
+            # a version already active failed while syncing the indexes: resume at activation
+            await conn.execute(
+                "UPDATE ingestion_jobs SET status = %s, attempts = 0, error = NULL, finished_at = NULL WHERE id = %s",
+                ("activating" if saved[3] == "active" else "queued", job_id),
+            )
+            await conn.execute(
+                "UPDATE document_versions SET status = 'pending' "
+                "WHERE id = (SELECT version_id FROM ingestion_jobs WHERE id = %s) AND status = 'failed'",
+                (job_id,),
+            )
+        try:
+            await enqueue(str(job_id))
+        except Exception:
+            async with pool.connection() as conn, conn.transaction():
+                await conn.execute(
+                    "UPDATE ingestion_jobs SET status = 'failed', attempts = %s, error = %s, finished_at = %s "
+                    "WHERE id = %s AND status IN ('queued', 'activating')",
+                    (saved[0], saved[1], saved[2], job_id),
+                )
+                await conn.execute(
+                    "UPDATE document_versions SET status = %s "
+                    "WHERE id = (SELECT version_id FROM ingestion_jobs WHERE id = %s) AND status = 'pending'",
+                    (saved[3], job_id),
+                )
+            raise
+        replayed.append(str(job_id))
+    return replayed
