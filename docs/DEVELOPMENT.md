@@ -45,7 +45,7 @@ See `CONTRIBUTING.md` for the workflow and `docs/runbook.md` for operations.
   embedding, BM25 top 50, vector top 50, fused list, reranked top 10) with a short hash per eval question and
   no content; diffing two outputs names the first stage that differs.
 - `uv run python scripts/vector_recall.py` compares the configured HNSW query with exact search for every eval
-  question (dev ids listed, test split counted only).
+  question (dev ids listed, test split counted only); pgvector only, not with `CRAG_VECTOR_STORE=qdrant`.
 
 Both need the stack (`make up`) and `OPENBLAS_CORETYPE=Haswell` in the environment.
 

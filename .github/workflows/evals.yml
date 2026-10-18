@@ -66,19 +66,3 @@ jobs:
             const text = `${marker}\n${body}`.slice(0, 65000);
             if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body: text });
             else await github.rest.issues.createComment({ owner, repo, issue_number, body: text });
-      # diagnostics last, so the end of the job log shows them
-      - name: Cases below full recall or reciprocal rank (compare runs across runners)
-        if: always()
-        run: |
-          grep -m1 'model name' /proc/cpuinfo
-          python3 - <<'PY'
-          import json
-          for suite in ("rag", "retrieval"):
-              cases = json.load(open(f"evals/reports/runs/{suite}.json"))["cases"]
-              low = [
-                  (c["id"], c["scores"].get("recall@10"), c["scores"].get("mrr@10"))
-                  for c in cases
-                  if any(isinstance(c["scores"].get(m), float) and c["scores"][m] < 1 for m in ("recall@10", "mrr@10"))
-              ]
-              print(suite, low)
-          PY
