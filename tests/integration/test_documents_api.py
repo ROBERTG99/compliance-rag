@@ -200,13 +200,21 @@ async def test_one_bad_inbox_file_does_not_block_the_others(api_env: ApiEnv) -> 
     await objects.put("inbox/aaa-huge.json", json.dumps({**META, "version": 12}).encode())
     await objects.put("inbox/aab-bad.pdf", b"not a pdf")
     await objects.put("inbox/aab-bad.json", json.dumps({**META, "version": 13}).encode())
+    # a sidecar with a malformed field: the error file names the field and the error type, never the value
+    await objects.put("inbox/aac-meta.md", _aml0107_v4() + b"\nv15")
+    await objects.put(
+        "inbox/aac-meta.json",
+        json.dumps({**META, "version": 15, "domain": "Legal-only secret domain"}).encode(),
+    )
     await objects.put("inbox/aml-0107-v14.md", _aml0107_v4() + b"\nv14")
     await objects.put("inbox/aml-0107-v14.json", json.dumps({**META, "version": 14}).encode())
     enqueued: list[str] = []
     result = await poll_inbox(state.services.ingest_deps(), enqueue=lambda job: enqueued.append(job.job_id))
-    assert (result.registered, result.failed) == (1, 2) and len(enqueued) == 1
+    assert (result.registered, result.failed) == (1, 3) and len(enqueued) == 1
     assert await objects.exists("failed/aaa-huge.md.error.txt")
     assert await objects.exists("failed/aab-bad.pdf.error.txt")
+    reason = (await objects.get("failed/aac-meta.md.error.txt")).decode()
+    assert "ValidationError" in reason and "domain" in reason and "secret" not in reason
     assert await objects.exists("processed/aml-0107-v14.md")
 
 
@@ -271,6 +279,8 @@ async def test_the_library_shows_non_admins_only_published_versions(api_env: Api
         analyst_new = (await analyst.get("/v1/documents", params={"q": "TST-0101"})).json()["items"]
         analyst_aml = (await analyst.get("/v1/documents", params={"q": "AML-0107"})).json()["items"]
         analyst_doc = (await analyst.get("/v1/documents/AML-0107")).json()
+        analyst_pending = await analyst.get("/v1/documents/TST-0101")
     assert [d["document_id"] for d in admin_new] == ["TST-0101"] and analyst_new == []
+    assert analyst_pending.status_code == 404  # the document view agrees with the library
     assert admin_aml[0]["versions"] > analyst_aml[0]["versions"]
     assert analyst_aml[0]["versions"] == len(analyst_doc["versions"])

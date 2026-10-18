@@ -13,7 +13,7 @@ from compliance_rag.auth.jwt import AuthError
 from compliance_rag.retrieval.types import Principal
 
 
-def single_valued_query(request: Request) -> None:
+async def single_valued_query(request: Request) -> None:
     """No query parameter of this API is a list: a repeated key is malformed, not "the last one wins"."""
     keys = [key for key, _ in request.query_params.multi_items()]
     repeated = sorted({key for key in keys if keys.count(key) > 1})

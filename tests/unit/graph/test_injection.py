@@ -77,6 +77,14 @@ async def test_a_canary_inside_a_quote_is_blocked_even_if_the_context_guard_miss
     )  # the guard missed it
     gateway = Gateway(Settings(_env_file=None, cassette_dir="/nonexistent"), fake=QuotingModel())  # type: ignore[arg-type]
     graph = build_graph(deps([cand("a", INJECTED)], score=0.9, gateway=gateway), InMemorySaver())
-    state = await run_graph(graph, question=QUESTION, principal=ANALYST, as_of="2026-10-16")
+    events: list[tuple[str, dict[str, Any]]] = []
+    state = await run_graph(
+        graph,
+        question=QUESTION,
+        principal=ANALYST,
+        as_of="2026-10-16",
+        emit=lambda e, d: events.append((e, d)),
+    )
     assert CANARY not in json.dumps(build_response(state))
-    assert CANARY not in str(state.get("streamed", "")) and state.get("abstained")
+    assert ("claim_rejected", {"index": 0, "reason": "output_guard"}) in events
+    assert all(CANARY not in json.dumps(d) for e, d in events if e in {"claim", "token", "final"})

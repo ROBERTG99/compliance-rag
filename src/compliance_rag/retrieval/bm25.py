@@ -34,11 +34,19 @@ def index_body() -> dict[str, Any]:
 def _error_type(resp: httpx.Response) -> str:
     """The OpenSearch error type only: the reason text can echo the query (the question) or document fields."""
     try:
-        error = resp.json().get("error")
+        body = resp.json()
     except ValueError:
         return "unparseable error body"
+    return _type_of(body.get("error") if isinstance(body, dict) else None)
+
+
+def _type_of(error: object) -> str:
+    """``error.type`` (or ``cause.type`` of an update failure) and nothing else."""
     if isinstance(error, dict):
-        return str(error.get("type", "unknown"))
+        nested = error.get("cause")
+        return str(
+            error.get("type") or (nested.get("type") if isinstance(nested, dict) else None) or "unknown"
+        )
     return "unknown"
 
 
@@ -154,7 +162,7 @@ class BM25Index:
             body = resp.json()
             if body.get("errors"):
                 first = next(item for item in body["items"] if "error" in item.get("index", {}))
-                raise OpenSearchError(f"bulk error: {first['index']['error']}")
+                raise OpenSearchError(f"bulk error: {_type_of(first['index'].get('error'))}")
 
     @staticmethod
     def query_body(query: str, flt: AccessFilter, k: int) -> dict[str, Any]:
@@ -223,7 +231,7 @@ class BM25Index:
             )
             result = resp.json()
             if result.get("failures"):
-                raise OpenSearchError(f"update_by_query failures: {result['failures'][:1]}")
+                raise OpenSearchError(f"update_by_query failures: {_type_of(result['failures'][0])}")
             if not result.get("version_conflicts"):
                 return
             await asyncio.sleep(0.2 * (attempt + 1))

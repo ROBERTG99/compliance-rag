@@ -36,8 +36,8 @@ whose chunk no longer exists.
 ## Key rotation
 
 - **Dev OIDC signing key**: generated at dev-oidc start-up; restarting `dev-oidc` rotates it. The API fetches
-  the JWKS again for an unknown `kid` (at most every 10 s) and keeps its cached keys if the issuer is briefly
-  unreachable, so existing sessions simply sign in again.
+  the JWKS again for an unknown `kid` (at most every 10 s) and keeps its cached keys for up to an hour if the
+  issuer is unreachable, so existing sessions simply sign in again.
 - **Provider keys** (`ANTHROPIC_API_KEY`, Bedrock credentials): environment only, never in files under
   version control or in logs. Rotate at the provider, update the environment, restart `api`, `worker` (and
   `api-live`).

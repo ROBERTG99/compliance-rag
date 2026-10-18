@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any
 
@@ -26,6 +27,7 @@ class JWKSCache:
         client: httpx.AsyncClient | None = None,
         ttl_s: float = 300.0,
         min_refetch_s: float = 10.0,
+        max_stale_s: float = 3600.0,
     ) -> None:
         self.issuer_url = issuer_url.rstrip("/")
         self.client = client or httpx.AsyncClient(timeout=3.0)
@@ -33,28 +35,40 @@ class JWKSCache:
         self.min_refetch_s = (
             min_refetch_s  # unknown key ids (rotation, or forged tokens) refetch at most this often
         )
+        self.max_stale_s = max_stale_s  # cached keys outlive a failed refresh, but not indefinitely
         self._keys: dict[str, PyJWK] = {}
-        self._fetched = 0.0
-        self._attempted = float("-inf")
+        self._fetched = float("-inf")
+        self._attempted = float("-inf")  # when the last fetch finished, successful or not
+        self._lock = asyncio.Lock()
 
     async def _refresh(self) -> None:
-        self._attempted = time.monotonic()
-        resp = await self.client.get(f"{self.issuer_url}/jwks.json")
-        resp.raise_for_status()
-        self._keys = {k["kid"]: PyJWK(k) for k in resp.json()["keys"] if k.get("kid")}
-        self._fetched = time.monotonic()
+        try:
+            resp = await self.client.get(f"{self.issuer_url}/jwks.json")
+            resp.raise_for_status()
+            self._keys = {k["kid"]: PyJWK(k) for k in resp.json()["keys"] if k.get("kid")}
+            self._fetched = time.monotonic()
+        finally:
+            self._attempted = time.monotonic()
+
+    def _due(self, kid: str) -> bool:
+        now = time.monotonic()
+        if not self._keys:
+            return True
+        expired = now - self._fetched > self.ttl_s
+        return (expired or kid not in self._keys) and now - self._attempted >= self.min_refetch_s
 
     async def key(self, kid: str) -> PyJWK:
-        now = time.monotonic()
-        expired = now - self._fetched > self.ttl_s
-        unknown = kid not in self._keys
-        if (expired or unknown) and now - self._attempted >= self.min_refetch_s:
-            try:
-                await self._refresh()
-            except httpx.HTTPError as exc:
-                if not self._keys:
-                    raise AuthError("identity provider unavailable") from exc
-                # keep serving the keys we have: a brief issuer outage must not sign everyone out
+        if self._due(kid):
+            async with self._lock:  # one fetch at a time; requests that waited see its result
+                if self._due(kid):
+                    try:
+                        await self._refresh()
+                    except httpx.HTTPError as exc:
+                        if not self._keys or time.monotonic() - self._fetched > self.max_stale_s:
+                            raise AuthError("identity provider unavailable") from exc
+                        # keep serving the keys we have: a brief issuer outage must not sign everyone out
+        if time.monotonic() - self._fetched > self.max_stale_s:
+            raise AuthError("identity provider unavailable")
         if kid not in self._keys:
             raise AuthError("unknown signing key")
         return self._keys[kid]

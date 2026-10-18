@@ -261,8 +261,10 @@ async def _authorized_document(state: AppState, principal: Principal, document_i
                       (SELECT array_agg(group_name ORDER BY group_name) FROM document_acl a
                         WHERE a.document_id = d.document_id)
                FROM documents d WHERE d.document_id = %s AND EXISTS (SELECT 1 FROM document_acl a
-                 WHERE a.document_id = d.document_id AND a.group_name = ANY(%s))""",
-                (document_id, principal["groups"]),
+                 WHERE a.document_id = d.document_id AND a.group_name = ANY(%s))
+                 AND (%s OR EXISTS (SELECT 1 FROM document_versions v
+                                    WHERE v.document_id = d.document_id AND v.status = 'active'))""",
+                (document_id, principal["groups"], principal["role"] == "content_admin"),
             )
         ).fetchone()
     if row is None:

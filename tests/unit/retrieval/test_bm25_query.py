@@ -51,3 +51,20 @@ async def test_opensearch_errors_carry_the_type_not_the_reason() -> None:
         await index._req("POST", "/a/_search", json={})
     await index.close()
     assert "search_phase_execution_exception" in str(raised.value) and "litigation" not in str(raised.value)
+
+
+def test_error_types_are_extracted_from_any_body_shape() -> None:
+    import httpx
+
+    from compliance_rag.retrieval.bm25 import _error_type, _type_of
+
+    assert _error_type(httpx.Response(500, json=["not", "an", "object"])) == "unknown"
+    assert _error_type(httpx.Response(500, text="<html>proxy error</html>")) == "unparseable error body"
+    failure = {
+        "index": "i",
+        "cause": {"type": "mapper_parsing_exception", "reason": "value [Legal-only text]"},
+    }
+    assert _type_of(failure) == "mapper_parsing_exception"
+    assert _type_of({"type": "version_conflict_engine_exception", "reason": "[doc] Legal-only"}) == (
+        "version_conflict_engine_exception"
+    )

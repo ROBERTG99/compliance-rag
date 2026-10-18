@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import httpx
@@ -22,11 +23,13 @@ def _jwks() -> dict[str, Any]:
 class Issuer:
     def __init__(self) -> None:
         self.calls = 0
+        self.delay_s = 0.0
         self.up = True
         self.body = _jwks()
 
-    def handler(self, request: httpx.Request) -> httpx.Response:
+    async def handler(self, request: httpx.Request) -> httpx.Response:
         self.calls += 1
+        await asyncio.sleep(self.delay_s)
         if not self.up:
             raise httpx.ConnectError("issuer down")
         return httpx.Response(200, json=self.body)
@@ -66,5 +69,25 @@ async def test_no_keys_and_no_issuer_is_an_auth_error(clock: list[float]) -> Non
     issuer = Issuer()
     issuer.up = False
     cache = JWKSCache("http://oidc", client=httpx.AsyncClient(transport=httpx.MockTransport(issuer.handler)))
+    with pytest.raises(AuthError, match="identity provider unavailable"):
+        await cache.key("k1")
+
+
+async def test_concurrent_first_requests_share_one_fetch() -> None:
+    # every API worker starts with an empty cache: requests arriving while the first fetch is in flight wait
+    # for it instead of failing as "unknown signing key" (a 401 signs the user out of the web app)
+    issuer = Issuer()
+    issuer.delay_s = 0.05
+    cache = JWKSCache("http://oidc", client=httpx.AsyncClient(transport=httpx.MockTransport(issuer.handler)))
+    keys = await asyncio.gather(*(cache.key("k1") for _ in range(5)))
+    assert all(keys) and issuer.calls == 1
+
+
+async def test_stale_keys_are_not_served_forever(clock: list[float]) -> None:
+    issuer = Issuer()
+    cache = JWKSCache("http://oidc", client=httpx.AsyncClient(transport=httpx.MockTransport(issuer.handler)))
+    await cache.key("k1")
+    issuer.up = False
+    clock[0] += 3601  # past the maximum staleness while the issuer stays down
     with pytest.raises(AuthError, match="identity provider unavailable"):
         await cache.key("k1")

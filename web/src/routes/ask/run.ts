@@ -38,7 +38,8 @@ export function runReducer(state: RunState, action: RunAction): RunState {
     case "start":
       return { ...initialRun, phase: "running" };
     case "fail":
-      return { ...state, phase: "error", error: action.error };
+      // as for an `error` event: no final answer, so streamed claims are not an answer
+      return { ...state, claims: [], phase: "error", error: action.error };
     case "event":
       return applyEvent(state, action.event);
   }

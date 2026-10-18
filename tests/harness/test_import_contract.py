@@ -24,7 +24,13 @@ def test_import_linter_contract_passes() -> None:
     assert proc.returncode == 0, proc.stdout[-2000:]
 
 
-BEDROCK_CLIENT = re.compile(r"""client\(\s*["']bedrock(?:-runtime)?["']""")
+BEDROCK_CLIENT = re.compile(r"""client\(\s*(?:service_name\s*=\s*)?["']bedrock(?:-runtime)?["']""")
+
+
+def test_the_bedrock_pattern_covers_both_call_forms() -> None:
+    assert BEDROCK_CLIENT.search('boto3.client("bedrock-runtime", region_name=r)')
+    assert BEDROCK_CLIENT.search("session.client(service_name='bedrock-runtime')")
+    assert not BEDROCK_CLIENT.search('boto3.client("s3")')
 
 
 def test_only_gateway_creates_bedrock_runtime_clients() -> None:

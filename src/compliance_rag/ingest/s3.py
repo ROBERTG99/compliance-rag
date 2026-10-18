@@ -88,6 +88,18 @@ async def _move(deps: IngestDeps, key: str, prefix: str) -> None:
     await deps.objects.delete(key)
 
 
+def _reason(exc: BaseException) -> str:
+    """What the error file says: the error type and, for a bad sidecar, each field's location and error type
+    (pydantic's ``input`` is never included: it is the submitted value)."""
+    label = error_label(exc)
+    if isinstance(exc, ValidationError):
+        fields = "; ".join(
+            f"{'.'.join(str(p) for p in e['loc'])}: {e['type']}" for e in exc.errors(include_input=False)
+        )
+        return f"{label}: {fields}"
+    return label
+
+
 async def poll_inbox(
     deps: IngestDeps, enqueue: Callable[[RegisteredJob], Any], requested_by: str = "s3-inbox"
 ) -> PollResult:
@@ -113,7 +125,7 @@ async def poll_inbox(
             )
         except (ValidationError, ValueError, json.JSONDecodeError, psycopg.errors.IntegrityError) as exc:
             # the file itself is wrong: park it with the reason so it never blocks the inbox again
-            await deps.objects.put(f"failed/{key.removeprefix(INBOX)}.error.txt", error_label(exc).encode())
+            await deps.objects.put(f"failed/{key.removeprefix(INBOX)}.error.txt", _reason(exc).encode())
             failed += 1
             await _move(deps, key, "failed/")
             await _move(deps, sidecar, "failed/")
