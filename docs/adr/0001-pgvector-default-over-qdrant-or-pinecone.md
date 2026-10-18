@@ -37,7 +37,7 @@ protocol behind compose profile `qdrant` and is selectable with `CRAG_VECTOR_STO
   no-API-key default (NFR-9), and would add a second ACL copy outside the deployment boundary. No adapter
   exists and none was benchmarked.
 - **No vector store (BM25 only).** Rejected: the ablation shows the vector leg adds recall when fused
-  (hybrid 0.830 against bm25 0.812 recall@10, `evals/REPORT.md` "Retrieval ablation").
+  (hybrid 0.847 against bm25 0.812 recall@10, `evals/REPORT.md` "Retrieval ablation").
 
 ## Consequences
 
@@ -46,9 +46,9 @@ Positive:
 - One transactional store: ACL change, validity change and embedding live in the same row, so the
   authority for "may this principal read this chunk" is a single SQL predicate. The same predicate is
   reused to re-check hits from index copies (`vector/pgvector.py:32`, `retrieval/hybrid.py:146-167`).
-- Parity with Qdrant on this corpus: both reach recall@10 0.756 and mrr@10 0.681 in the ablation, with
-  p95 of 59 ms (pgvector) and 36 ms (Qdrant) (`evals/REPORT.md` "Retrieval ablation", single run on one
-  dev machine).
+- Near parity with Qdrant on this corpus: recall@10 0.756 and mrr@10 0.681 for pgvector against 0.767 and
+  0.693 for Qdrant (one question of 88), with p95 of 65 ms (pgvector) and 37 ms (Qdrant) (`evals/REPORT.md`
+  "Retrieval ablation", single run on one dev machine).
 - No extra service in the default stack.
 
 Negative:

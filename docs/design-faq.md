@@ -70,7 +70,7 @@ implemented.
 - Why rank fusion: BM25 scores are unbounded and corpus-dependent while cosine is bounded, so a weighted score sum needs normalisation and a tuned weight. Ranks need neither and still work when one leg is missing (question 3).
 - Why 60: it is the conventional default for RRF. The ranks decay gently, so a chunk found by both legs beats a chunk ranked first by one leg only (`tests/unit/retrieval/test_hybrid.py:95-102`).
 - Honest status: `k = 60` was not tuned on this corpus and no sweep over `k` exists in the repository (`docs/adr/0003-rrf-over-weighted-score-fusion.md`). Its effect is also bounded, because only the top `leg_k` fused candidates go to the reranker (`src/compliance_rag/graph/build.py:293`).
-- What the ablation shows (`evals/REPORT.md`, "Retrieval ablation", 88 questions, differences of one or two questions are noise): hybrid recall@10 0.841 against 0.812 for BM25 and 0.756 for vector, but hybrid mrr@10 0.763 is below BM25 alone at 0.830.
+- What the ablation shows (`evals/REPORT.md`, "Retrieval ablation", 88 questions, differences of one or two questions are noise): hybrid recall@10 0.847 against 0.812 for BM25 and 0.756 for vector, but hybrid mrr@10 0.781 is below BM25 alone at 0.827.
 - Reranking fixes the ordering: hybrid plus rerank reaches recall@10 0.920 and mrr@10 0.943 (same table). Fusion is a shortlist step here, not the ranking.
 - To change it, set `CRAG_RRF_K` and add an ablation row; none has been run.
 

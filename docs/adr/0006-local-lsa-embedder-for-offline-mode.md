@@ -54,7 +54,7 @@ Positive:
 Negative:
 
 - LSA is a corpus-specific representation built from term co-occurrence; it is expected to generalise
-  less well on paraphrase than a neural embedding, but that is not measured here. In the ablation the vector leg alone has recall@10 0.756 and mrr@10 0.681 against 0.812 and 0.830 for
+  less well on paraphrase than a neural embedding, but that is not measured here. In the ablation the vector leg alone has recall@10 0.756 and mrr@10 0.681 against 0.812 and 0.827 for
   BM25 alone (`evals/REPORT.md` "Retrieval ablation"). The repo has not measured a neural embedder, so
   how much is lost against one is unknown.
 - The model is fitted on the corpus: vocabulary introduced by later documents is unknown to it until it

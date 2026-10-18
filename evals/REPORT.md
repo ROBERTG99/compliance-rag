@@ -13,7 +13,7 @@ question at a time against the local stack (single client); throughput under loa
 ## Suite `rag`: PASS
 
 - Split: `test` (120 cases, dataset sha256 `3474f7519c05`)
-- Generated: 2026-10-18T18:54:49+00:00 in 9.0 s; errors: 0
+- Generated: 2026-10-18T20:41:50+00:00 in 9.1 s; errors: 0
 - embedder: lsa-384-c7bdfe8cf120e267
 - llm: FakeLLM (offline)
 - models: none (deterministic FakeLLM)
@@ -31,13 +31,13 @@ question at a time against the local stack (single client); throughput under loa
 | acl_leakage | 0.000 | = 0 | 120 | hard | pass |
 | stale_version_citation_rate | 0.000 | < 0.01 | 94 | yes | pass |
 | abstention_accuracy | 0.933 | ≥ 0.9 | 120 | yes | pass |
-| retrieval_p95 | 71 ms | < 300 | 120 | yes | pass |
+| retrieval_p95 | 73 ms | < 300 | 120 | yes | pass |
 | degraded_rate | 0.000 | — | 120 | no | pass |
 
 ## Suite `retrieval`: PASS
 
 - Split: `test` (120 cases, dataset sha256 `3474f7519c05`)
-- Generated: 2026-10-18T18:54:58+00:00 in 5.8 s; errors: 0
+- Generated: 2026-10-18T20:41:59+00:00 in 5.8 s; errors: 0
 - embedder: lsa-384-c7bdfe8cf120e267
 - llm: FakeLLM (offline)
 - models: none (deterministic FakeLLM)
@@ -50,7 +50,7 @@ question at a time against the local stack (single client); throughput under loa
 | recall@10 | 0.920 | ≥ 0.9 | 88 | yes | pass |
 | mrr@10 | 0.943 | ≥ 0.7 | 88 | yes | pass |
 | acl_leakage | 0.000 | = 0 | 120 | hard | pass |
-| retrieval_p95 | 70 ms | < 300 | 120 | yes | pass |
+| retrieval_p95 | 71 ms | < 300 | 120 | yes | pass |
 | degraded_rate | 0.000 | — | 120 | no | pass |
 
 ## Gate
@@ -70,15 +70,15 @@ All gates pass (thresholds and no regression beyond 1.0 pp against the baseline)
 
 ## Retrieval ablation
 
-Run 2026-10-18T18:57:00+00:00 on the `test` split (`make eval-ablation`); differences of one or two questions out of n are within noise.
+Run 2026-10-18T20:43:08+00:00 on the `test` split (`make eval-ablation`); differences of one or two questions out of n are within noise.
 
 | Configuration | n | recall@10 | mrr@10 | p95_ms | degraded_rate |
 |---|---|---|---|---|---|
-| bm25 | 88 | 0.812 | 0.830 | 23 ms | 0.000 |
-| vector-pgvector | 88 | 0.756 | 0.681 | 54 ms | 0.000 |
-| vector-qdrant | 88 | 0.756 | 0.681 | 35 ms | 0.000 |
-| hybrid | 88 | 0.841 | 0.763 | 67 ms | 0.000 |
-| hybrid+rerank | 88 | 0.920 | 0.943 | 73 ms | 0.000 |
+| bm25 | 88 | 0.812 | 0.827 | 20 ms | 0.000 |
+| vector-pgvector | 88 | 0.756 | 0.681 | 65 ms | 0.000 |
+| vector-qdrant | 88 | 0.767 | 0.693 | 37 ms | 0.000 |
+| hybrid | 88 | 0.847 | 0.781 | 73 ms | 0.000 |
+| hybrid+rerank | 88 | 0.920 | 0.943 | 79 ms | 0.000 |
 
 ## Red-team
 
