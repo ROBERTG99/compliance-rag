@@ -45,7 +45,7 @@ Positive:
   order (`tests/unit/retrieval/test_hybrid.py::test_vector_failure_degrades`).
 - Fusion is cheap and testable by hand
   (`tests/unit/retrieval/test_hybrid.py::test_rrf_fusion_math_and_merge`).
-- Hybrid improves recall over either leg alone: recall@10 0.841 against 0.812 (BM25) and 0.744 (vector),
+- Hybrid recall is slightly higher than either leg alone, near the noise band: recall@10 0.841 against 0.812 (BM25) and 0.744 (vector),
   `evals/REPORT.md` "Retrieval ablation" (differences of one or two questions out of 88 are within noise,
   as that report says).
 

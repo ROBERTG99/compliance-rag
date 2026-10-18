@@ -36,7 +36,7 @@ protocol behind compose profile `qdrant` and is selectable with `CRAG_VECTOR_STO
 - **Pinecone (hosted vector database).** Rejected: a hosted service cannot run in the offline,
   no-API-key default (NFR-9), and would add a second ACL copy outside the deployment boundary. No adapter
   exists and none was benchmarked.
-- **No vector store (BM25 only).** Rejected: the ablation shows the vector leg adds recall when fused
+- **No vector store (BM25 only).** Rejected: in the ablation fusing the vector leg gives slightly higher recall, near the noise band
   (hybrid 0.841 against bm25 0.812 recall@10, `evals/REPORT.md` "Retrieval ablation").
 
 ## Consequences

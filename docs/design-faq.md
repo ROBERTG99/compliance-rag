@@ -81,7 +81,7 @@ implemented.
 - The abstention threshold is calibrated on dev only: the intercept is shifted so that "top score below tau" best separates must-abstain from answerable dev questions (`scripts/fit_reranker.py:54-72`).
 - Tests: `tests/unit/rerank/test_feature.py:82-103` (only dev rows are requested, the fit is deterministic, test-only input raises).
 - Feedback cannot move a test question into dev: triage refuses any question whose normalised text is in a test split and fails closed without the registry (`src/compliance_rag/evals/splits.py:20-44`, `tests/unit/evals/test_splits.py:18`). Committed datasets are append-only by version (`.claude/rules/evals.md`).
-- Reported numbers use the test split (120 cases, `evals/REPORT.md`); tuning numbers are in `PROGRESS.md` ("Dev-split tuning numbers": recall@10 0.962 on dev against 0.915 on test).
+- Reported numbers use the test split (120 cases, `evals/REPORT.md`); tuning numbers are in `PROGRESS.md` ("Dev-split tuning numbers", measured during tuning with the earlier embedder and random version ids: recall@10 0.962 on dev; the current test value is 0.915).
 - Weak points: the split is stratified by question, not by document, and 52 of the 160 gold documents serve both splits (`docs/KNOWN_LIMITATIONS.md`, first "Evals" row). The features are document-agnostic, which limits the leak but does not remove it; a `questions.v2` split by document is the fix.
 - Labels are by construction and unreviewed (same file). `docs/DECISIONS.md` ("`RetrievalTarget` reranks only the top `leg_k`") records the one time a first test run exposed a harness mismatch, fixed without changing any system parameter.
 
