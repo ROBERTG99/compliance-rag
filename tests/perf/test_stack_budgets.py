@@ -91,6 +91,9 @@ async def ask_once(
                 ended = line
                 if line == "event: final":
                     break
+    assert not (strict and ended == "event: error"), f"run {run['run_id']} ended with an error (no payload)"
+    if ended == "event: error":
+        return None, float("nan")
     detail = (await client.get(f"/v1/runs/{run['run_id']}", headers=headers)).json()
     retrieval = sum(s["latency_ms"] for s in detail["steps"] if s["node"] in RETRIEVAL_NODES)
     return first_claim, retrieval

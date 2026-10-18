@@ -165,3 +165,55 @@ def test_a_traceback_logged_as_text_keeps_types_and_frames_only(capsys: pytest.C
     event = json.loads(raw.strip().splitlines()[-1])["event"]
     assert "Traceback (most recent call last):" in event and "_raise_chained" in event
     assert "RuntimeError" in event and "ValueError" in event
+
+
+def test_message_continuations_and_notes_of_a_text_traceback_are_dropped(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # every line after an exception-type line belongs to its message or notes until the next traceback header
+    import logging
+    import traceback
+
+    configure_logging("INFO", service="api")
+    try:
+        try:
+            error = ValueError("first line\nLitigationHold\nSecret: hunter2\nAcme.Corp")
+            error.add_note("ConfidentialSettlement")
+            error.add_note("token: abc")
+            raise error
+        except ValueError as cause:
+            raise RuntimeError("Outer\nPrivilegedMemo") from cause
+    except RuntimeError:
+        logging.getLogger("uvicorn.error").error(traceback.format_exc())
+    out = capsys.readouterr()
+    event = json.loads((out.out + out.err).strip().splitlines()[-1])["event"]
+    for leaked in (
+        "LitigationHold",
+        "Secret",
+        "hunter2",
+        "Acme.Corp",
+        "ConfidentialSettlement",
+        "token",
+        "Outer",
+        "PrivilegedMemo",
+        "first line",
+    ):
+        assert leaked not in event, leaked
+    assert "ValueError" in event and "RuntimeError" in event and "direct cause" in event
+
+
+def test_exception_groups_logged_as_text_keep_their_frames_and_types(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import logging
+    import traceback
+
+    configure_logging("INFO", service="api")
+    try:
+        raise ExceptionGroup("GroupSecret", [KeyError("KeySecret"), OSError("OsSecret")])
+    except ExceptionGroup:
+        logging.getLogger("uvicorn.error").error(traceback.format_exc())
+    out = capsys.readouterr()
+    event = json.loads((out.out + out.err).strip().splitlines()[-1])["event"]
+    assert "Secret" not in event
+    assert "ExceptionGroup" in event and "KeyError" in event and "OSError" in event and 'File "' in event

@@ -73,7 +73,7 @@ class JWKSCache:
                     # on failure keep serving the keys we have: a brief issuer outage must not sign everyone out
                     # an unreachable issuer or a malformed body (proxy error page, no "keys", bad JWK) is an outage
                     with contextlib.suppress(
-                        httpx.HTTPError, ValueError, KeyError, TypeError, jwt.PyJWTError
+                        httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError, jwt.PyJWTError
                     ):
                         await self._refresh()
         if not self._keys or time.monotonic() - self._fetched > self.max_stale_s:

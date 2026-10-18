@@ -98,4 +98,6 @@ async def test_each_event_is_one_redis_round_trip_with_ordered_ids(redis_url: st
     assert calls == ["XADD"] * 4  # no counter; the first event shares one pipeline with its TTLs
     assert [seq for seq, _, _ in await events.read(run, 0)] == [1, 2, 3, 4, 5]
     assert 0 < await redis.ttl(f"crag:run:{run}") <= events.ttl_s
+    assert 0 < await redis.ttl(f"crag:run:{run}:owner") <= events.ttl_s  # set with the first event's pipeline
+    assert await redis.exists(f"crag:run:{run}:seq") == 0  # no shared counter any more
     await redis.aclose()

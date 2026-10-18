@@ -96,18 +96,32 @@ _TRACEBACK = "Traceback (most recent call last):"
 _FRAME = re.compile(r'^\s*File "[^"]*", line \d+(?:, in .*)?$')
 _EXCEPTION_LINE = re.compile(r"^([A-Za-z_][\w.]*)(?::.*)?$")
 _CHAIN = ("During handling of the above exception", "The above exception was the direct cause")
+_GROUP_PREFIX = re.compile(r"^(?:\s*\|)+ ?")  # exception groups indent their sub-tracebacks with "  | "
 
 
 def _traceback_text_without_messages(text: str) -> str:
-    """A traceback logged as text (uvicorn's lifespan does): keep the header, frame lines and exception types;
-    drop source lines, messages and anything after them (``DETAIL:`` lines, notes)."""
-    head, _, tail = text.partition(_TRACEBACK)
-    kept = [head.rstrip()] if head.strip() else []
-    for line in (_TRACEBACK + tail).splitlines():
-        if line.startswith(_TRACEBACK) or line.startswith(_CHAIN) or _FRAME.match(line):
-            kept.append(line)
-        elif not line.startswith((" ", "\t")) and (match := _EXCEPTION_LINE.match(line)):
-            kept.append(match.group(1))  # `psycopg.errors.UniqueViolation: ...` keeps the type only
+    """A traceback logged as text (uvicorn's lifespan does): keep the logger's own lead-in, the headers, frame lines
+    and exception types. After an exception-type line everything (the rest of a multi-line message, notes) is
+    dropped until the next traceback, chain or exception-group header."""
+    lines = text.splitlines()
+    first = next(i for i, line in enumerate(lines) if _TRACEBACK in line)
+    kept = lines[:first]
+    in_message = False
+    for raw in lines[first:]:
+        body = _GROUP_PREFIX.sub("", raw)
+        stripped = body.strip()
+        if _TRACEBACK in raw or stripped.startswith(_CHAIN) or raw.strip().startswith("+-"):
+            kept.append(raw)
+            in_message = False
+        elif in_message:
+            continue
+        elif _FRAME.match(body):
+            kept.append(raw)
+        elif not body.startswith((" ", "\t")) and (match := _EXCEPTION_LINE.match(body)):
+            kept.append(
+                raw[: len(raw) - len(body)] + match.group(1)
+            )  # `psycopg.errors.X: ...` keeps the type
+            in_message = True
     return "\n".join(kept)
 
 

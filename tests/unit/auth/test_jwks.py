@@ -162,3 +162,10 @@ async def test_a_malformed_jwks_body_counts_as_unavailable(clock: list[float]) -
     cold = JWKSCache("http://oidc", client=httpx.AsyncClient(transport=httpx.MockTransport(html)))
     with pytest.raises(AuthError, match="identity provider unavailable"):
         await cold.key("k1")
+
+    def not_keys(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"keys": ["x"]})  # entries that are not JWK objects
+
+    odd = JWKSCache("http://oidc", client=httpx.AsyncClient(transport=httpx.MockTransport(not_keys)))
+    with pytest.raises(AuthError, match="identity provider unavailable"):
+        await odd.key("k1")
