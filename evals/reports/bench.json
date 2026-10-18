@@ -3,12 +3,12 @@
     "budget_ms": 300,
     "concurrency": 4,
     "llm": "FakeLLM (offline)",
-    "max_ms": 118.7,
-    "measured_at": "2026-10-18T19:46:11+00:00",
+    "max_ms": 156.5,
+    "measured_at": "2026-10-18T21:51:43+00:00",
     "method": "unmeasured warm-up pass over other dev questions, then the measured pass",
     "n": 60,
-    "p50_ms": 75.5,
-    "p95_ms": 113.3,
+    "p50_ms": 63.8,
+    "p95_ms": 130.2,
     "passed": true,
     "runs": [
       {
@@ -115,6 +115,13 @@
         "p50_ms": 75.5,
         "p95_ms": 113.3,
         "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T21:51:43+00:00",
+        "n": 60,
+        "p50_ms": 63.8,
+        "p95_ms": 130.2,
+        "passed": true
       }
     ],
     "split": "dev",
@@ -124,12 +131,12 @@
     "budget_ms": 300,
     "concurrency": 4,
     "llm": "FakeLLM (offline)",
-    "max_ms": 221.0,
-    "measured_at": "2026-10-18T19:46:11+00:00",
+    "max_ms": 243.0,
+    "measured_at": "2026-10-18T21:51:43+00:00",
     "method": "unmeasured warm-up pass over other dev questions, then the measured pass",
     "n": 59,
-    "p50_ms": 149.9,
-    "p95_ms": 207.3,
+    "p50_ms": 130.0,
+    "p95_ms": 230.2,
     "passed": true,
     "runs": [
       {
@@ -236,6 +243,13 @@
         "p50_ms": 149.9,
         "p95_ms": 207.3,
         "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T21:51:43+00:00",
+        "n": 59,
+        "p50_ms": 130.0,
+        "p95_ms": 230.2,
+        "passed": true
       }
     ],
     "split": "dev",
@@ -244,11 +258,11 @@
   "nfr3_ingestion_lag": {
     "budget_ms": 300000,
     "documents": 24,
-    "max_ms": 3238.4,
-    "measured_at": "2026-10-18T17:54:35+00:00",
+    "max_ms": 2817.2,
+    "measured_at": "2026-10-18T21:52:17+00:00",
     "n": 24,
-    "p50_ms": 2821.8,
-    "p95_ms": 3210.7,
+    "p50_ms": 2557.0,
+    "p95_ms": 2795.3,
     "passed": true,
     "path": "register_upload, Redis, Arq worker (default concurrency), testcontainers",
     "runs": [
@@ -272,6 +286,13 @@
         "p50_ms": 2821.8,
         "p95_ms": 3210.7,
         "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T21:52:17+00:00",
+        "n": 24,
+        "p50_ms": 2557.0,
+        "p95_ms": 2795.3,
+        "passed": true
       }
     ],
     "worst_p95_ms": 3951.0
@@ -279,11 +300,11 @@
   "nfr8_documents": {
     "budget_ms": 200,
     "concurrency": 4,
-    "max_ms": 17.4,
-    "measured_at": "2026-10-18T19:46:11+00:00",
+    "max_ms": 26.7,
+    "measured_at": "2026-10-18T21:51:44+00:00",
     "n": 120,
-    "p50_ms": 8.0,
-    "p95_ms": 11.7,
+    "p50_ms": 9.3,
+    "p95_ms": 19.5,
     "passed": true,
     "runs": [
       {
@@ -389,6 +410,13 @@
         "n": 120,
         "p50_ms": 8.0,
         "p95_ms": 11.7,
+        "passed": true
+      },
+      {
+        "measured_at": "2026-10-18T21:51:44+00:00",
+        "n": 120,
+        "p50_ms": 9.3,
+        "p95_ms": 19.5,
         "passed": true
       }
     ],

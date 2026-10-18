@@ -2,7 +2,7 @@
 
 This repository was built by an AI coding agent (Claude Code, running on the web) working from a written specification, inside a harness of rules, hooks, subagents and skills that the spec itself asked for. This page describes that process and the mistakes it produced and caught. It is written from the repository's own records: [PROGRESS.md](../PROGRESS.md), [DECISIONS.md](DECISIONS.md), [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md), the `.claude/` directory and `git log`. Where a claim comes from somewhere else, the text says so.
 
-State at the final verification: tasks T-01 to T-51 are done in [PROGRESS.md](../PROGRESS.md), and the Global Definition of Done there is checked item by item with its evidence (the CI item waits for the pull request's runs). The verified commit `3be0036` was the 111th (`git rev-list --count 3be0036`); 34 commit subjects up to it start with `fix` (`git log --oneline 3be0036 | grep -cE '^[0-9a-f]+ fix'`). The fresh-clone run is in [verification.md](verification.md).
+State at the final verification: tasks T-01 to T-51 are done in [PROGRESS.md](../PROGRESS.md), and the Global Definition of Done there is checked item by item with its evidence (all five CI workflows passed on the verified commit). The verified commit `e4da687` was the 133rd (`git rev-list --count e4da687`); 39 commit subjects up to it start with `fix` (`git log --oneline e4da687 | grep -cE '^[0-9a-f]+ fix'`). The fresh-clone run is in [verification.md](verification.md).
 
 ## 1. The spec as the driver
 

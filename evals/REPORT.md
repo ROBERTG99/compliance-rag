@@ -13,7 +13,7 @@ question at a time against the local stack (single client); throughput under loa
 ## Suite `rag`: PASS
 
 - Split: `test` (120 cases, dataset sha256 `3474f7519c05`)
-- Generated: 2026-10-18T21:15:45+00:00 in 8.6 s; errors: 0
+- Generated: 2026-10-18T21:50:28+00:00 in 9.0 s; errors: 0
 - embedder: lsa-384-c7bdfe8cf120e267
 - llm: FakeLLM (offline)
 - models: none (deterministic FakeLLM)
@@ -31,13 +31,13 @@ question at a time against the local stack (single client); throughput under loa
 | acl_leakage | 0.000 | = 0 | 120 | hard | pass |
 | stale_version_citation_rate | 0.000 | < 0.01 | 94 | yes | pass |
 | abstention_accuracy | 0.933 | ≥ 0.9 | 120 | yes | pass |
-| retrieval_p95 | 69 ms | < 300 | 120 | yes | pass |
+| retrieval_p95 | 65 ms | < 300 | 120 | yes | pass |
 | degraded_rate | 0.000 | — | 120 | no | pass |
 
 ## Suite `retrieval`: PASS
 
 - Split: `test` (120 cases, dataset sha256 `3474f7519c05`)
-- Generated: 2026-10-18T21:15:53+00:00 in 5.2 s; errors: 0
+- Generated: 2026-10-18T21:50:36+00:00 in 5.6 s; errors: 0
 - embedder: lsa-384-c7bdfe8cf120e267
 - llm: FakeLLM (offline)
 - models: none (deterministic FakeLLM)
@@ -50,7 +50,7 @@ question at a time against the local stack (single client); throughput under loa
 | recall@10 | 0.915 | ≥ 0.9 | 88 | yes | pass |
 | mrr@10 | 0.932 | ≥ 0.7 | 88 | yes | pass |
 | acl_leakage | 0.000 | = 0 | 120 | hard | pass |
-| retrieval_p95 | 62 ms | < 300 | 120 | yes | pass |
+| retrieval_p95 | 66 ms | < 300 | 120 | yes | pass |
 | degraded_rate | 0.000 | — | 120 | no | pass |
 
 ## Gate

@@ -29,8 +29,8 @@ measure the pipeline around it. Test split, 120 questions.
 | Answers and abstention | key-fact accuracy 0.886, abstention accuracy 0.933 | [evals/REPORT.md](evals/REPORT.md) |
 | Reranking gain | recall@10 0.812 (BM25 alone) → 0.915 (hybrid + rerank) | [evals/REPORT.md](evals/REPORT.md#retrieval-ablation) |
 | Prompt injection | 40 attacks, 0 failures; injected documents still answered 28 of 30 | [evals/reports/redteam.json](evals/reports/redteam.json) |
-| Retrieval latency under load | p95 156.8 ms in the verification run of `3be0036`, worst recorded run 224.1 ms (budget < 300) | [evals/reports/bench.json](evals/reports/bench.json) |
-| Time to first verified claim | p95 289.4 ms in the verification run of `3be0036`; recorded runs reach 395.7 ms, over the 300 ms budget | [evals/reports/bench.json](evals/reports/bench.json) |
+| Retrieval latency under load | p95 130.2 ms in the verification run of `e4da687`, worst recorded run 224.1 ms (budget < 300) | [evals/reports/bench.json](evals/reports/bench.json) |
+| Time to first verified claim | p95 230.2 ms in the verification run of `e4da687`; recorded runs reach 395.7 ms, over the 300 ms budget | [evals/reports/bench.json](evals/reports/bench.json) |
 
 Latency is from `make bench`: four concurrent clients against the local compose stack on a 4-vCPU machine. Time to first claim sits at its budget there and some recorded runs exceed it; every run is kept in [evals/reports/bench.json](evals/reports/bench.json) and the cause is in [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md).
 
