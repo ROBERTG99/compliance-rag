@@ -79,15 +79,18 @@ async def ask_once(
     assert accepted.status_code == 202, accepted.text
     run = accepted.json()
     first_claim: float | None = None
+    ended: str | None = None
     async with client.stream("GET", run["events_url"], headers=headers) as events:
         async for line in events.aiter_lines():
             if line == "event: claim" and first_claim is None:
                 first_claim = (time.perf_counter() - started) * 1000
+            if ended == "event: error" and line.startswith("data: "):  # the error's code and retryability
+                assert not strict, f"run {run['run_id']} ended with an error: {line[6:]}"
+                return None, float("nan")
             if line in ("event: final", "event: error"):
-                assert not (strict and line == "event: error"), f"run {run['run_id']} ended with an error"
-                if line == "event: error":
-                    return None, float("nan")
-                break
+                ended = line
+                if line == "event: final":
+                    break
     detail = (await client.get(f"/v1/runs/{run['run_id']}", headers=headers)).json()
     retrieval = sum(s["latency_ms"] for s in detail["steps"] if s["node"] in RETRIEVAL_NODES)
     return first_claim, retrieval

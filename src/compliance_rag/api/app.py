@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import gc
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -41,6 +42,10 @@ def create_app(settings: Settings | None = None, *, state: AppState | None = Non
                 await asyncio.wait_for(app.state.crag.warm_up(), timeout=WARM_UP_TIMEOUT_S)
             except TimeoutError:
                 log.warning("warm_up_timeout", seconds=WARM_UP_TIMEOUT_S)
+            # the warm-up loaded the reranker's per-chunk caches (millions of long-lived objects): move them out of
+            # the cyclic GC's reach, or each full collection walks them all and stalls requests for ~100s of ms
+            gc.collect()
+            gc.freeze()
         try:
             yield
         finally:

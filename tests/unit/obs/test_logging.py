@@ -145,3 +145,23 @@ def test_error_labels_name_the_type_and_sqlstate_never_the_message() -> None:
         "new row violates check constraint; DETAIL: Failing row contains (...)"
     )
     assert error_label(check) == "CheckViolation (SQLSTATE 23514)"
+
+
+def test_a_traceback_logged_as_text_keeps_types_and_frames_only(capsys: pytest.CaptureFixture[str]) -> None:
+    # uvicorn logs a failed lifespan as `logger.error(traceback.format_exc())`: no exc_info, the text is the message
+    import logging
+    import traceback
+
+    configure_logging("INFO", service="api")
+    try:
+        _raise_chained()
+    except RuntimeError:
+        logging.getLogger("uvicorn.error").error(
+            traceback.format_exc() + "DETAIL:  Key (v)=(Legal-only) already exists."
+        )
+    out = capsys.readouterr()
+    raw = out.out + out.err
+    assert "SECRET" not in raw and "litigation" not in raw and "Legal-only" not in raw
+    event = json.loads(raw.strip().splitlines()[-1])["event"]
+    assert "Traceback (most recent call last):" in event and "_raise_chained" in event
+    assert "RuntimeError" in event and "ValueError" in event

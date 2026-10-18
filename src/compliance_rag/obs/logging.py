@@ -10,6 +10,7 @@ SDKs, HTTP clients) only emit WARNING and above, since their DEBUG/INFO messages
 from __future__ import annotations
 
 import logging
+import re
 import sys
 import traceback
 from collections.abc import MutableMapping
@@ -91,12 +92,34 @@ def _type_and_frames(exc: BaseException) -> str:
     return "\n\nThe above exception led to:\n\n".join(parts)
 
 
+_TRACEBACK = "Traceback (most recent call last):"
+_FRAME = re.compile(r'^\s*File "[^"]*", line \d+(?:, in .*)?$')
+_EXCEPTION_LINE = re.compile(r"^([A-Za-z_][\w.]*)(?::.*)?$")
+_CHAIN = ("During handling of the above exception", "The above exception was the direct cause")
+
+
+def _traceback_text_without_messages(text: str) -> str:
+    """A traceback logged as text (uvicorn's lifespan does): keep the header, frame lines and exception types;
+    drop source lines, messages and anything after them (``DETAIL:`` lines, notes)."""
+    head, _, tail = text.partition(_TRACEBACK)
+    kept = [head.rstrip()] if head.strip() else []
+    for line in (_TRACEBACK + tail).splitlines():
+        if line.startswith(_TRACEBACK) or line.startswith(_CHAIN) or _FRAME.match(line):
+            kept.append(line)
+        elif not line.startswith((" ", "\t")) and (match := _EXCEPTION_LINE.match(line)):
+            kept.append(match.group(1))  # `psycopg.errors.UniqueViolation: ...` keeps the type only
+    return "\n".join(kept)
+
+
 def _exceptions_without_messages(
     _logger: Any, _method: str, event: MutableMapping[str, Any]
 ) -> MutableMapping[str, Any]:
     """Exceptions as type and frames only: their messages can hold row values (psycopg ``DETAIL``), request
     input (pydantic ``input_value``) or document text, also where a library puts them into its own message."""
     exc = _exception(event.pop("exc_info", None))
+    message = event.get("event")
+    if isinstance(message, str) and _TRACEBACK in message:
+        event["event"] = _traceback_text_without_messages(message)
     if exc is None:
         return event
     message = event.get("event")

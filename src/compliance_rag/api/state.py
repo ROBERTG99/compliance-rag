@@ -100,6 +100,32 @@ class AppState:
                 await self.arq.aclose()
 
 
+CHECKPOINTER_SETUP_LOCK = 0x63726167  # "crag": a Postgres advisory lock key of our own
+
+
+async def setup_checkpointer(pool: AsyncConnectionPool) -> AsyncPostgresSaver:
+    """LangGraph's checkpoint tables, migrated by one API worker at a time: its migrations are not safe to run
+    concurrently, and on a fresh database every uvicorn worker starts at once (one crash stops them all)."""
+    checkpointer = AsyncPostgresSaver(pool)  # type: ignore[arg-type]
+    async with pool.connection() as conn:  # a session-level lock, held on this connection only
+        # poll instead of blocking in pg_advisory_lock: a blocked call is an open transaction, and the
+        # migrations' CREATE INDEX CONCURRENTLY waits for every open transaction (a deadlock)
+        for _ in range(600):  # 60 s
+            row = await (
+                await conn.execute("SELECT pg_try_advisory_lock(%s)", (CHECKPOINTER_SETUP_LOCK,))
+            ).fetchone()
+            if row and next(iter(row.values()) if isinstance(row, dict) else iter(row)):
+                break
+            await asyncio.sleep(0.1)
+        else:
+            raise TimeoutError("another API worker kept the checkpointer setup lock for 60 s")
+        try:
+            await checkpointer.setup()
+        finally:
+            await conn.execute("SELECT pg_advisory_unlock(%s)", (CHECKPOINTER_SETUP_LOCK,))
+    return checkpointer
+
+
 async def build_state(settings: Settings, *, validator: TokenValidator | None = None) -> AppState:
     services = await build_services(settings)
     pool = AsyncConnectionPool(
@@ -110,8 +136,7 @@ async def build_state(settings: Settings, *, validator: TokenValidator | None = 
         kwargs={"autocommit": True, "prepare_threshold": 0, "row_factory": dict_row},
     )
     await pool.open(wait=True, timeout=30)
-    checkpointer = AsyncPostgresSaver(pool)  # type: ignore[arg-type]
-    await checkpointer.setup()
+    checkpointer = await setup_checkpointer(pool)
     # always a client: each call fails open on its own (§4.7), so a Redis outage at start-up heals by itself
     redis = Redis.from_url(settings.redis_url, socket_connect_timeout=1, socket_timeout=2)
     if validator is None:
