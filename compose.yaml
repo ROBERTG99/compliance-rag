@@ -16,7 +16,11 @@ x-app-env: &app-env
   CRAG_QDRANT_URL: http://qdrant:6333
   CRAG_OIDC_ISSUER: http://dev-oidc:8612
   CRAG_OIDC_PUBLIC_ISSUER: http://localhost:8612
-  OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-}"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-}"  # profile observability: http://otel-collector:4318
+  # profile langfuse: LANGFUSE_HOST=http://langfuse:3000 with the profile's dev project keys (compose below)
+  LANGFUSE_HOST: "${LANGFUSE_HOST:-}"
+  LANGFUSE_PUBLIC_KEY: "${LANGFUSE_PUBLIC_KEY:-}"
+  LANGFUSE_SECRET_KEY: "${LANGFUSE_SECRET_KEY:-}"
 
 services:
   postgres:
@@ -250,6 +254,7 @@ services:
       NEXTAUTH_SECRET: dev-only-langfuse-nextauth  # local profile only; not a secret
       SALT: dev-only-langfuse-salt
       TELEMETRY_ENABLED: "false"
+      HOSTNAME: 0.0.0.0  # Next.js listens on the container IP only otherwise (healthcheck uses 127.0.0.1)
       LANGFUSE_INIT_ORG_ID: northwind
       LANGFUSE_INIT_PROJECT_ID: compliance-rag
       LANGFUSE_INIT_PROJECT_PUBLIC_KEY: pk-lf-dev-northwind

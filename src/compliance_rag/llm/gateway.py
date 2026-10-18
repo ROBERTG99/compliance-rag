@@ -20,6 +20,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+import structlog
 import yaml
 from opentelemetry.trace import SpanKind, Status, StatusCode
 
@@ -146,6 +147,24 @@ class Gateway:
         self.fake = fake or FakeLLM()
         self._client = client
         self.cassettes = CassetteStore(Path(self.settings.cassette_dir))
+        self._langfuse: Any = None
+        self._reports: set[asyncio.Task[None]] = set()
+
+    def _report(self, result: LLMResult) -> None:
+        """Langfuse (profile ``langfuse``) when configured: fire and forget, numbers only."""
+        s = self.settings
+        if not (s.langfuse_host and s.langfuse_public_key and s.langfuse_secret_key):
+            return
+        if self._langfuse is None:
+            from compliance_rag.obs.langfuse import LangfuseReporter
+
+            self._langfuse = LangfuseReporter(
+                s.langfuse_host, s.langfuse_public_key, s.langfuse_secret_key.get_secret_value()
+            )
+        run_id = structlog.contextvars.get_contextvars().get("run_id")
+        task = asyncio.create_task(self._langfuse.report(result, run_id=run_id))
+        self._reports.add(task)
+        task.add_done_callback(self._reports.discard)
 
     # -- provider ------------------------------------------------------------------------------
     @property
@@ -216,6 +235,7 @@ class Gateway:
             span.set_attribute("gen_ai.usage.output_tokens", result.output_tokens)
             span.set_attribute("app.cost_usd", result.cost_usd)
             span.set_attribute("app.from_cassette", result.from_cassette)
+            self._report(result)
             return result
 
     async def _stream(self, req: LLMRequest, on_text: Callable[[str], Any] | None = None) -> LLMResult:

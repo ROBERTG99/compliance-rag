@@ -70,6 +70,14 @@ def _shared(service: str) -> list[Any]:
     ]
 
 
+class _StdoutHandler(logging.StreamHandler):  # type: ignore[type-arg]
+    """Writes to whatever ``sys.stdout`` is at emit time (test runners and reloaders swap it)."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.stream = sys.stdout
+        super().emit(record)
+
+
 class _RedactExtras(logging.Filter):
     """stdlib ``extra={...}`` fields become record attributes: drop the text-bearing ones."""
 
@@ -91,7 +99,7 @@ def configure_logging(level: str = "INFO", *, service: str = "api") -> None:
         logger_factory=structlog.PrintLoggerFactory(),  # resolves sys.stdout per logger, not once
         cache_logger_on_first_use=False,
     )
-    handler = logging.StreamHandler(sys.stdout)
+    handler = _StdoutHandler(sys.stdout)
     handler.addFilter(_RedactExtras())
     handler.setFormatter(
         structlog.stdlib.ProcessorFormatter(

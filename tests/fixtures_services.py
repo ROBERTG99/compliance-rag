@@ -116,6 +116,12 @@ def migrated_db(empty_db: Database) -> Database:
 def redis_url() -> Iterator[str]:
     url = os.environ.get("CRAG_TEST_REDIS_URL")
     if url:
+        import redis
+
+        # a dedicated DB of the stack's Redis: start empty, or Arq results kept from an earlier run
+        # deduplicate this run's jobs (same idempotency keys)
+        with redis.Redis.from_url(url) as client:
+            client.flushdb()
         yield url
         return
     container = _docker_container(REDIS_IMAGE, 6379)
