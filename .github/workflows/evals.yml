@@ -42,7 +42,7 @@ jobs:
         run: make eval
       - name: Per-case eval results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: eval-runs
           path: evals/reports/runs/*.json
