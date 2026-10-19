@@ -1,0 +1,8 @@
+# Pinned to the versions in uv.lock
+fastapi==0.143.3
+starlette==1.8.0
+pydantic==2.14.1
+uvicorn==0.54.0
+pyjwt==2.15.1
+cryptography==50.0.2
+python-multipart==0.0.32

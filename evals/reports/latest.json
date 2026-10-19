@@ -1,0 +1,406 @@
+{
+  "generated_at": "2026-10-18T21:50:36+00:00",
+  "split": "test",
+  "llm": "FakeLLM (offline)",
+  "passed": true,
+  "metrics": {
+    "recall@10": 0.9147727272727273,
+    "mrr@10": 0.9318181818181818,
+    "key_fact_accuracy": 0.8863636363636364,
+    "citation_precision": 1.0,
+    "hallucinated_citation_rate": 0.0,
+    "acl_leakage": 0.0,
+    "stale_version_citation_rate": 0.0,
+    "abstention_accuracy": 0.9333333333333333,
+    "retrieval_p95_ms": 65.163,
+    "degraded_rate": 0.0,
+    "retrieval.recall@10": 0.9147727272727273,
+    "retrieval.mrr@10": 0.9318181818181818,
+    "retrieval.acl_leakage": 0.0,
+    "retrieval.retrieval_p95_ms": 66.1122029996477,
+    "retrieval.degraded_rate": 0.0
+  },
+  "ablation": [
+    {
+      "config": "bm25",
+      "n": 88,
+      "recall@10": 0.8125,
+      "mrr@10": 0.8267045454545454,
+      "p95_ms": 21.826615999998467,
+      "degraded_rate": 0.0
+    },
+    {
+      "config": "vector-pgvector",
+      "n": 88,
+      "recall@10": 0.7443181818181818,
+      "mrr@10": 0.67005772005772,
+      "p95_ms": 58.23437799972453,
+      "degraded_rate": 0.0
+    },
+    {
+      "config": "vector-qdrant",
+      "n": 88,
+      "recall@10": 0.7556818181818182,
+      "mrr@10": 0.6814213564213564,
+      "p95_ms": 33.174796999901446,
+      "degraded_rate": 0.0
+    },
+    {
+      "config": "hybrid",
+      "n": 88,
+      "recall@10": 0.8409090909090909,
+      "mrr@10": 0.7663194444444446,
+      "p95_ms": 60.9755719997338,
+      "degraded_rate": 0.0
+    },
+    {
+      "config": "hybrid+rerank",
+      "n": 88,
+      "recall@10": 0.9147727272727273,
+      "mrr@10": 0.9318181818181818,
+      "p95_ms": 60.96531499997582,
+      "degraded_rate": 0.0
+    }
+  ],
+  "ablation_meta": {
+    "generated_at": "2026-10-18T21:16:47+00:00",
+    "split": "test",
+    "target": {
+      "llm": "FakeLLM (offline)",
+      "models": "none (deterministic FakeLLM)",
+      "prompts": "condense_followup.v1.md=36111b4f091e, generate_answer.v1.md=b22c1594c169, judge_answer.v1.md=7763f3667861",
+      "reranker": "feature weights=653d45703369",
+      "vector_store": "pgvector",
+      "embedder": "lsa-384-c7bdfe8cf120e267",
+      "configuration": "bm25=True, vector=True, vector_store=pgvector, rerank=True"
+    }
+  },
+  "redteam": {
+    "tool": "promptfoo",
+    "generated_at": "2026-10-18T21:50:41.188Z",
+    "total": 40,
+    "failures": 0,
+    "by_kind": {
+      "document": 30,
+      "user": 10
+    },
+    "document_answered": {
+      "answered": 28,
+      "of": 30
+    },
+    "failed": [],
+    "regressions": []
+  },
+  "by_category": {
+    "suite": "rag",
+    "rows": {
+      "acl_probe": {
+        "n": 12,
+        "recall@10": null,
+        "key_fact_accuracy": null,
+        "abstention_accuracy": 1.0
+      },
+      "multi_hop": {
+        "n": 16,
+        "recall@10": 0.78125,
+        "key_fact_accuracy": 0.625,
+        "abstention_accuracy": 0.875
+      },
+      "must_abstain": {
+        "n": 20,
+        "recall@10": null,
+        "key_fact_accuracy": null,
+        "abstention_accuracy": 0.9
+      },
+      "numeric": {
+        "n": 16,
+        "recall@10": 0.8125,
+        "key_fact_accuracy": 0.8125,
+        "abstention_accuracy": 0.8125
+      },
+      "single_hop": {
+        "n": 48,
+        "recall@10": 0.9791666666666666,
+        "key_fact_accuracy": 0.9791666666666666,
+        "abstention_accuracy": 0.9791666666666666
+      },
+      "version_sensitive": {
+        "n": 8,
+        "recall@10": 1.0,
+        "key_fact_accuracy": 1.0,
+        "abstention_accuracy": 1.0
+      }
+    }
+  },
+  "suites": {
+    "rag": {
+      "schema": "evalgate.report.v1",
+      "suite": "rag",
+      "description": "Full graph per question against the seeded stack; thresholds from BUILD.md §11.",
+      "split": "test",
+      "generated_at": "2026-10-18T21:50:28+00:00",
+      "duration_s": 9.0,
+      "dataset": {
+        "path": "evals/datasets/questions.v1.jsonl",
+        "sha256": "3474f7519c05c7c2c5a8bddcbfefc40ee6fb99cc5fd68028c01fd5196d6ba78b",
+        "n": 120
+      },
+      "target": {
+        "llm": "FakeLLM (offline)",
+        "models": "none (deterministic FakeLLM)",
+        "prompts": "condense_followup.v1.md=36111b4f091e, generate_answer.v1.md=b22c1594c169, judge_answer.v1.md=7763f3667861",
+        "reranker": "feature weights=653d45703369",
+        "vector_store": "pgvector",
+        "embedder": "lsa-384-c7bdfe8cf120e267"
+      },
+      "metrics": {
+        "recall@10": {
+          "value": 0.9147727272727273,
+          "n": 88,
+          "unit": "rate",
+          "threshold": {
+            "min": 0.9,
+            "exclusive": false
+          },
+          "threshold_text": "≥ 0.9",
+          "gate": true,
+          "hard": false,
+          "higher_is_better": true,
+          "passed": true,
+          "description": "gold span in a top-10 reranked chunk (answerable questions)"
+        },
+        "mrr@10": {
+          "value": 0.9318181818181818,
+          "n": 88,
+          "unit": "rate",
+          "threshold": {
+            "min": 0.7,
+            "exclusive": false
+          },
+          "threshold_text": "≥ 0.7",
+          "gate": true,
+          "hard": false,
+          "higher_is_better": true,
+          "passed": true,
+          "description": ""
+        },
+        "key_fact_accuracy": {
+          "value": 0.8863636363636364,
+          "n": 88,
+          "unit": "rate",
+          "threshold": {
+            "min": 0.85,
+            "exclusive": false
+          },
+          "threshold_text": "≥ 0.85",
+          "gate": true,
+          "hard": false,
+          "higher_is_better": true,
+          "passed": true,
+          "description": "contains_all on normalised expected values (offline bar; live bar 0.90)"
+        },
+        "citation_precision": {
+          "value": 1.0,
+          "n": 95,
+          "unit": "rate",
+          "threshold": {
+            "min": 0.95,
+            "exclusive": false
+          },
+          "threshold_text": "≥ 0.95",
+          "gate": true,
+          "hard": false,
+          "higher_is_better": true,
+          "passed": true,
+          "description": ""
+        },
+        "hallucinated_citation_rate": {
+          "value": 0.0,
+          "n": 95,
+          "unit": "rate",
+          "threshold": {
+            "max": 0.0,
+            "exclusive": false
+          },
+          "threshold_text": "= 0",
+          "gate": true,
+          "hard": true,
+          "higher_is_better": false,
+          "passed": true,
+          "description": ""
+        },
+        "acl_leakage": {
+          "value": 0.0,
+          "n": 120,
+          "unit": "rate",
+          "threshold": {
+            "max": 0.0,
+            "exclusive": false
+          },
+          "threshold_text": "= 0",
+          "gate": true,
+          "hard": true,
+          "higher_is_better": false,
+          "passed": true,
+          "description": "restricted id, span, citation or retrieved chunk, graded against the corpus ground truth"
+        },
+        "stale_version_citation_rate": {
+          "value": 0.0,
+          "n": 94,
+          "unit": "rate",
+          "threshold": {
+            "max": 0.01,
+            "exclusive": true
+          },
+          "threshold_text": "< 0.01",
+          "gate": true,
+          "hard": false,
+          "higher_is_better": false,
+          "passed": true,
+          "description": ""
+        },
+        "abstention_accuracy": {
+          "value": 0.9333333333333333,
+          "n": 120,
+          "unit": "rate",
+          "threshold": {
+            "min": 0.9,
+            "exclusive": false
+          },
+          "threshold_text": "≥ 0.9",
+          "gate": true,
+          "hard": false,
+          "higher_is_better": true,
+          "passed": true,
+          "description": ""
+        },
+        "retrieval_p95": {
+          "value": 65.163,
+          "n": 120,
+          "unit": "ms",
+          "threshold": {
+            "max": 300.0,
+            "exclusive": true
+          },
+          "threshold_text": "< 300",
+          "gate": true,
+          "hard": false,
+          "higher_is_better": false,
+          "passed": true,
+          "description": "legs + fusion + rerank per question, sequential single client (load is `make bench`)"
+        },
+        "degraded_rate": {
+          "value": 0.0,
+          "n": 120,
+          "unit": "rate",
+          "threshold": null,
+          "threshold_text": "",
+          "gate": false,
+          "hard": false,
+          "higher_is_better": false,
+          "passed": true,
+          "description": "share of cases where a retrieval leg failed or timed out (reported, not gated)"
+        }
+      },
+      "errors": 0,
+      "passed": true
+    },
+    "retrieval": {
+      "schema": "evalgate.report.v1",
+      "suite": "retrieval",
+      "description": "Recall, MRR and latency of retrieval alone, with the persona's ACL and as_of.",
+      "split": "test",
+      "generated_at": "2026-10-18T21:50:36+00:00",
+      "duration_s": 5.6,
+      "dataset": {
+        "path": "evals/datasets/questions.v1.jsonl",
+        "sha256": "3474f7519c05c7c2c5a8bddcbfefc40ee6fb99cc5fd68028c01fd5196d6ba78b",
+        "n": 120
+      },
+      "target": {
+        "llm": "FakeLLM (offline)",
+        "models": "none (deterministic FakeLLM)",
+        "prompts": "condense_followup.v1.md=36111b4f091e, generate_answer.v1.md=b22c1594c169, judge_answer.v1.md=7763f3667861",
+        "reranker": "feature weights=653d45703369",
+        "vector_store": "pgvector",
+        "embedder": "lsa-384-c7bdfe8cf120e267"
+      },
+      "metrics": {
+        "recall@10": {
+          "value": 0.9147727272727273,
+          "n": 88,
+          "unit": "rate",
+          "threshold": {
+            "min": 0.9,
+            "exclusive": false
+          },
+          "threshold_text": "≥ 0.9",
+          "gate": true,
+          "hard": false,
+          "higher_is_better": true,
+          "passed": true,
+          "description": ""
+        },
+        "mrr@10": {
+          "value": 0.9318181818181818,
+          "n": 88,
+          "unit": "rate",
+          "threshold": {
+            "min": 0.7,
+            "exclusive": false
+          },
+          "threshold_text": "≥ 0.7",
+          "gate": true,
+          "hard": false,
+          "higher_is_better": true,
+          "passed": true,
+          "description": ""
+        },
+        "acl_leakage": {
+          "value": 0.0,
+          "n": 120,
+          "unit": "rate",
+          "threshold": {
+            "max": 0.0,
+            "exclusive": false
+          },
+          "threshold_text": "= 0",
+          "gate": true,
+          "hard": true,
+          "higher_is_better": false,
+          "passed": true,
+          "description": ""
+        },
+        "retrieval_p95": {
+          "value": 66.1122029996477,
+          "n": 120,
+          "unit": "ms",
+          "threshold": {
+            "max": 300.0,
+            "exclusive": true
+          },
+          "threshold_text": "< 300",
+          "gate": true,
+          "hard": false,
+          "higher_is_better": false,
+          "passed": true,
+          "description": "legs + fusion + rerank per question, sequential single client (load is `make bench`)"
+        },
+        "degraded_rate": {
+          "value": 0.0,
+          "n": 120,
+          "unit": "rate",
+          "threshold": null,
+          "threshold_text": "",
+          "gate": false,
+          "hard": false,
+          "higher_is_better": false,
+          "passed": true,
+          "description": "share of cases where a retrieval leg failed or timed out (reported, not gated)"
+        }
+      },
+      "errors": 0,
+      "passed": true
+    }
+  }
+}

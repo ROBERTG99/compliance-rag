@@ -1,0 +1,75 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "index": {
+      "similarity": {
+        "default": {
+          "type": "BM25",
+          "k1": 1.2,
+          "b": 0.75
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "chunk_id": {
+        "type": "keyword"
+      },
+      "document_id": {
+        "type": "keyword"
+      },
+      "version": {
+        "type": "integer"
+      },
+      "version_id": {
+        "type": "keyword"
+      },
+      "title": {
+        "type": "text",
+        "analyzer": "english"
+      },
+      "section_path": {
+        "type": "text",
+        "analyzer": "english",
+        "fields": {
+          "raw": {
+            "type": "keyword"
+          }
+        }
+      },
+      "text": {
+        "type": "text",
+        "analyzer": "english"
+      },
+      "domain": {
+        "type": "keyword"
+      },
+      "acl_groups": {
+        "type": "keyword"
+      },
+      "valid_from": {
+        "type": "date"
+      },
+      "valid_to": {
+        "type": "date"
+      },
+      "visible": {
+        "type": "boolean"
+      },
+      "injection_score": {
+        "type": "float"
+      },
+      "char_start": {
+        "type": "integer",
+        "index": false
+      },
+      "char_end": {
+        "type": "integer",
+        "index": false
+      }
+    }
+  }
+}

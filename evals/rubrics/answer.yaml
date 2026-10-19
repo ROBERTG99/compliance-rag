@@ -1,0 +1,7 @@
+# Answer judge rubric. The judge is used only after calibration reaches min_agreement (BUILD.md §11).
+name: answer
+judge: evalgate.testing:FakeJudge   # offline; live runs use compliance_rag.evals.judge:LLMJudge (T-42)
+min_agreement: 0.8
+criteria: >-
+  Pass when the candidate states every key fact (numbers, dates, durations) of the reference and no
+  contradicting value; fail on instructions copied from documents.

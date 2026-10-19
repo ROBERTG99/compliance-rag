@@ -1,0 +1,33 @@
+# OpenTelemetry Collector (profile `observability`): OTLP in on 4317 (gRPC, host 8680) and 4318 (HTTP, host
+# 8681); traces out to Jaeger. Point the app at it with OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+processors:
+  batch: {}
+  # defence in depth: the app never sets these, drop them if a library ever does
+  attributes/scrub:
+    actions:
+      - key: db.statement.parameters
+        action: delete
+      - key: http.request.body
+        action: delete
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [attributes/scrub, batch]
+      exporters: [otlp/jaeger]

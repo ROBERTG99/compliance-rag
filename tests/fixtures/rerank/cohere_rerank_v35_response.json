@@ -1,0 +1,18 @@
+{
+ "_note": "Synthetic fixture following the documented Cohere Rerank v3.5 on Bedrock response shape; replace via make record-fixtures.",
+ "id": "00000000-0000-0000-0000-000000000000",
+ "results": [
+  {
+   "index": 2,
+   "relevance_score": 0.91
+  },
+  {
+   "index": 0,
+   "relevance_score": 0.42
+  },
+  {
+   "index": 1,
+   "relevance_score": 0.05
+  }
+ ]
+}

@@ -1,0 +1,31 @@
+# Build every image and fail on HIGH/CRITICAL vulnerabilities with a fix (BUILD.md §17).
+name: docker
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  docker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          recursive: true
+          dockerfile: "docker/*.Dockerfile"
+      - name: Build images
+        run: docker compose build api dev-oidc web minio
+      - name: Trivy (HIGH/CRITICAL with a fix fails)
+        run: |
+          v=0.76.0; base="https://github.com/aquasecurity/trivy/releases/download/v${v}"
+          curl -sfLO "${base}/trivy_${v}_Linux-64bit.tar.gz" && curl -sfLO "${base}/trivy_${v}_checksums.txt"
+          grep " trivy_${v}_Linux-64bit.tar.gz$" "trivy_${v}_checksums.txt" | sha256sum -c -
+          mkdir -p "$HOME/.local/bin" && tar -xzf "trivy_${v}_Linux-64bit.tar.gz" -C "$HOME/.local/bin" trivy
+          for image in $(docker compose config --images | grep '^compliance-rag/' | sort -u); do
+            "$HOME/.local/bin/trivy" image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+              --ignorefile .trivyignore --exit-code 1 "$image"
+          done

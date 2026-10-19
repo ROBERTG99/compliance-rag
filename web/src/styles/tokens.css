@@ -1,0 +1,69 @@
+/* "Regulatory gazette" design tokens (BUILD.md §13). Components use these, never raw colours. */
+:root {
+  --crag-paper: #fbfbf8;
+  --crag-surface: #ffffff;
+  --crag-ink: #111827;
+  --crag-ink-muted: #4b5563;
+  --crag-rule: #d6d3cb;
+  --crag-control: #6b7280; /* form-control and button borders: >= 3:1 (WCAG 1.4.11) */
+  --crag-accent: #3730a3;
+  --crag-accent-ink: #ffffff;
+  --crag-highlight: #fef3c7;
+  --crag-restricted: #9f1239;
+  --crag-ok: #166534;
+  --crag-focus: #3730a3;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --crag-paper: #14161b;
+    --crag-surface: #1b1e24;
+    --crag-ink: #e7e5e0;
+    --crag-ink-muted: #b4b0a8;
+    --crag-rule: #33373f;
+    --crag-control: #8b8f98;
+    --crag-accent: #a5b4fc;
+    --crag-accent-ink: #14161b;
+    --crag-highlight: #4a3b10;
+    --crag-restricted: #fda4af;
+    --crag-ok: #86efac;
+    --crag-focus: #a5b4fc;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --crag-paper: #14161b;
+  --crag-surface: #1b1e24;
+  --crag-ink: #e7e5e0;
+  --crag-ink-muted: #b4b0a8;
+  --crag-rule: #33373f;
+  --crag-control: #8b8f98;
+  --crag-accent: #a5b4fc;
+  --crag-accent-ink: #14161b;
+  --crag-highlight: #4a3b10;
+  --crag-restricted: #fda4af;
+  --crag-ok: #86efac;
+  --crag-focus: #a5b4fc;
+  color-scheme: dark;
+}
+
+@theme {
+  --color-paper: var(--crag-paper);
+  --color-surface: var(--crag-surface);
+  --color-ink: var(--crag-ink);
+  --color-muted: var(--crag-ink-muted);
+  --color-rule: var(--crag-rule);
+  --color-control: var(--crag-control);
+  --color-accent: var(--crag-accent);
+  --color-accent-ink: var(--crag-accent-ink);
+  --color-highlight: var(--crag-highlight);
+  --color-restricted: var(--crag-restricted);
+  --color-ok: var(--crag-ok);
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --breakpoint-sm: 23.4375rem; /* 375px */
+  --breakpoint-md: 48rem; /* 768px */
+  --breakpoint-xl: 80rem; /* 1280px */
+}

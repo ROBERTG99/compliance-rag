@@ -1,0 +1,55 @@
+{
+  "generated_at": "2026-10-18T21:16:47+00:00",
+  "split": "test",
+  "target": {
+    "llm": "FakeLLM (offline)",
+    "models": "none (deterministic FakeLLM)",
+    "prompts": "condense_followup.v1.md=36111b4f091e, generate_answer.v1.md=b22c1594c169, judge_answer.v1.md=7763f3667861",
+    "reranker": "feature weights=653d45703369",
+    "vector_store": "pgvector",
+    "embedder": "lsa-384-c7bdfe8cf120e267",
+    "configuration": "bm25=True, vector=True, vector_store=pgvector, rerank=True"
+  },
+  "rows": [
+    {
+      "config": "bm25",
+      "n": 88,
+      "recall@10": 0.8125,
+      "mrr@10": 0.8267045454545454,
+      "p95_ms": 21.826615999998467,
+      "degraded_rate": 0.0
+    },
+    {
+      "config": "vector-pgvector",
+      "n": 88,
+      "recall@10": 0.7443181818181818,
+      "mrr@10": 0.67005772005772,
+      "p95_ms": 58.23437799972453,
+      "degraded_rate": 0.0
+    },
+    {
+      "config": "vector-qdrant",
+      "n": 88,
+      "recall@10": 0.7556818181818182,
+      "mrr@10": 0.6814213564213564,
+      "p95_ms": 33.174796999901446,
+      "degraded_rate": 0.0
+    },
+    {
+      "config": "hybrid",
+      "n": 88,
+      "recall@10": 0.8409090909090909,
+      "mrr@10": 0.7663194444444446,
+      "p95_ms": 60.9755719997338,
+      "degraded_rate": 0.0
+    },
+    {
+      "config": "hybrid+rerank",
+      "n": 88,
+      "recall@10": 0.9147727272727273,
+      "mrr@10": 0.9318181818181818,
+      "p95_ms": 60.96531499997582,
+      "degraded_rate": 0.0
+    }
+  ]
+}

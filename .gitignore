@@ -1,7 +1,7 @@
 # secrets
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 # python
 .venv/
 __pycache__/
@@ -9,15 +9,25 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.hypothesis/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
+.import_linter_cache/
 # node
 node_modules/
 .next/
 dist/
+web/dist/
 coverage/
 playwright-report/
 test-results/
+blob-report/
+# generated data and runs
+data/generated/
+evals/reports/runs/
+.evalgate/
 # go
 /bin/
 # terraform

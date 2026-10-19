@@ -1,0 +1,155 @@
+[project]
+name = "compliance-rag"
+version = "0.1.0"
+description = "Compliance assistant with verified citations, per-document ACL, version validity and hybrid retrieval."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "ROBERTG99" }]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "python-multipart>=0.0.9",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "psycopg[binary,pool]>=3.2",
+    "alembic>=1.13",
+    "pgvector>=0.3",
+    "httpx>=0.27",
+    "qdrant-client>=1.10",
+    "redis>=5.0",
+    "arq>=0.26",
+    "boto3>=1.34",
+    "langgraph>=0.2",
+    "langgraph-checkpoint-postgres>=2.0",
+    "langchain-core>=0.3",
+    "langchain-community>=0.3",
+    "langchain-text-splitters>=0.3",
+    "pypdf>=4.3",
+    "docx2txt>=0.8",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.2",
+    "scikit-learn>=1.5",
+    "numpy>=1.26",
+    "anthropic>=0.40",
+    "openai>=1.40",
+    "pyjwt[crypto]>=2.9",
+    "structlog>=24.1",
+    "prometheus-client>=0.20",
+    "opentelemetry-api>=1.26",
+    "opentelemetry-sdk>=1.26",
+    "opentelemetry-exporter-otlp-proto-http>=1.26",
+    "opentelemetry-instrumentation-fastapi>=0.47b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.47b0",
+    "opentelemetry-instrumentation-redis>=0.47b0",
+    "opentelemetry-instrumentation-httpx>=0.47b0",
+    "typer>=0.12",
+    "pyyaml>=6.0",
+    "fpdf2>=2.7",
+    "python-docx>=1.1",
+    "evalgate",
+    "opentelemetry-instrumentation-psycopg>=0.66b1",
+    "threadpoolctl>=3.7.0",
+]
+
+[project.scripts]
+crag = "compliance_rag.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "pytest-timeout>=2.3",
+    "hypothesis>=6.100",
+    "schemathesis>=3.30",
+    "testcontainers>=4.8",
+    "moto[s3]>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "import-linter>=2.0",
+    "bandit>=1.7",
+    "pip-audit>=2.7",
+    "pip-licenses>=5.0",
+    "pre-commit>=3.8",
+    "types-PyYAML",
+    "boto3-stubs[s3]",
+]
+
+[tool.uv.sources]
+evalgate = { path = "third_party/evalgate", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/compliance_rag", "data"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = ["web", "migrations/versions/__pycache__"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "ASYNC", "SIM", "RUF"]
+ignore = ["S101", "E501", "RUF001", "RUF002", "RUF003", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "B", "ASYNC"]
+"scripts/**" = ["S"]
+"data/generator/**" = ["S311"]
+".claude/hooks/**" = ["S603", "S602", "S607"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+mypy_path = "src"
+files = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+addopts = "-q --strict-markers"
+markers = [
+    "integration: needs Postgres/Redis/OpenSearch/MinIO (testcontainers or CRAG_TEST_* URLs)",
+    "docker: needs a Docker daemon",
+    "perf: performance budgets",
+    "stack: needs the running compose stack (make bench / make e2e start it)",
+    "allow_network: test may open sockets to non-loopback hosts",
+]
+timeout = 300
+filterwarnings = [
+    "ignore:`langchain-community` is being sunset:DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["src/compliance_rag"]
+branch = false
+omit = ["src/compliance_rag/__main__.py"]
+
+[tool.coverage.report]
+skip_empty = true
+show_missing = false
+
+[tool.importlinter]
+root_packages = ["compliance_rag"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Provider SDKs are imported only by the LLM gateway"
+type = "forbidden"
+source_modules = [
+    "compliance_rag.api", "compliance_rag.auth", "compliance_rag.graph", "compliance_rag.retrieval",
+    "compliance_rag.rerank", "compliance_rag.embed", "compliance_rag.ingest", "compliance_rag.guard",
+    "compliance_rag.worker", "compliance_rag.db", "compliance_rag.obs", "compliance_rag.evals",
+    "compliance_rag.cli", "compliance_rag.settings", "compliance_rag.llm.fake", "compliance_rag.llm.cassette",
+    "compliance_rag.llm.prompts",
+]
+forbidden_modules = ["anthropic", "openai"]
+allow_indirect_imports = true

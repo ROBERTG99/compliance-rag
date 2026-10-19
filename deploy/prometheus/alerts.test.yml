@@ -1,0 +1,62 @@
+# `promtool test rules deploy/prometheus/alerts.test.yml` (run by `make lint`): one firing case per alert.
+rule_files:
+  - alerts.yml
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      # retrieval: every observation lands in the 0.5 s bucket
+      - series: 'crag_retrieval_seconds_bucket{leg="total",le="0.3"}'
+        values: '0+0x90'
+      - series: 'crag_retrieval_seconds_bucket{leg="total",le="0.5"}'
+        values: '0+10x90'
+      - series: 'crag_retrieval_seconds_bucket{leg="total",le="+Inf"}'
+        values: '0+10x90'
+      - series: 'crag_ingestion_lag_seconds{stat="p95"}'
+        values: '10x30'
+      - series: 'crag_ingestion_lag_seconds{stat="oldest_pending"}'
+        values: '0x5 400x25'
+      - series: 'up{job="worker"}'
+        values: '1x5 0x25'
+      - series: 'crag_acl_postcheck_violations_total'
+        values: '0x5 1x25'
+      - series: 'crag_claims_rejected_total{reason="quote_not_found"}'
+        values: '0+3x90'
+      - series: 'crag_claims_verified_total'
+        values: '0+7x90'
+    alert_rule_test:
+      - eval_time: 80m
+        alertname: CragRetrievalSlow
+        exp_alerts:
+          - exp_labels: { severity: ticket }
+            exp_annotations:
+              summary: Retrieval p95 (legs + fusion + rerank) above 300 ms over the last hour
+              runbook: docs/runbook.md#retrieval-is-slow
+      - eval_time: 20m
+        alertname: CragIngestionLag
+        exp_alerts:
+          - exp_labels: { severity: ticket }
+            exp_annotations:
+              summary: Ingestion lag above 5 minutes (p95 of finished jobs or the oldest pending job)
+              runbook: docs/runbook.md#ingestion-lag
+      - eval_time: 15m
+        alertname: CragWorkerDown
+        exp_alerts:
+          - exp_labels: { severity: page, job: worker }
+            exp_annotations:
+              summary: The ingestion worker is not being scraped (ingestion and ACL sync are stalled)
+              runbook: docs/runbook.md#worker-down
+      - eval_time: 7m
+        alertname: CragAclViolation
+        exp_alerts:
+          - exp_labels: { severity: page }
+            exp_annotations:
+              summary: A retrieval backend returned a hit the principal may not see (dropped by the post-check)
+              runbook: docs/runbook.md#acl-violation
+      - eval_time: 80m
+        alertname: CragCitationRejects
+        exp_alerts:
+          - exp_labels: { severity: ticket }
+            exp_annotations:
+              summary: More than 20% of generated claims were rejected by citation verification over the last hour
+              runbook: docs/runbook.md#citation-rejects

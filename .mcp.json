@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.41", "--browser", "chromium", "--headless"],
+      "env": { "PLAYWRIGHT_BROWSERS_PATH": "/opt/pw-browsers" }
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres@0.6.2", "postgresql://crag_ro:crag_ro@localhost:8620/crag"]
+    }
+  }
+}

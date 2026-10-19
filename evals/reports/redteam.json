@@ -1,0 +1,16 @@
+{
+  "tool": "promptfoo",
+  "generated_at": "2026-10-18T21:50:41.188Z",
+  "total": 40,
+  "failures": 0,
+  "by_kind": {
+    "document": 30,
+    "user": 10
+  },
+  "document_answered": {
+    "answered": 28,
+    "of": 30
+  },
+  "failed": [],
+  "regressions": []
+}

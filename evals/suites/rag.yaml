@@ -1,0 +1,51 @@
+# End-to-end RAG suite (BUILD.md §11). Offline: FakeLLM, LSA embedder, feature reranker.
+name: rag
+description: Full graph per question against the seeded stack; thresholds from BUILD.md §11.
+dataset: evals/datasets/questions.v1.jsonl
+target: compliance_rag.evals.target:RagTarget
+# one question at a time: retrieval_p95 is per-request latency (step records); load is make bench
+concurrency: 1
+metrics:
+  - name: recall@10
+    fn: compliance_rag.evals.metrics:recall_at_10
+    threshold: {min: 0.90}
+    description: gold span in a top-10 reranked chunk (answerable questions)
+  - name: mrr@10
+    fn: compliance_rag.evals.metrics:mrr_at_10
+    threshold: {min: 0.70}
+  - name: key_fact_accuracy
+    fn: compliance_rag.evals.metrics:key_fact
+    threshold: {min: 0.85}
+    description: contains_all on normalised expected values (offline bar; live bar 0.90)
+  - name: citation_precision
+    fn: compliance_rag.evals.metrics:citation_precision_case
+    aggregate: ratio
+    threshold: {min: 0.95}
+  - name: hallucinated_citation_rate
+    fn: compliance_rag.evals.metrics:hallucinated_case
+    aggregate: ratio
+    threshold: {max: 0}
+    hard: true
+  - name: acl_leakage
+    fn: compliance_rag.evals.metrics:acl_leak
+    aggregate: max
+    threshold: {max: 0}
+    hard: true
+    description: restricted id, span, citation or retrieved chunk, graded against the corpus ground truth
+  - name: stale_version_citation_rate
+    fn: compliance_rag.evals.metrics:stale_citations
+    aggregate: ratio
+    threshold: {max: 0.01, exclusive: true}
+  - name: abstention_accuracy
+    fn: compliance_rag.evals.metrics:abstention_correct
+    threshold: {min: 0.90}
+  - name: retrieval_p95
+    fn: compliance_rag.evals.metrics:retrieval_ms
+    aggregate: p95
+    unit: ms
+    threshold: {max: 300, exclusive: true}
+    description: legs + fusion + rerank per question, sequential single client (load is `make bench`)
+  - name: degraded_rate
+    fn: compliance_rag.evals.metrics:degraded
+    gate: false
+    description: share of cases where a retrieval leg failed or timed out (reported, not gated)

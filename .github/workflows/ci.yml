@@ -1,0 +1,59 @@
+# Lint, typecheck, unit, harness, integration and contract tests with coverage gates (BUILD.md §17).
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ci:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            web/pnpm-lock.yaml
+            evals/redteam/pnpm-lock.yaml
+      - name: Install
+        run: |
+          uv sync --frozen
+          pnpm -C web install --frozen-lockfile
+      - name: Lint (ruff, eslint, prettier, markdownlint, promtool)
+        run: make lint
+      - name: Typecheck (mypy --strict, tsc, import-linter)
+        run: make typecheck
+      - name: Build the MinIO image (compiled from a pinned release; the testcontainers fixtures start it)
+        run: docker compose build minio
+      - name: Tests with coverage gates (testcontainers)
+        run: make test
+  secrets:
+    # gitleaks over the whole history (BUILD.md §15: pre-commit and CI)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+      - name: gitleaks
+        run: |
+          GOBIN="$HOME/.local/bin" go install github.com/zricethezav/gitleaks/v8@v8.30.1
+          PATH="$HOME/.local/bin:$PATH" gitleaks git --no-banner --redact --log-level warn .

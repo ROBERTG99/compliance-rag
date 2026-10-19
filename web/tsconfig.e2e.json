@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": ["node"],
+    "paths": {
+      "@playwright/test": ["./node_modules/@playwright/test"],
+      "@axe-core/playwright": ["./node_modules/@axe-core/playwright"]
+    }
+  },
+  "include": ["../tests/e2e/**/*.ts"]
+}

@@ -1,0 +1,51 @@
+# SLOs and alerts (BUILD.md §14). `make lint` runs `promtool check rules` and `promtool test rules`
+# (alerts.test.yml: one case per alert).
+groups:
+  - name: compliance-rag
+    rules:
+      - alert: CragRetrievalSlow
+        expr: histogram_quantile(0.95, sum by (le) (rate(crag_retrieval_seconds_bucket{leg="total"}[1h]))) > 0.3
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Retrieval p95 (legs + fusion + rerank) above 300 ms over the last hour
+          runbook: docs/runbook.md#retrieval-is-slow
+      - alert: CragIngestionLag
+        # p95 of finished jobs, or a queue that stopped moving (oldest pending job older than 5 minutes)
+        expr: max(crag_ingestion_lag_seconds{stat="p95"}) > 300 or max(crag_ingestion_lag_seconds{stat="oldest_pending"}) > 300
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Ingestion lag above 5 minutes (p95 of finished jobs or the oldest pending job)
+          runbook: docs/runbook.md#ingestion-lag
+      - alert: CragWorkerDown
+        # a dead worker stops exporting the lag gauge, so the lag alert alone could not fire
+        expr: up{job="worker"} == 0 or absent(up{job="worker"})
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: The ingestion worker is not being scraped (ingestion and ACL sync are stalled)
+          runbook: docs/runbook.md#worker-down
+      - alert: CragAclViolation
+        # any post-check violation means a backend returned a hit outside the principal's groups: page at once
+        expr: increase(crag_acl_postcheck_violations_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: page
+        annotations:
+          summary: A retrieval backend returned a hit the principal may not see (dropped by the post-check)
+          runbook: docs/runbook.md#acl-violation
+      - alert: CragCitationRejects
+        expr: >
+          sum(rate(crag_claims_rejected_total[1h]))
+          / clamp_min(sum(rate(crag_claims_rejected_total[1h])) + sum(rate(crag_claims_verified_total[1h])), 1e-9)
+          > 0.2
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: More than 20% of generated claims were rejected by citation verification over the last hour
+          runbook: docs/runbook.md#citation-rejects
