@@ -32,7 +32,7 @@ export const initialRun: RunState = {
 export type RunAction =
   { type: "start" } | { type: "event"; event: RunEvent } | { type: "fail"; error: RunError };
 
-/** Pure reducer over §4.5 events. Only verified `claim` events add text; `token` events are not rendered. */
+/** Pure reducer over SSE events. Only verified `claim` events add text; `token` events are not rendered. */
 export function runReducer(state: RunState, action: RunAction): RunState {
   switch (action.type) {
     case "start":

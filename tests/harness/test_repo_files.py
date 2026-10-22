@@ -1,4 +1,4 @@
-"""Repository scaffolding checks (T-01, T-07)."""
+"""Repository scaffolding checks."""
 
 from pathlib import Path
 
@@ -10,9 +10,7 @@ def test_bootstrap_files_exist() -> None:
         "docs/DEVELOPMENT.md",
         ".gitignore",
         ".editorconfig",
-        "PROGRESS.md",
         "docs/DECISIONS.md",
-        "docs/specs/000-build-spec.md",
         "LICENSE",
         ".claude/settings.json",
         ".claude/rules/git-commits.md",
@@ -32,9 +30,6 @@ def test_bootstrap_files_exist() -> None:
     ]:
         assert pattern in ignore.splitlines(), pattern
     assert "ROBERTG99" in (ROOT / "LICENSE").read_text()
-    progress = (ROOT / "PROGRESS.md").read_text()
-    assert progress.startswith("# PROGRESS") and "## Needs the maintainer" in progress
-    assert "T-51" in progress
     rule = (ROOT / ".claude/rules/git-commits.md").read_text()
     assert not rule.startswith("---"), "git-commits rule must have no frontmatter"
 

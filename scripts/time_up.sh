@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# `make up`: start the stack with healthchecks (seed runs as a one-shot job) and time it (NFR-7: < 5 min).
+# `make up`: start the stack with healthchecks (seed runs as a one-shot job) and time it (budget: < 5 min).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 start=$(date +%s)
@@ -21,4 +21,4 @@ mkdir -p evals/reports
 printf '{"command": "docker compose build api web dev-oidc && docker compose up -d --wait", "seconds": %d, "budget_seconds": 300, "measured_at": "%s"}\n' \
   "$elapsed" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > evals/reports/time_up.json
 echo "stack healthy in ${elapsed}s (budget 300s)"
-if [ "$elapsed" -ge 300 ]; then echo "NFR-7 violated: make up took ${elapsed}s" >&2; exit 1; fi
+if [ "$elapsed" -ge 300 ]; then echo "make up budget exceeded: make up took ${elapsed}s" >&2; exit 1; fi

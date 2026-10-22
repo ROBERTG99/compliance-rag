@@ -1,8 +1,8 @@
 # AGENTS.md
 
-Essentials for any coding agent working in this repository (Claude Code reads `CLAUDE.md`, which has the same rules and a full map).
+Essentials for AI coding assistants working in this repository (Claude Code reads `CLAUDE.md`, which has the same rules and a full map).
 
-- **What it is:** compliance policy Q&A with verified citations, per-document ACL, version validity and hybrid retrieval. Spec: `docs/specs/000-build-spec.md`. Progress: `PROGRESS.md`. Decisions: `docs/DECISIONS.md`, `docs/adr/`.
+- **What it is:** compliance policy Q&A with verified citations, per-document ACL, version validity and hybrid retrieval. Architecture: `docs/architecture.md`. Decisions: `docs/DECISIONS.md`, `docs/adr/`.
 - **Setup:** `make bootstrap`, then `make check-fast` (fast loop) and `make verify` (full gate). Stack: `make up`.
 - **Offline first:** tests, demo and `make verify` need no API keys (FakeLLM, LSA embedder, cassettes). Live calls only via `make eval-live` within `LIVE_EVAL_BUDGET_USD`.
 - **Architecture rules:** provider SDKs only in `src/compliance_rag/llm/gateway.py`; every retrieval call takes a `Principal` and filters ACL/validity inside the query; unauthorized resources return 404; only verified claims stream.

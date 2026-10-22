@@ -1,4 +1,4 @@
-"""Context guard (FR-13): score each sentence of retrieved text for injected instructions.
+"""Context guard: score each sentence of retrieved text for injected instructions.
 
 Sentences scoring at least ``REMOVE_THRESHOLD`` (assistant-directed imperatives, "ignore previous
 instructions", chat-role tokens, hidden Unicode) are removed before the text reaches the model.

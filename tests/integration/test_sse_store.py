@@ -1,4 +1,4 @@
-"""Run event store against real Redis: slow runs, Redis failing mid-run, expiry (BUILD.md §4.5, §4.7)."""
+"""Run event store against real Redis: slow runs, Redis failing mid-run, expiry."""
 
 from __future__ import annotations
 

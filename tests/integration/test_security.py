@@ -1,4 +1,4 @@
-"""No question, answer or restricted document text in logs or spans (BUILD.md §14–15, T-45)."""
+"""No question, answer or restricted document text in logs or spans."""
 
 from __future__ import annotations
 

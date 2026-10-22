@@ -1,7 +1,7 @@
 # Security
 
 Threat model, OWASP Top 10 for LLM applications mapping, scan results and accepted findings for
-compliance-rag (BUILD.md §15). The tenant ("Northwind Payments") and every document are synthetic.
+compliance-rag. The tenant ("Northwind Payments") and every document are synthetic.
 Report vulnerabilities as described in `SECURITY.md`.
 
 ## Assets and trust boundaries
@@ -60,7 +60,7 @@ high severity), pip-audit (editable local packages skipped), `pnpm audit --audit
 hadolint, actionlint (when workflows exist), the licence gate (`scripts/check_licences.py`) and trivy
 (HIGH/CRITICAL with a fix available) on the application images.
 
-Results of the last run are recorded in `PROGRESS.md` (T-45).
+Run `make security` to reproduce the results; the accepted findings are listed below.
 
 ### Accepted findings
 

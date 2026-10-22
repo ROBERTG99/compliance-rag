@@ -1,4 +1,4 @@
-"""Feature reranker: features, fitting on dev only, fallbacks (FR-7, T-21)."""
+"""Feature reranker: features, fitting on dev only, fallbacks."""
 
 from __future__ import annotations
 

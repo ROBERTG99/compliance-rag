@@ -1,4 +1,4 @@
-"""`make eval-ablation`: five retrieval configurations on the test split (BUILD.md §11, T-40)."""
+"""`make eval-ablation`: five retrieval configurations on the test split."""
 
 from __future__ import annotations
 

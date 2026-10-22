@@ -2,7 +2,7 @@
 
 Fifteen design questions with the code that answers them. References are `path:line` and were checked against
 commit `ebe77de`. Numbers come from `evals/REPORT.md` (offline run, FakeLLM, test split), `evals/reports/bench.json`
-or `PROGRESS.md`, and are named where they appear. Questions 14 and 15 are design answers for things that are not
+or another committed report, and are named where they appear. Questions 14 and 15 are design answers for things that are not
 implemented.
 
 ## 1. How is ACL enforced in each leg?
@@ -81,19 +81,19 @@ implemented.
 - The abstention threshold is calibrated on dev only: the intercept is shifted so that "top score below tau" best separates must-abstain from answerable dev questions (`scripts/fit_reranker.py:54-72`).
 - Tests: `tests/unit/rerank/test_feature.py:82-103` (only dev rows are requested, the fit is deterministic, test-only input raises).
 - Feedback cannot move a test question into dev: triage refuses any question whose normalised text is in a test split and fails closed without the registry (`src/compliance_rag/evals/splits.py:20-44`, `tests/unit/evals/test_splits.py:18`). Committed datasets are append-only by version (`.claude/rules/evals.md`).
-- Reported numbers use the test split (120 cases, `evals/REPORT.md`); tuning numbers are in `PROGRESS.md` ("Dev-split tuning numbers", measured during tuning with the earlier embedder and random version ids: recall@10 0.962 on dev; the current test value is 0.915).
+- Reported numbers use the test split (120 cases, `evals/REPORT.md`); the reranker and the abstention threshold are tuned on the dev split only.
 - Weak points: the split is stratified by question, not by document, and 52 of the 160 gold documents serve both splits (`docs/KNOWN_LIMITATIONS.md`, first "Evals" row). The features are document-agnostic, which limits the leak but does not remove it; a `questions.v2` split by document is the fix.
 - Labels are by construction and unreviewed (same file). `docs/DECISIONS.md` ("`RetrievalTarget` reranks only the top `leg_k`") records the one time a first test run exposed a harness mismatch, fixed without changing any system parameter.
 
 ## 8. Why LSA offline?
 
 - The default embedder is `LocalLSAEmbedder`: TF-IDF with truncated SVD, 384 dimensions, seed 2026 (`src/compliance_rag/embed/lsa.py:21-41`, `src/compliance_rag/embed/lsa.py:43-59`). It needs no key, no model download and no network, so tests, evals, the demo and CI run on a clean machine (`src/compliance_rag/settings.py:56`, `src/compliance_rag/settings.py:59`).
-- Reproducibility is checked: two fits on the same corpus match within 1e-6 (`tests/unit/embed/test_lsa_embedder.py:20`, `PROGRESS.md` row T-16).
+- Reproducibility is checked: two fits on the same corpus match within 1e-6 (`tests/unit/embed/test_lsa_embedder.py:20`).
 - The model is saved as `.npz` without pickle (`src/compliance_rag/embed/lsa.py:71-98`) and fingerprinted (`src/compliance_rag/embed/lsa.py:100-111`); the index records which embedder built it and the API refuses a mismatch (`src/compliance_rag/embed/registry.py:36-63`). The fingerprint appears in every eval report (`lsa-384-c7bdfe8cf120e267`, `evals/REPORT.md`).
 - `crag reindex --reembed` refits it in seed order and reproduces the same model (`src/compliance_rag/ingest/reindex.py:91-107`, `tests/integration/test_reindex.py:71`).
 - The test socket guard blocks public network access, so an accidental provider call fails the suite (`tests/conftest.py:26-56`).
 - Cost: LSA is lexical and statistical, not a neural embedder. The vector leg is the weakest leg (recall@10 0.744 against 0.812 for BM25, `evals/REPORT.md` "Retrieval ablation"), so hybrid numbers say little about what a production embedder would add.
-- The Titan and OpenAI adapters exist (`src/compliance_rag/embed/titan.py`, `src/compliance_rag/embed/openai_embed.py`) but are tested against synthetic fixtures only (`PROGRESS.md`, "Needs the maintainer").
+- The Titan and OpenAI adapters exist (`src/compliance_rag/embed/titan.py`, `src/compliance_rag/embed/openai_embed.py`) but are tested against synthetic fixtures only (see `docs/KNOWN_LIMITATIONS.md`).
 - LSA and BM25 statistics are fitted over all chunks, including restricted ones (`docs/security.md`, "Known side channels and gaps").
 
 ## 9. How does streaming avoid unverified text?
@@ -115,7 +115,7 @@ implemented.
 - The output guard blocks canary tokens and URLs absent from the context, per claim (its text and every quote) and on the final answer (`src/compliance_rag/guard/output_guard.py:18-27`, `src/compliance_rag/graph/build.py:379-381`, `src/compliance_rag/graph/build.py:485`).
 - Tests: `tests/unit/guard/test_context_guard.py:12` and `:44` (all 30 injected corpus documents are cleaned), `tests/unit/graph/test_injection.py:41-53` (with the guard on the fact survives; with it off the fact is lost), `tests/unit/graph/test_graph.py:292`.
 - Evidence: `make redteam` ran 40 attacks with 0 failures, and 28 of 30 injected documents were still answered with their fact (`evals/REPORT.md`, "Red-team"). That count is gated against a baseline, so a missing context guard shows up.
-- Limits: the guard is pattern-based, and its templates come from the same generator as the red-team documents (`PROGRESS.md` row T-23), so it is not shown to catch unseen phrasing (`tests/unit/guard/test_context_guard.py:9`). The FakeLLM obeys only `CANARY-` instructions, so the offline red-team says nothing about a real model's compliance (`docs/KNOWN_LIMITATIONS.md`, "Evals" rows). A live red-team run has not been done.
+- Limits: the guard is pattern-based, and its templates come from the same generator as the red-team documents, so it is not shown to catch unseen phrasing (`tests/unit/guard/test_context_guard.py:9`). The FakeLLM obeys only `CANARY-` instructions, so the offline red-team says nothing about a real model's compliance (`docs/KNOWN_LIMITATIONS.md`, "Evals" rows). A live red-team run has not been done.
 
 ## 11. What happens on a crash between stores?
 
@@ -148,7 +148,7 @@ implemented.
 - The checks can fail. `tests/unit/evals/test_metrics.py:37` shows the leak metric catches a leak; `tests/unit/graph/test_injection.py:48` shows the red-team fails when the context guard is removed, because the FakeLLM is deliberately injectable (`src/compliance_rag/llm/fake.py:3-6`); `tests/perf/test_injected_delay.py:28` shows the latency budgets fail when 400 ms is injected.
 - Tuning used the dev split and reports use the test split (question 7); a metric with nothing to count has no value rather than 1.0 (`tests/unit/evals/test_metrics.py:181`).
 - They are visible about weak spots: multi_hop has key-fact accuracy 0.625 and recall@10 0.812 (`evals/REPORT.md`, "By question category").
-- What they do not show: live-model quality or faithfulness (no live run, Ragas not wired: `docs/KNOWN_LIMITATIONS.md`, `PROGRESS.md` "Needs the maintainer"); the FakeLLM answers by extracting sentences, so key-fact accuracy (0.886) measures that composer.
+- What they do not show: live-model quality or faithfulness (no live run, Ragas not wired: `docs/KNOWN_LIMITATIONS.md`); the FakeLLM answers by extracting sentences, so key-fact accuracy (0.886) measures that composer.
 - Labels are by construction and unreviewed, 52 of 160 gold documents serve both splits, and ablation differences of one or two questions are noise (`docs/KNOWN_LIMITATIONS.md`, `evals/REPORT.md`).
 - Latency in the report is one question at a time; throughput under load is `make bench` (`evals/reports/bench.json`).
 

@@ -1,4 +1,4 @@
-# CodeQL for Python and TypeScript (BUILD.md §17).
+# CodeQL for Python and TypeScript.
 name: codeql
 on:
   push:

@@ -1,4 +1,4 @@
-"""Citation verification (FR-9).
+"""Citation verification.
 
 A claim survives only if, for every citation: the chunk is in the context given to the model, the
 quote is an exact substring of that chunk after NFKC + whitespace normalisation, and every number or

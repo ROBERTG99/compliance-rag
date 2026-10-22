@@ -1,4 +1,4 @@
-"""`make eval`: run the offline suites, gate them and write the report (BUILD.md §11).
+"""`make eval`: run the offline suites, gate them and write the report.
 
     uv run python scripts/run_evals.py                   # test split, check against the baseline
     uv run python scripts/run_evals.py --write-baseline  # also (re)write evals/reports/baseline.json

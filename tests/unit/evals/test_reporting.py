@@ -116,7 +116,7 @@ def test_ablation_from_another_system_configuration_is_flagged() -> None:
 
 
 def test_report_says_whether_live_evals_were_run() -> None:
-    # BUILD.md §19 step 4: without a provider key the report must say live evals were not run
+    # without a provider key the report must say live evals were not run
     text = render_report(summarize([RETRIEVAL]), failures=[])
     assert "## Live evaluation" in text and "Not run" in text and "make eval-live" in text
     live = {"date": "2026-10-18", "model": "claude-opus-5-5", "cost_usd": 0.42, "questions": 40}

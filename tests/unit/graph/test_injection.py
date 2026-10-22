@@ -1,4 +1,4 @@
-"""FR-13: an instruction injected into a retrieved document never steers the answer (T-41).
+"""an instruction injected into a retrieved document never steers the answer.
 
 The offline FakeLLM behaves like a naive model: it obeys any instruction carrying a canary that reaches its
 context. Only `guard_context` keeps such sentences out, so this case fails when that guard is disabled.

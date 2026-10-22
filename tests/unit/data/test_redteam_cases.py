@@ -1,4 +1,4 @@
-"""Red-team cases (FR-13): generated from the corpus, committed file equals the generator output (T-41)."""
+"""Red-team cases: generated from the corpus, committed file equals the generator output."""
 
 from __future__ import annotations
 

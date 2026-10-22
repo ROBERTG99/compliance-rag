@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# `make security` (BUILD.md §12): gitleaks, bandit, pip-audit, pnpm audit, hadolint, actionlint, licences and
+# `make security`: gitleaks, bandit, pip-audit, pnpm audit, hadolint, actionlint, licences and
 # trivy on the built images. Every step runs; the script fails if any step fails. Accepted findings are listed
 # with reasons in docs/security.md (pnpm `auditConfig.ignoreGhsas`, `.trivyignore`).
 set -uo pipefail

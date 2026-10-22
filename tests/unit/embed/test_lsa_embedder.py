@@ -1,4 +1,4 @@
-"""Local LSA embedder (FR-4, T-16)."""
+"""Local LSA embedder."""
 
 import numpy as np
 import pytest

@@ -1,4 +1,4 @@
-"""Ingestion pipeline (FR-1, FR-3).
+"""Ingestion pipeline.
 
 Stages for one job: parse → chunk → score → embed → index (visible=false) → activate.
 Activation is one Postgres transaction (new version active, previous version closed at the new
@@ -37,7 +37,7 @@ EXTENSIONS = {"pdf": "pdf", "docx": "docx", "html": "html", "md": "md"}
 VALID_GROUPS = {"all", "compliance", "legal", "support"}
 
 
-MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # mirrors the document_versions.size_bytes CHECK (NFR-6)
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # mirrors the document_versions.size_bytes CHECK
 
 
 class VersionConflict(ValueError):

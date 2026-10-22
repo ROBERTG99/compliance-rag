@@ -1,4 +1,4 @@
-"""Test-split registry used by feedback triage (FR-12)."""
+"""Test-split registry used by feedback triage."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-# Offline evals with gates and the red-team; the report is posted on the PR (BUILD.md §11, §17).
+# Offline evals with gates and the red-team; the report is posted on the PR.
 name: evals
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
         run: |
           uv sync --frozen
           pnpm -C evals/redteam install --frozen-lockfile
-      - name: Build the MinIO image (compiled from a pinned release; the one first-build step outside NFR-7)
+      - name: Build the MinIO image (compiled from a pinned release; the one first-build step outside the 5-minute `make up` budget)
         run: docker compose build minio
       - name: Runner CPU (the offline numbers depend on the floating-point code paths it selects)
         run: grep -m1 'model name' /proc/cpuinfo; grep -m1 -ow avx512f /proc/cpuinfo || echo "no avx512f"

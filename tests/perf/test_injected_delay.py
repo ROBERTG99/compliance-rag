@@ -1,4 +1,4 @@
-"""T-46: the stack measurement itself fails when 400 ms are injected into the rerank node (in-process app)."""
+"""The stack measurement itself fails when 400 ms are injected into the rerank node (in-process app)."""
 
 from __future__ import annotations
 

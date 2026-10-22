@@ -1,4 +1,4 @@
-"""Feedback, triage and the audit chain (FR-12, T-30)."""
+"""Feedback, triage and the audit chain."""
 
 from __future__ import annotations
 

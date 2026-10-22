@@ -1,4 +1,4 @@
-"""Prometheus metrics named in BUILD.md §14 and the SLO alert rules (T-44)."""
+"""Prometheus metrics and the SLO alert rules."""
 
 from __future__ import annotations
 

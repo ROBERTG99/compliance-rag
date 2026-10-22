@@ -1,4 +1,4 @@
-"""Admin: ACL changes, ingestion jobs and index lag (FR-14)."""
+"""Admin: ACL changes, ingestion jobs and index lag."""
 
 from __future__ import annotations
 

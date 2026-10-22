@@ -1,4 +1,4 @@
-"""Held-out test split registry: feedback triage may only add cases to the dev split (FR-12)."""
+"""Held-out test split registry: feedback triage may only add cases to the dev split."""
 
 from __future__ import annotations
 

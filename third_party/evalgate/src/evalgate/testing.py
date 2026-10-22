@@ -1,4 +1,4 @@
-"""Testing helpers (evalgate FR-13 subset): FakeJudge.
+"""Testing helpers (evalgate subset): FakeJudge.
 
 FakeJudge passes a candidate that contains every key fact (numbers, dates) of the reference and no
 contradicting number; injection phrases force a fail.

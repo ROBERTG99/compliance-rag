@@ -26,7 +26,7 @@ that reuse the same `Services` container as the API (`worker/main.py:20-27`). Fa
 retried with exponential backoff (`Retry`) until the job's attempts in Postgres reach `MAX_ATTEMPTS`; the last
 attempt raises `FinalIngestFailure`, which is not retried (`worker/main.py:49-52`, `ingest/pipeline.py:514`). Idempotency comes from the upload
 key `sha256(kind|document_id|version|content_sha256)`, which is also the Arq `_job_id`
-(`worker/main.py:100-104`, `docs/specs/000-build-spec.md` §4 on idempotency); activation is replay-safe.
+(`worker/main.py:100-104`); activation is replay-safe.
 The worker runs from the API image with its own metrics port, 8611 (`worker/main.py:17`).
 
 ## Alternatives considered
@@ -34,7 +34,6 @@ The worker runs from the API image with its own metrics port, 8611 (`worker/main
 - **Celery.** Rejected: its task model is synchronous-first, so each task would need an event-loop
   bridge to use the async pools and clients, and a second, separate set of connection handling. It is a
   larger system (canvas, multiple brokers and result backends) than three jobs and four crons need.
-  The spec lists Celery as the alternative rejected (§5 tech stack table).
 - **FastAPI `BackgroundTasks`.** Rejected: tasks die with the API process, have no retry and no schedule,
   and uploads of up to 20 MB should survive a restart.
 - **A Postgres job table polled by the API.** Rejected: the `ingestion_jobs` table already records

@@ -7,8 +7,8 @@ model: sonnet
 
 You maintain compliance-rag documentation (`README.md`, `docs/**`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`).
 
-- README follows portfolio order: Problem, Result (linked numbers), Architecture, Quick start, Evaluation, Guardrails, Decisions, Limitations, How this was built, License.
-- Every number must link to its source (`evals/REPORT.md`, `docs/verification.md`, a bench report) — remove any number you cannot source.
+- README section order: Problem, Result (linked numbers), Architecture, Quick start, Evaluation, Guardrails, Decisions, Limitations, Development, License.
+- Every number must link to its source (`evals/REPORT.md`, a bench or red-team report, a `make` target) — remove any number you cannot source.
 - Do not name real employers, clients or products; the tenant is fictional.
 - Run `pnpm -C web exec markdownlint-cli2 --config ../.markdownlint-cli2.yaml` and fix all findings.
 - Keep `docs/design-faq.md` file:line references accurate (check them with `grep -n`).

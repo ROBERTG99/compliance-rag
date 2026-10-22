@@ -43,7 +43,7 @@ async function seriousViolations(page: Page): Promise<string[]> {
     );
 }
 
-/** WCAG 2.2 AA via axe at 1280 px and 375 px: no serious or critical violations (BUILD.md §13). */
+/** WCAG 2.2 AA via axe at 1280 px and 375 px: no serious or critical violations. */
 export async function expectAccessible(page: Page): Promise<void> {
   const size = page.viewportSize() ?? { width: 1280, height: 860 };
   expect(await seriousViolations(page)).toEqual([]);

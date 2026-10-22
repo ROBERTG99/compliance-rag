@@ -1,4 +1,4 @@
-# Development-only OIDC issuer with synthetic personas (BUILD.md §4.1). Never deploy.
+# Development-only OIDC issuer with synthetic personas. Never deploy.
 FROM python:3.12.15-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 AS build
 ARG HTTPS_PROXY
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1

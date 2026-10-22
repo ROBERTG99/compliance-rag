@@ -1,4 +1,4 @@
-/* "Regulatory gazette" design tokens (BUILD.md §13). Components use these, never raw colours. */
+/* "Regulatory gazette" design tokens. Components use these, never raw colours. */
 :root {
   --crag-paper: #fbfbf8;
   --crag-surface: #ffffff;

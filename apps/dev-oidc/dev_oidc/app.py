@@ -1,4 +1,4 @@
-"""Dev OIDC issuer (BUILD.md §4.1): authorization code + PKCE (S256) for the SPA and a direct
+"""Dev OIDC issuer: authorization code + PKCE (S256) for the SPA and a direct
 ``/dev/token`` shortcut for scripts and tests. RS256 keys are generated at start-up and published at
 ``/jwks.json``. Personas: analyst, legal, support and admin @northwind.test (synthetic)."""
 

@@ -1,4 +1,4 @@
-"""LLM gateway: stop reasons, retries, cassettes, PII redaction, accounting (T-22, T-23)."""
+"""LLM gateway: stop reasons, retries, cassettes, PII redaction, accounting."""
 
 from __future__ import annotations
 

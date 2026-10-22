@@ -1,4 +1,4 @@
-"""`make eval-ablation`: recall@10, MRR@10 and p95 for five retrieval configurations (BUILD.md §11).
+"""`make eval-ablation`: recall@10, MRR@10 and p95 for five retrieval configurations.
 
     uv run python scripts/ablation.py            # test split; needs the stack and the qdrant profile
 

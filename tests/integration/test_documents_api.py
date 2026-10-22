@@ -1,4 +1,4 @@
-"""Documents API: upload, S3 import, library, versions, evidence (FR-1, T-28)."""
+"""Documents API: upload, S3 import, library, versions, evidence."""
 
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ async def test_upload_is_idempotent_by_hash(api_env: ApiEnv) -> None:
     state = api_env.app.state.crag
     assert await state.services.objects.exists("raw/AML-0107/v4.md")
 
-    # the spec's case: a content admin uploads a PDF
+    # a content admin uploads a PDF
     policy = next(p for p in build_corpus(SEED) if p.document_id == "AML-0107")
     v3 = policy.versions[2]
     v3.version = 6

@@ -1,4 +1,4 @@
-"""Shared retrieval types (BUILD.md §4.6)."""
+"""Shared retrieval types."""
 
 from __future__ import annotations
 

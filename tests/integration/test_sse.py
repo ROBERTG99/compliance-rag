@@ -1,4 +1,4 @@
-"""Streaming answers over SSE with Last-Event-ID resume (FR-10, T-27)."""
+"""Streaming answers over SSE with Last-Event-ID resume."""
 
 from __future__ import annotations
 

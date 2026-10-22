@@ -1,4 +1,4 @@
-"""The §3.4 demo scenario end to end, in-process (T-33). ``make demo`` runs the same steps over HTTP."""
+"""The demo scenario end to end, in-process. ``make demo`` runs the same steps over HTTP."""
 
 from __future__ import annotations
 

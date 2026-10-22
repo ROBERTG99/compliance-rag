@@ -1,4 +1,4 @@
-# Tag v*: build the images and push them to GHCR (BUILD.md §17). No deploys.
+# Tag v*: build the images and push them to GHCR. No deploys.
 name: release
 on:
   push:

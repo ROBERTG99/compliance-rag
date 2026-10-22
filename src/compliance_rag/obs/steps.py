@@ -1,4 +1,4 @@
-"""Step records — the shared portfolio contract (evalgate StepRecord)."""
+"""Step records — the evalgate StepRecord contract."""
 
 from __future__ import annotations
 

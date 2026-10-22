@@ -20,7 +20,7 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
   );
 }
 
-/** problem+json error with an explicit retry (BUILD.md §13: every screen has this state). */
+/** problem+json error with an explicit retry. */
 export function ErrorState({
   error,
   onRetry,

@@ -1,4 +1,4 @@
-"""Retention (`purge_expired`, daily): answers 90 days, feedback 365, finished jobs 30; audit kept (§5)."""
+"""Retention (`purge_expired`, daily): answers 90 days, feedback 365, finished jobs 30; audit kept."""
 
 from __future__ import annotations
 

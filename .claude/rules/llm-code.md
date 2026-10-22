@@ -1,7 +1,7 @@
 ---
 paths: ["src/compliance_rag/llm/**", "src/compliance_rag/graph/**", "src/compliance_rag/embed/**", "src/compliance_rag/rerank/**", "prompts/**", "scripts/eval_live.py"]
 ---
-# LLM integration rules (BUILD.md Appendix B)
+# LLM integration rules
 
 - Load the `claude-api` skill before writing code that calls Claude; it beats memory.
 - All model calls go through `src/compliance_rag/llm/gateway.py`: provider selection, timeouts, retries, token and cost accounting, tracing and PII redaction. No other module imports `anthropic` or `openai` (import-linter enforces it).

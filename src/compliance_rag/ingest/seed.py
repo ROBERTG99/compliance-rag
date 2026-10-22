@@ -2,7 +2,7 @@
 
 Same building blocks as the incremental pipeline (register_upload → parse_version → build_records →
 write_indexes), but versions are written with their final validity windows and activated in one
-Postgres transaction instead of one update-by-query per version. The incremental path (FR-3) is
+Postgres transaction instead of one update-by-query per version. The incremental path is
 covered by ``tests/integration/test_ingest_pipeline.py``.
 """
 

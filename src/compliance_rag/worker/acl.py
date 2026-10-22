@@ -1,4 +1,4 @@
-"""ACL changes (FR-11): Postgres first (document_acl + denormalised chunks.acl_groups in one transaction),
+"""ACL changes: Postgres first (document_acl + denormalised chunks.acl_groups in one transaction),
 then OpenSearch and Qdrant. ``sync_acl`` re-applies the stored ACL to the indexes and is idempotent."""
 
 from __future__ import annotations

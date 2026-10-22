@@ -1,4 +1,4 @@
-"""The budget check itself: an injected 400 ms delay must fail a 300 ms p95 budget (T-46)."""
+"""The budget check itself: an injected 400 ms delay must fail a 300 ms p95 budget."""
 
 from __future__ import annotations
 

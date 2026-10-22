@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# `make lint` part: promtool check and unit-test the Prometheus alert rules (BUILD.md §14).
+# `make lint` part: promtool check and unit-test the Prometheus alert rules.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 IMAGE="$(uv run --quiet python -c "import yaml;print(yaml.safe_load(open('compose.yaml'))['services']['prometheus']['image'])")"

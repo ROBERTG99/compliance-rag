@@ -1,4 +1,4 @@
-"""Input limits and rate limiting (NFR-6, T-31)."""
+"""Input limits and rate limiting."""
 
 from __future__ import annotations
 
@@ -155,7 +155,7 @@ async def test_s3_import_checks_the_size_before_downloading(api_env: ApiEnv) -> 
 
 
 async def test_object_storage_down_answers_503_retryable(api_env: ApiEnv) -> None:
-    # BUILD.md §4.7: MinIO down → upload 503 (botocore's connection errors are not OSError)
+    # MinIO down → upload 503 (botocore's connection errors are not OSError)
     from compliance_rag.ingest.objectstore import S3ObjectStore
 
     services = api_env.app.state.crag.services

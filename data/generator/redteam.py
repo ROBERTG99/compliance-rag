@@ -1,4 +1,4 @@
-"""Red-team cases for Promptfoo (FR-13): document-side injections from the corpus plus user-side attacks.
+"""Red-team cases for Promptfoo: document-side injections from the corpus plus user-side attacks.
 
 Document side: one case per injected policy, asking the question whose answer sits next to the injected
 sentence, as a persona allowed to read it; whether the fact was still answered is gated against

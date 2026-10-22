@@ -1,4 +1,4 @@
-"""Hybrid retrieval (FR-7): BM25 and vector legs run concurrently with per-leg timeouts.
+"""Hybrid retrieval: BM25 and vector legs run concurrently with per-leg timeouts.
 
 One failed or slow leg degrades the answer (``degraded`` lists it); both failing raises
 ``RetrievalUnavailable``. Every fused hit is re-checked against the principal's filter; a hit that

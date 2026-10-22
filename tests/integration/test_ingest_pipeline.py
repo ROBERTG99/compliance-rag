@@ -1,4 +1,4 @@
-"""Async incremental versioning (FR-3, T-19)."""
+"""Async incremental versioning."""
 
 from __future__ import annotations
 

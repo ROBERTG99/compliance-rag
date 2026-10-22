@@ -1,4 +1,4 @@
-# SLOs and alerts (BUILD.md §14). `make lint` runs `promtool check rules` and `promtool test rules`
+# SLOs and alerts. `make lint` runs `promtool check rules` and `promtool test rules`
 # (alerts.test.yml: one case per alert).
 groups:
   - name: compliance-rag

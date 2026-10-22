@@ -35,8 +35,7 @@ with PKCE, and the token is kept in `sessionStorage` (`web/src/auth/session.ts`,
   patch, and a second place where requests, tokens and cached data can be handled. Server-rendered or
   cached pages built with a user's identity are a leak risk in a system whose central rule is that
   restricted text must not reach the wrong user. The pages are behind login, so server rendering for
-  search engines has no value here. The spec lists Next.js as the alternative rejected (§5 tech stack
-  table).
+  search engines has no value here.
 - **Next.js as a static export.** Rejected: it would give a static bundle like Vite but with a heavier
   framework for no feature used here.
 - **Server-rendered templates from FastAPI.** Rejected: streaming claims, citation chips and the evidence
@@ -57,7 +56,7 @@ Positive:
 
 Negative:
 
-- A client-side cache can outlive an identity. The M4 review reproduced a restricted-row leak after an
+- A client-side cache can outlive an identity. Review reproduced a restricted-row leak after an
   in-page persona switch; the app now cancels and clears the whole query cache on every token change and
   remounts the ask run provider, which aborts any open stream (`web/src/auth/AuthProvider.tsx:21-22`, `docs/DECISIONS.md` 2026-10-17 row on cache
   clearing).

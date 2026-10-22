@@ -1,6 +1,6 @@
 """Shared test configuration.
 
-NFR-9: tests never reach the public internet. A socket guard allows loopback, unix sockets and
+tests never reach the public internet. A socket guard allows loopback, unix sockets and
 private (RFC 1918) addresses, which covers testcontainers and the compose test network.
 Mark a test with ``@pytest.mark.allow_network`` to opt out (no test in this repo does).
 """

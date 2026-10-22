@@ -41,7 +41,7 @@ def main() -> None:
             json.dumps(
                 {
                     "decision": "block",
-                    "reason": f"`{command}` failed; fix it before stopping (BUILD.md §0 rule 4).\n{tail}",
+                    "reason": f"`{command}` failed; fix it before stopping.\n{tail}",
                 }
             )
         )

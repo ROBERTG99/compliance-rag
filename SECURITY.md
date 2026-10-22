@@ -1,6 +1,6 @@
 # Security policy
 
-compliance-rag is a portfolio project: a local, offline-first system over a synthetic corpus for a
+compliance-rag is a local, offline-first system over a synthetic corpus for a
 fictional company. It has no production deployment and holds no real data. Security issues in its code
 are still taken seriously, because the patterns are meant to be reused.
 

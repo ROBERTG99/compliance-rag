@@ -29,8 +29,8 @@ measure the pipeline around it. Test split, 120 questions.
 | Answers and abstention | key-fact accuracy 0.886, abstention accuracy 0.933 | [evals/REPORT.md](evals/REPORT.md) |
 | Reranking gain | recall@10 0.812 (BM25 alone) → 0.915 (hybrid + rerank) | [evals/REPORT.md](evals/REPORT.md#retrieval-ablation) |
 | Prompt injection | 40 attacks, 0 failures; injected documents still answered 28 of 30 | [evals/reports/redteam.json](evals/reports/redteam.json) |
-| Retrieval latency under load | p95 130.2 ms in the verification run of `e4da687`, worst recorded run 224.1 ms (budget < 300) | [evals/reports/bench.json](evals/reports/bench.json) |
-| Time to first verified claim | p95 230.2 ms in the verification run of `e4da687`; recorded runs reach 395.7 ms, over the 300 ms budget | [evals/reports/bench.json](evals/reports/bench.json) |
+| Retrieval latency under load | p95 130.2 ms in the run of `e4da687`, worst recorded run 224.1 ms (budget < 300) | [evals/reports/bench.json](evals/reports/bench.json) |
+| Time to first verified claim | p95 230.2 ms in the run of `e4da687`; recorded runs reach 395.7 ms, over the 300 ms budget | [evals/reports/bench.json](evals/reports/bench.json) |
 
 Latency is from `make bench`: four concurrent clients against the local compose stack on a 4-vCPU machine. Time to first claim sits at its budget there and some recorded runs exceed it; every run is kept in [evals/reports/bench.json](evals/reports/bench.json) and the cause is in [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md).
 
@@ -78,7 +78,7 @@ Then `make check-fast` (lint, types, unit tests), `make test` (with integration 
 300 synthetic questions with labels by construction (dev 180 / test 120): single-hop, multi-hop and numeric
 questions, must-abstain questions, ACL probes asked by a persona that may not read the answer, and
 version-sensitive questions with an `as_of` date. The reranker and the abstention threshold are tuned on dev
-only. `make eval` gates every threshold of the spec and any regression against the committed baseline;
+only. `make eval` gates every threshold in `evals/suites/rag.yaml` and any regression against the committed baseline;
 `make eval-ablation` compares five retrieval configurations; `make redteam` runs Promptfoo against the API.
 Method and caveats: [docs/evaluation.md](docs/evaluation.md); full results: [evals/REPORT.md](evals/REPORT.md).
 
@@ -107,15 +107,13 @@ Offline answers come from a deterministic extractive model; a live model has not
 repository (it needs a provider key). Everything else that is not done, or done with a caveat, is listed in
 [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md).
 
-## How this was built
+## Development
 
-The system was built by a coding agent from the engineering specification in
-[docs/specs/000-build-spec.md](docs/specs/000-build-spec.md), with test-first tasks, milestone reviews by
-subagents, and every claim backed by a command or report. [docs/ai-development.md](docs/ai-development.md)
-describes the workflow and the real mistakes found along the way; task-by-task evidence is in
-[PROGRESS.md](PROGRESS.md) and verification in [docs/verification.md](docs/verification.md).
+The project uses an AI-assisted development workflow (Claude Code configuration in `CLAUDE.md` and
+`.claude/`), with tests and evals gating every change: `make check-fast` for the quick loop and
+`make verify` for the full gate. See [CONTRIBUTING.md](CONTRIBUTING.md) and
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Part of an AI engineering portfolio by
-[@ROBERTG99](https://github.com/ROBERTG99).
+MIT — see [LICENSE](LICENSE).

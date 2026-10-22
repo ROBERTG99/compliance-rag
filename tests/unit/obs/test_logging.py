@@ -1,4 +1,4 @@
-"""JSON logs with correlation and run ids; never question or document text (BUILD.md §14, T-43)."""
+"""JSON logs with correlation and run ids; never question or document text."""
 
 from __future__ import annotations
 

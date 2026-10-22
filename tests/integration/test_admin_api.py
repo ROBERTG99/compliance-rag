@@ -1,4 +1,4 @@
-"""ACL changes, ingestion jobs and index lag (FR-14, FR-11, T-29)."""
+"""ACL changes, ingestion jobs and index lag."""
 
 from __future__ import annotations
 

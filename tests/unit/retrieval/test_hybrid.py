@@ -1,4 +1,4 @@
-"""Hybrid retrieval: concurrent legs, timeouts, RRF fusion, ACL post-check (FR-7, T-20)."""
+"""Hybrid retrieval: concurrent legs, timeouts, RRF fusion, ACL post-check."""
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Propose a change to the specification
+about: Propose a change or new capability
 labels: enhancement
 ---
 

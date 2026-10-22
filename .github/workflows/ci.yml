@@ -1,4 +1,4 @@
-# Lint, typecheck, unit, harness, integration and contract tests with coverage gates (BUILD.md §17).
+# Lint, typecheck, unit, harness, integration and contract tests with coverage gates.
 name: ci
 on:
   push:
@@ -42,7 +42,7 @@ jobs:
       - name: Tests with coverage gates (testcontainers)
         run: make test
   secrets:
-    # gitleaks over the whole history (BUILD.md §15: pre-commit and CI)
+    # gitleaks over the whole history
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

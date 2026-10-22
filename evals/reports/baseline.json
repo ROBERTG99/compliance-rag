@@ -2,7 +2,7 @@
   "rag": {
     "schema": "evalgate.report.v1",
     "suite": "rag",
-    "description": "Full graph per question against the seeded stack; thresholds from BUILD.md §11.",
+    "description": "Full graph per question against the seeded stack; thresholds defined in evals/suites/rag.yaml.",
     "split": "test",
     "generated_at": "2026-10-18T21:15:18+00:00",
     "duration_s": 9.0,

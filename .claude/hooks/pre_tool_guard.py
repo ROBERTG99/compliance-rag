@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PreToolUse guard for Bash, Write and Edit (BUILD.md §0 rule 8, §1.1, §7).
+"""PreToolUse guard for Bash, Write and Edit.
 
 Blocks (exit 2, reason on stderr):
 - attribution lines in commit messages or pull requests (Co-Authored-By, Claude-Session,
@@ -76,19 +76,19 @@ def _strip_env(tokens: list[str]) -> list[str]:
 def _check_identity_and_attribution(segment: str, tokens: list[str]) -> None:
     for tok in tokens:
         if IDENTITY_VAR.match(tok):
-            _block("setting GIT_AUTHOR_*/GIT_COMMITTER_* is not allowed (BUILD.md §1.1)")
+            _block("setting GIT_AUTHOR_*/GIT_COMMITTER_* is not allowed")
     cmd = _strip_env(tokens)
     if not cmd:
         return
     if cmd[0] == "export" and any(IDENTITY_VAR.match(t) for t in cmd[1:]):
-        _block("setting GIT_AUTHOR_*/GIT_COMMITTER_* is not allowed (BUILD.md §1.1)")
+        _block("setting GIT_AUTHOR_*/GIT_COMMITTER_* is not allowed")
     if cmd[0] == "git":
         args = cmd[1:]
         for i, tok in enumerate(args):
             if tok == "-c" and i + 1 < len(args) and args[i + 1].startswith("user."):
-                _block("git -c user.* changes the git identity (BUILD.md §1.1)")
+                _block("git -c user.* changes the git identity")
             if tok.startswith("-c") and tok[2:].startswith("user."):
-                _block("git -c user.* changes the git identity (BUILD.md §1.1)")
+                _block("git -c user.* changes the git identity")
         # skip values of -c / -C
         clean: list[str] = []
         skip = False
@@ -105,12 +105,12 @@ def _check_identity_and_attribution(segment: str, tokens: list[str]) -> None:
         if sub == "config":
             keys = [t for t in rest if t.startswith("user.")]
             if keys and not (GIT_CONFIG_READ & set(rest)) and (len(rest) - rest.index(keys[0]) > 1 or "--unset" in rest):
-                _block("changing git config user.* is not allowed (BUILD.md §1.1)")
+                _block("changing git config user.* is not allowed")
         if sub == "commit":
             if any(t == "--author" or t.startswith("--author=") for t in rest):
-                _block("git commit --author changes the git identity (BUILD.md §1.1)")
+                _block("git commit --author changes the git identity")
             if ATTRIBUTION.search(segment):
-                _block("commit attribution trailers are not allowed (BUILD.md §1.1)")
+                _block("commit attribution trailers are not allowed")
             for i, tok in enumerate(rest):
                 path = None
                 if tok in {"-F", "--file"} and i + 1 < len(rest):
@@ -123,7 +123,7 @@ def _check_identity_and_attribution(segment: str, tokens: list[str]) -> None:
                     except OSError:
                         text = ""
                     if ATTRIBUTION.search(text):
-                        _block("commit message file contains attribution trailers (BUILD.md §1.1)")
+                        _block("commit message file contains attribution trailers")
         if sub == "push":
             for tok in rest:
                 if tok in {"--force", "--force-with-lease", "--force-if-includes"} or tok.startswith("--force"):
@@ -138,7 +138,7 @@ def _check_identity_and_attribution(segment: str, tokens: list[str]) -> None:
         if cmd[1] == "repo" and cmd[2] == "edit" and any(t.startswith("--visibility") for t in cmd):
             _block("changing repository visibility is not allowed")
         if cmd[1] == "pr" and cmd[2] in {"create", "edit", "comment", "review"} and ATTRIBUTION.search(segment):
-            _block("pull request attribution lines are not allowed (BUILD.md §1.1)")
+            _block("pull request attribution lines are not allowed")
 
 
 def _check_destructive(tokens: list[str]) -> None:

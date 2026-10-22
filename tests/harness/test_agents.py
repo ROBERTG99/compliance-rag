@@ -1,4 +1,4 @@
-"""Subagents and skills from BUILD.md §7 exist with complete frontmatter (T-06)."""
+"""Subagents and skills exist with complete frontmatter."""
 
 from pathlib import Path
 
@@ -56,7 +56,7 @@ def test_reviewer_is_read_only_with_verdict() -> None:
     tools = str(meta["tools"])
     assert "Write" not in tools and "Edit" not in tools
     body = path.read_text()
-    assert '"ship"' in body and '"fix first"' in body
+    assert '"approve"' in body and '"changes requested"' in body
 
 
 def test_skills_exist() -> None:

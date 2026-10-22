@@ -1,4 +1,4 @@
-"""Bulk seed: idempotent by corpus fingerprint, chunks visible only after activation (T-33 groundwork)."""
+"""Bulk seed: idempotent by corpus fingerprint, chunks visible only after activation."""
 
 from __future__ import annotations
 

@@ -51,7 +51,7 @@ def require_role(*roles: str) -> Callable[..., Coroutine[Any, Any, Principal]]:
 async def ask_rate_limit(
     principal: Principal = Depends(current_principal), state: AppState = Depends(get_state)
 ) -> Principal:
-    """30 asks per minute per user (NFR-6); 429 problem+json with Retry-After."""
+    """30 asks per minute per user; 429 problem+json with Retry-After."""
     decision = await state.limiter.hit(principal["sub"])
     if not decision.allowed:
         raise Problem(

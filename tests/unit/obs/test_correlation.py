@@ -1,4 +1,4 @@
-"""Every response carries a correlation id that is also on every log line of the request (T-43)."""
+"""Every response carries a correlation id that is also on every log line of the request."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-# Build every image and fail on HIGH/CRITICAL vulnerabilities with a fix (BUILD.md §17).
+# Build every image and fail on HIGH/CRITICAL vulnerabilities with a fix.
 name: docker
 on:
   push:

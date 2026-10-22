@@ -10,7 +10,7 @@ Accepted
 
 ## Context
 
-The build and the tests must run with no API keys and no public network (NFR-9, socket guard in
+The build and the tests must run with no API keys and no public network (socket guard in
 `tests/conftest.py`), yet retrieval needs a dense leg and the evals must be reproducible byte for byte.
 Hosted embedding models (Titan, OpenAI) are supported adapters but cannot be the default: they need
 credentials and network, and their vectors can change between provider versions.
@@ -30,9 +30,8 @@ same interface and are tested against recorded fixtures only.
 ## Alternatives considered
 
 - **A downloaded sentence-embedding model (sentence-transformers).** Rejected as the default: the weights
-  would be fetched at runtime or vendored, which breaks the offline-first rule; the spec lists
-  scikit-learn as the deterministic offline choice and sentence-transformers as the alternative rejected
-  (`docs/specs/000-build-spec.md` §5 tech stack table).
+  would be fetched at runtime or vendored, which breaks the offline-first rule; scikit-learn is the
+  deterministic offline choice.
 - **Hosted embeddings (Titan, OpenAI) as the default.** Rejected: they need keys and network. They stay
   available behind the interface; their fixtures are synthetic until `make record-fixtures` is run with
   keys (`docs/KNOWN_LIMITATIONS.md`, Providers row).

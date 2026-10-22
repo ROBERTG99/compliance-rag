@@ -1,11 +1,11 @@
-"""LangGraph RAG graph (BUILD.md §4.6).
+"""LangGraph RAG graph.
 
 resolve_principal → condense_followup (only with follow_up_of) → retrieve → fuse → rerank →
 guard_context → check_sufficiency → generate → verify_citations → respond, with check_sufficiency,
 generate and verify_citations routing to abstain. No interrupts: the graph has no side effects.
 The checkpointer is keyed by ``thread_id = conversation_id`` so a follow-up sees the previous turn.
 
-Events (SSE §4.5) are emitted through a context variable, never through checkpointed config.
+SSE events are emitted through a context variable, never through checkpointed config.
 """
 
 from __future__ import annotations
@@ -295,7 +295,7 @@ def build_graph(deps: GraphDeps, checkpointer: Any | None = None) -> Any:
         reranked = await asyncio.to_thread(
             deps.reranker.rerank, state["standalone_question"], list(top), date.fromisoformat(state["as_of"])
         )
-        # the NFR-1 / CragRetrievalSlow measure: legs + fusion + rerank of this run
+        # the retrieval-latency / CragRetrievalSlow measure: legs + fusion + rerank of this run
         earlier = sum(
             s["latency_ms"]
             for s in state.get("steps", [])
