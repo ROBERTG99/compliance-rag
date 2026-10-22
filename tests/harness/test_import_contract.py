@@ -1,4 +1,4 @@
-"""Provider SDKs are imported only by the LLM gateway (BUILD.md Appendix B)."""
+"""Provider SDKs are imported only by the LLM gateway."""
 
 import re
 import subprocess

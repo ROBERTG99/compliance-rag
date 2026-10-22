@@ -1,4 +1,4 @@
-"""Heading/article-aware chunker (FR-2).
+"""Heading/article-aware chunker.
 
 Sections start at ``Article N — Heading`` lines (Markdown ``#`` prefixes and ``-``/``—`` dashes are
 accepted); text before the first article is the preamble. A section of at most ``MAX_TOKENS``

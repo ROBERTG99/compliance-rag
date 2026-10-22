@@ -1,4 +1,4 @@
-"""OpenAPI post-processing: bearer security, RFC 9457 error responses per route (§4.4)."""
+"""OpenAPI post-processing: bearer security, RFC 9457 error responses per route."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ _DESCRIPTIONS = {
     503: "Dependency unavailable",
 }
 
-# documented error statuses per operation (§4.4 plus 401 on every /v1 route and 403 on admin routes)
+# documented error statuses per operation (plus 401 on every /v1 route and 403 on admin routes)
 ERRORS: dict[tuple[str, str], list[int]] = {
     ("post", "/v1/ask"): [401, 404, 422, 429, 503],
     ("get", "/v1/runs/{run_id}/events"): [401, 404, 422],

@@ -1,4 +1,4 @@
-"""Claude Code hooks behave as documented in BUILD.md §7 (T-05)."""
+"""Claude Code hooks block and allow the documented commands."""
 
 from __future__ import annotations
 

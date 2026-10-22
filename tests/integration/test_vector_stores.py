@@ -1,4 +1,4 @@
-"""Vector stores filter ACL, validity and visibility inside the query (FR-5, T-17)."""
+"""Vector stores filter ACL, validity and visibility inside the query."""
 
 from __future__ import annotations
 

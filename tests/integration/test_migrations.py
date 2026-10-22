@@ -1,4 +1,4 @@
-"""Core schema from BUILD.md §4.3 (T-10)."""
+"""Core schema."""
 
 from __future__ import annotations
 

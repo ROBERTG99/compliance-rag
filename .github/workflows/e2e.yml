@@ -1,4 +1,4 @@
-# The compose stack, seed and Playwright with axe against it (BUILD.md §17).
+# The compose stack, seed and Playwright with axe against it.
 name: e2e
 on:
   push:
@@ -34,7 +34,7 @@ jobs:
           pnpm -C web exec playwright install --with-deps chromium
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "0"
-      - name: Build the MinIO image (compiled from a pinned release; the one first-build step outside NFR-7)
+      - name: Build the MinIO image (compiled from a pinned release; the one first-build step outside the 5-minute `make up` budget)
         run: docker compose build minio
       - name: Start the stack (healthchecks, seed) within 5 minutes
         run: make up

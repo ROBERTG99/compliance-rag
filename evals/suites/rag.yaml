@@ -1,6 +1,6 @@
-# End-to-end RAG suite (BUILD.md §11). Offline: FakeLLM, LSA embedder, feature reranker.
+# End-to-end RAG suite. Offline: FakeLLM, LSA embedder, feature reranker.
 name: rag
-description: Full graph per question against the seeded stack; thresholds from BUILD.md §11.
+description: Full graph per question against the seeded stack; thresholds defined in evals/suites/rag.yaml.
 dataset: evals/datasets/questions.v1.jsonl
 target: compliance_rag.evals.target:RagTarget
 # one question at a time: retrieval_p95 is per-request latency (step records); load is make bench

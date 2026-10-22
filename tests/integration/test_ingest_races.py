@@ -1,4 +1,4 @@
-"""Races between ingestion, ACL changes and conflicting uploads (review of M3: blockers 2 and 3)."""
+"""Races between ingestion, ACL changes and conflicting uploads."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-# API and Arq worker image (BUILD.md §16). Multi-stage, non-root, no apt-get.
+# API and Arq worker image. Multi-stage, non-root, no apt-get.
 FROM python:3.12.15-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 AS build
 ARG HTTPS_PROXY
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never \

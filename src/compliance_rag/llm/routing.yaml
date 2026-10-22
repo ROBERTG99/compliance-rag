@@ -1,4 +1,4 @@
-# Route → model setting, effort and limits. Applied by llm/gateway.py (BUILD.md §4.6, Appendix B).
+# Route → model setting, effort and limits. Applied by llm/gateway.py.
 routes:
   condense_followup:
     model_setting: model_fast        # CRAG_MODEL_FAST, default claude-haiku-5-5

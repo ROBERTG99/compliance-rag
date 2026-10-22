@@ -1,4 +1,4 @@
-"""CI workflows of BUILD.md §17 exist with their jobs; actionlint runs in `make security` (T-48)."""
+"""CI workflows exist with their jobs; actionlint runs in `make security`."""
 
 from __future__ import annotations
 

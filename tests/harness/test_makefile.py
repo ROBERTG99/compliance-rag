@@ -1,4 +1,4 @@
-"""Makefile exposes every target from BUILD.md §16 (T-02)."""
+"""Makefile exposes every documented target."""
 
 import re
 from pathlib import Path

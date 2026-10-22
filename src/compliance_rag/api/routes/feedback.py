@@ -1,4 +1,4 @@
-"""Feedback (one per user per run) and admin triage into the dev split only (FR-12)."""
+"""Feedback (one per user per run) and admin triage into the dev split only."""
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# SessionStart hook: idempotent Appendix A setup for Claude Code on the web.
-# Starts Docker with the registry mirror and installs the CLI tools the build needs.
+# SessionStart hook: idempotent environment setup for Claude Code on the web.
+# Starts Docker with the registry mirror and installs the CLI tools the project needs.
 set -u
 
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then

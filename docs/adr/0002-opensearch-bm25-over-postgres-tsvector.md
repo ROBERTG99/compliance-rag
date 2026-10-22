@@ -29,8 +29,8 @@ through an alias, retry version conflicts and raise on failures (`bm25.py:222-23
 
 - **Postgres `tsvector` with `ts_rank`.** Rejected: it would remove a service, but `ts_rank` is not BM25.
   It has no inverse document frequency weighting of the BM25 kind and no length normalisation parameters,
-  so the ranking signal the fusion step expects would be different in kind. The spec chose OpenSearch for
-  "real BM25 analyzers" (`docs/specs/000-build-spec.md` §5 tech stack table). No `tsvector` variant was built
+  so the ranking signal the fusion step expects would be different in kind. OpenSearch was chosen for
+  its real BM25 analyzers. No `tsvector` variant was built
   or measured, so this ADR makes no quantitative claim against it.
 - **BM25 inside the vector store only (Qdrant sparse vectors).** Rejected: it would tie the lexical leg
   to the optional vector store, which is not the default (ADR 0001).

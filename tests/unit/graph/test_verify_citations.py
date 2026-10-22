@@ -1,4 +1,4 @@
-"""Citation verification (FR-9, T-24)."""
+"""Citation verification."""
 
 from __future__ import annotations
 

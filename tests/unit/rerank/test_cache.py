@@ -1,4 +1,4 @@
-"""Reranker caches (performance, T-46): identical scores, and embeddings never shared across embedders."""
+"""Reranker caches (performance): identical scores, and embeddings never shared across embedders."""
 
 from __future__ import annotations
 

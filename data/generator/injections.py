@@ -1,4 +1,4 @@
-"""Prompt-injection documents (FR-13): 30 policies carry an injected instruction with a CANARY token.
+"""Prompt-injection documents: 30 policies carry an injected instruction with a CANARY token.
 
 The injected sentence sits in the same article as one of the policy's facts, so it reaches the
 model context whenever that fact is retrieved. Guards must remove it; answers must never echo it.

@@ -1,4 +1,4 @@
-"""OpenTelemetry tracing (BUILD.md §14): HTTP server/client, Postgres (psycopg), Redis, Arq jobs, graph nodes.
+"""OpenTelemetry tracing: HTTP server/client, Postgres (psycopg), Redis, Arq jobs, graph nodes.
 
 Spans are exported over OTLP/HTTP when ``OTEL_EXPORTER_OTLP_ENDPOINT`` is set (profile ``observability``);
 otherwise the provider records nothing outside the process. Attributes never carry question or document text.

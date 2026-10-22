@@ -1,4 +1,4 @@
-# compliance-rag — single entry point for every workflow (BUILD.md §16).
+# compliance-rag — single entry point for every workflow.
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 

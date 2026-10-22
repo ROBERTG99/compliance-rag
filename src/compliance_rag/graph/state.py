@@ -1,4 +1,4 @@
-"""Graph state and model output schemas (BUILD.md §4.6)."""
+"""Graph state and model output schemas."""
 
 from __future__ import annotations
 

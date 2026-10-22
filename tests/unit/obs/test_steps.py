@@ -1,4 +1,4 @@
-"""Step records and spans per graph node (BUILD.md §14, T-43)."""
+"""Step records and spans per graph node."""
 
 from __future__ import annotations
 

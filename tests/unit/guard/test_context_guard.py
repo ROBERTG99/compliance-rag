@@ -1,4 +1,4 @@
-"""Prompt-injection guards (FR-13, T-23)."""
+"""Prompt-injection guards."""
 
 import pytest
 

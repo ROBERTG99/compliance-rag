@@ -1,4 +1,4 @@
-"""PII redaction before provider calls (T-23)."""
+"""PII redaction before provider calls."""
 
 from compliance_rag.guard.pii import redact
 

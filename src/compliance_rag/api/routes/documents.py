@@ -1,4 +1,4 @@
-"""Documents: upload (FR-1), S3 import, authorised library and version timeline, chunk evidence."""
+"""Documents: upload, S3 import, authorised library and version timeline, chunk evidence."""
 
 from __future__ import annotations
 
@@ -73,7 +73,7 @@ async def _register(
 ) -> UploadAccepted:
     import hashlib
 
-    if await state.queue() is None:  # BUILD.md §4.7: Redis down → upload 503
+    if await state.queue() is None:  # Redis down → upload 503
         raise _queue_unavailable()
     try:
         doc_meta = meta.to_meta(source_format)

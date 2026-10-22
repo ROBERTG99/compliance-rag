@@ -1,4 +1,4 @@
-"""Arq worker runs ingest jobs enqueued with the idempotency key as job id (T-19)."""
+"""Arq worker runs ingest jobs enqueued with the idempotency key as job id."""
 
 from __future__ import annotations
 

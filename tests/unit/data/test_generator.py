@@ -1,4 +1,4 @@
-"""Seeded corpus generator (T-12)."""
+"""Seeded corpus generator."""
 
 from collections import Counter
 

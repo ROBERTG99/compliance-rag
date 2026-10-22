@@ -1,4 +1,4 @@
-"""`make eval-live`: estimate first, never spend past LIVE_EVAL_BUDGET_USD (BUILD.md §11, T-42)."""
+"""`make eval-live`: estimate first, never spend past LIVE_EVAL_BUDGET_USD."""
 
 from __future__ import annotations
 

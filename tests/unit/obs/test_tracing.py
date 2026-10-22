@@ -1,4 +1,4 @@
-"""Spans for HTTP (server and client), Arq jobs and the database driver (BUILD.md §14, T-43)."""
+"""Spans for HTTP (server and client), Arq jobs and the database driver."""
 
 from __future__ import annotations
 

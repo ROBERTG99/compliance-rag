@@ -1,4 +1,4 @@
-"""BM25 leg on OpenSearch (FR-6). Filters for ACL, validity and visibility are inside the query.
+"""BM25 leg on OpenSearch. Filters for ACL, validity and visibility are inside the query.
 
 Talks to the REST API with httpx (traced by the httpx OpenTelemetry instrumentation).
 """

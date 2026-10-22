@@ -1,4 +1,4 @@
-"""Eval questions and judge labels by construction (T-14)."""
+"""Eval questions and judge labels by construction."""
 
 import json
 from collections import Counter

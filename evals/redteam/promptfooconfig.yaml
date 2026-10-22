@@ -1,4 +1,4 @@
-# FR-13 red-team (`make redteam`): Promptfoo against the local API, offline (FakeLLM, dev-oidc tokens).
+# Red-team (`make redteam`): Promptfoo against the local API, offline (FakeLLM, dev-oidc tokens).
 # Cases: cases.v1.yaml, generated from the corpus injection metadata (data/generator/redteam.py).
 # scripts/redteam.sh mints one token per persona into CRAG_TOKEN_<PERSONA> and sets CRAG_REDTEAM_API;
 # provider.mjs asks as the case's persona and returns the whole response body (answer, claims, versions).

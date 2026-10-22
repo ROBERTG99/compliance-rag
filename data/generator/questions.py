@@ -1,6 +1,6 @@
 """Eval questions (300) and judge labels (80) built from the corpus model, labels by construction.
 
-Mix (BUILD.md §11): 120 single-hop, 40 multi-hop, 40 numeric, 50 must-abstain, 30 ACL probes and
+Mix: 120 single-hop, 40 multi-hop, 40 numeric, 50 must-abstain, 30 ACL probes and
 20 version-sensitive; dev 180 / test 120, stratified per category.
 """
 

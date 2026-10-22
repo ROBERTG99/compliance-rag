@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs the security/lint CLIs into ~/.local/bin, idempotently (BUILD.md §1.3, Appendix A).
+# Installs the security/lint CLIs into ~/.local/bin, idempotently.
 # gitleaks and actionlint via `go install`; hadolint and trivy from GitHub release binaries.
 set -euo pipefail
 BIN="${CRAG_TOOLS_BIN:-$HOME/.local/bin}"

@@ -1,4 +1,4 @@
-"""Metrics for BUILD.md §11. Gold spans match on (document_id, version) plus the normalised span text."""
+"""Retrieval and answer metrics. Gold spans match on (document_id, version) plus the normalised span text."""
 
 from __future__ import annotations
 

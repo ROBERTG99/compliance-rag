@@ -137,7 +137,7 @@ async def build_state(settings: Settings, *, validator: TokenValidator | None = 
     )
     await pool.open(wait=True, timeout=30)
     checkpointer = await setup_checkpointer(pool)
-    # always a client: each call fails open on its own (§4.7), so a Redis outage at start-up heals by itself
+    # always a client: each call fails open on its own, so a Redis outage at start-up heals by itself
     redis = Redis.from_url(settings.redis_url, socket_connect_timeout=1, socket_timeout=2)
     if validator is None:
         expected_issuer = settings.oidc_public_issuer or settings.oidc_issuer

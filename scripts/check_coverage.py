@@ -1,4 +1,4 @@
-"""Coverage gate for `make test` (BUILD.md §10): ≥ 85% of lines in each core package, ≥ 70% overall.
+"""Coverage gate for `make test`: ≥ 85% of lines in each core package, ≥ 70% overall.
 
 Reads a Cobertura `coverage.xml` (pytest-cov) and counts lines per file, so packages are measured from the
 actual line hits rather than the report's own rates.

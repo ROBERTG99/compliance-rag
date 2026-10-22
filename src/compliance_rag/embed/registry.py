@@ -46,7 +46,7 @@ async def save_embedder(
 
 
 async def load_embedder(settings: Settings, pool: AsyncConnectionPool, objects: ObjectStore) -> Embedder:
-    """Return the embedder matching ``index_meta``; refuse a configuration that differs (BUILD.md §4.3)."""
+    """Return the embedder matching ``index_meta``; refuse a configuration that differs."""
     meta = await read_index_meta(pool, "embedder")
     if meta is None:
         return create_embedder(settings.embedder, dim=settings.embed_dim)

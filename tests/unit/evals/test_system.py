@@ -1,4 +1,4 @@
-"""The evaluated system is the served system: same retriever wiring as the API (M5 review)."""
+"""The evaluated system is the served system: same retriever wiring as the API."""
 
 from __future__ import annotations
 

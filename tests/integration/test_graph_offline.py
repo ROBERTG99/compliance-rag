@@ -1,4 +1,4 @@
-"""Graph end to end on real stores, offline (T-25): 10 dev questions and a Postgres-checkpointed follow-up."""
+"""Graph end to end on real stores, offline: 10 dev questions and a Postgres-checkpointed follow-up."""
 
 from __future__ import annotations
 

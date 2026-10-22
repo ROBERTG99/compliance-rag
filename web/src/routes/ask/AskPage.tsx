@@ -24,7 +24,7 @@ const NODE_LABELS: Record<string, string> = {
   abstain: "abstain",
 };
 
-const MAX_QUESTION = 2000; // the API's limit (BUILD.md §15)
+const MAX_QUESTION = 2000; // the API's limit
 
 export function AskPage() {
   const { principal } = useAuth();

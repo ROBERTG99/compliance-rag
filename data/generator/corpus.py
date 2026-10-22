@@ -185,7 +185,7 @@ def _build_versions(
 
 
 def _anchor_policies(rng: random.Random) -> list[Policy]:
-    """Hand-specified documents used by the user journeys in BUILD.md §3.4."""
+    """Hand-specified documents used by the user journeys in the end-to-end tests."""
     anchors: list[Policy] = []
 
     poa_values = [

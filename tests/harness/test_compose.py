@@ -1,4 +1,4 @@
-"""compose.yaml and compose.test.yaml follow BUILD.md §16 (T-47)."""
+"""compose.yaml and compose.test.yaml structure."""
 
 from __future__ import annotations
 
@@ -111,8 +111,8 @@ def test_the_worker_healthcheck_does_not_import_the_worker() -> None:
 
 
 def test_python_healthchecks_are_frequent_only_while_starting() -> None:
-    # each check starts a Python process; every 5-10 s they took CPU from the API they share the host with
-    # (NFR-2), so they run every second while starting and every 30 s once the service is healthy
+    # each check starts a Python process; every 5-10 s they took CPU from the API they share the host with,
+    # so they run every second while starting and every 30 s once the service is healthy
     services = _compose("compose.yaml")["services"]
     for name in ("api", "worker", "dev-oidc"):
         check = services[name]["healthcheck"]

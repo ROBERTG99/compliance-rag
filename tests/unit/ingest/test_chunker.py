@@ -1,4 +1,4 @@
-"""Structure-aware chunking (FR-2, T-15)."""
+"""Structure-aware chunking."""
 
 import re
 

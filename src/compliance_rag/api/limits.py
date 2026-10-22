@@ -1,4 +1,4 @@
-"""Per-user ask rate limit (NFR-6): sliding 60 s window in Redis; fails open when Redis is unavailable."""
+"""Per-user ask rate limit: sliding 60 s window in Redis; fails open when Redis is unavailable."""
 
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ class RateLimiter:
 
 
 class BodyLimit:
-    """ASGI guard: refuse request bodies over the limit before they are buffered or spooled (NFR-6).
+    """ASGI guard: refuse request bodies over the limit before they are buffered or spooled.
 
     ``Content-Length`` is checked up front; chunked bodies are counted while they stream in and abort with
     413 as soon as they pass the limit (raised as an HTTPException, which FastAPI's body parsing re-raises).

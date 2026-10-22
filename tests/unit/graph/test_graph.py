@@ -1,4 +1,4 @@
-"""LangGraph RAG graph: routing, abstention, streaming events, follow-ups (FR-8, T-25)."""
+"""LangGraph RAG graph: routing, abstention, streaming events, follow-ups."""
 
 from __future__ import annotations
 

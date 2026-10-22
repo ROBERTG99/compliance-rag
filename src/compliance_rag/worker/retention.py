@@ -1,4 +1,4 @@
-"""`purge_expired` (daily cron): retention per BUILD.md §5 — answers 90 days, feedback 365, finished
+"""`purge_expired` (daily cron): retention: answers 90 days, feedback 365, finished
 ingestion jobs 30; the audit log is kept (one row records each purge).
 
 An answer that still has feedback inside its own window is kept until that feedback expires, and newer

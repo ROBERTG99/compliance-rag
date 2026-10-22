@@ -1,8 +1,8 @@
-"""Scripted demo of the §3.4 user journeys against a running stack, offline (FakeLLM, dev-oidc personas).
+"""Scripted demo of the main user journeys against a running stack, offline (FakeLLM, dev-oidc personas).
 
     uv run python scripts/demo.py --api http://localhost:8610 --oidc http://localhost:8612
 
-Exits non-zero if any step does not behave as the spec describes. ``run_demo`` is also driven in-process by
+Exits non-zero if any step does not behave as documented. ``run_demo`` is also driven in-process by
 ``tests/integration/test_demo.py``.
 """
 
@@ -228,7 +228,7 @@ async def secondary_journeys(
 async def run_demo(
     client_for: ClientFor, *, log: Callable[[str], None] = print, process_job: ProcessJob | None = None
 ) -> list[Step]:
-    log("Main journey (§3.4)")
+    log("Main journey")
     steps = await main_journey(client_for, log)
     for s in steps:
         log(f"  {s.name}: {s.detail}")

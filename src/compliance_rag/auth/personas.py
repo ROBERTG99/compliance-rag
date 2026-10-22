@@ -1,4 +1,4 @@
-"""Roles, groups and the four dev personas (BUILD.md §2 Users, §4.1 dev-oidc)."""
+"""Roles, groups and the four dev personas."""
 
 from __future__ import annotations
 

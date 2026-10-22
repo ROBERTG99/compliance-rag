@@ -1,4 +1,4 @@
-"""`crag reindex`: rebuild OpenSearch and Qdrant from Postgres, keeping ACL, validity and visibility (T-40)."""
+"""`crag reindex`: rebuild OpenSearch and Qdrant from Postgres, keeping ACL, validity and visibility."""
 
 from __future__ import annotations
 

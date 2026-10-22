@@ -1,6 +1,6 @@
 """LLM gateway — the only module that imports provider SDKs (``anthropic``, ``openai``, Bedrock runtime).
 
-Responsibilities (BUILD.md Appendix B): provider selection (FakeLLM offline, Anthropic, Claude on
+Responsibilities: provider selection (FakeLLM offline, Anthropic, Claude on
 Bedrock via ``AnthropicBedrockMantle``), cassettes, PII redaction before any provider call, adaptive
 thinking with an explicit effort per route, JSON-schema structured output, streaming, prompt caching of
 the stable system prefix, ``stop_reason`` checks (``refusal`` → ``LLMRefusal``, ``max_tokens`` →

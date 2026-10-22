@@ -1,4 +1,4 @@
-"""Prometheus metrics (BUILD.md §14)."""
+"""Prometheus metrics."""
 
 from __future__ import annotations
 

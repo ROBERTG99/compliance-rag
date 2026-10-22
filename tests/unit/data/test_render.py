@@ -1,4 +1,4 @@
-"""Every source format parses back to text containing the facts (T-13)."""
+"""Every source format parses back to text containing the facts."""
 
 import io
 import re

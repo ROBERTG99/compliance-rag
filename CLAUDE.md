@@ -5,8 +5,7 @@ verified, version-valid citations, per-document ACL and hybrid retrieval (OpenSe
 pgvector/Qdrant, RRF, reranking). The model only composes answers; ACL, validity, retrieval,
 fusion, reranking, citation verification and abstention are deterministic code.
 
-Full specification: `docs/specs/000-build-spec.md` (originally `BUILD.md`).
-Progress: `PROGRESS.md`. Decisions: `docs/DECISIONS.md` and ADRs in `docs/adr/`.
+Architecture: `docs/architecture.md`. Decisions: `docs/DECISIONS.md` and ADRs in `docs/adr/`.
 Known gaps: `docs/KNOWN_LIMITATIONS.md`.
 
 ## Map
@@ -63,7 +62,7 @@ tests/           unit/ integration/ contract/ e2e/ harness/ perf/
 - Unauthorized resources return 404 (no existence leakage); abstentions for restricted and unknown topics are byte-identical (minus `run_id`, timings).
 - Only verified claims stream to clients.
 - Settings via `compliance_rag.settings.Settings` (`CRAG_` prefix); `.env.example` documents every variable.
-- Conventional Commits, one per task; small verified increments.
+- Conventional Commits; small verified increments.
 
 ## Testing rules
 
@@ -72,7 +71,7 @@ tests/           unit/ integration/ contract/ e2e/ harness/ perf/
 - Never skip, xfail or weaken a test or threshold; record gaps in `docs/KNOWN_LIMITATIONS.md`.
 - Integration tests use testcontainers (or `CRAG_TEST_*` URLs in Docker).
 
-## Commit attribution (BUILD.md §1.1)
+## Commit attribution
 
 Do not add Co-Authored-By, Claude-Session or "Generated with Claude Code" trailers to commits or
 pull requests. Never modify `git config user.*` or the `GIT_AUTHOR_*` / `GIT_COMMITTER_*` variables.
@@ -89,6 +88,6 @@ pull requests. Never modify `git config user.*` or the `GIT_AUTHOR_*` / `GIT_COM
 
 ## Harness
 
-- Subagents in `.claude/agents/` (`reviewer` at the end of each milestone, `acl-auditor`, `retrieval-reviewer`, ...).
+- Subagents in `.claude/agents/` (`reviewer` before merging a change, `acl-auditor`, `retrieval-reviewer`, ...).
 - Skills in `.claude/skills/` (`tdd`, `quality-gate`, `debug-retrieval`, ...). Hooks in `.claude/hooks/`.
 - Path-scoped rules in `.claude/rules/`.

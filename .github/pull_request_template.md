@@ -1,6 +1,6 @@
 ## Summary
 
-<!-- What changes and why. Link the task (T-xx) or issue. -->
+<!-- What changes and why. Link the related issue. -->
 
 ## Checks
 

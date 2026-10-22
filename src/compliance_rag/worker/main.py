@@ -72,7 +72,7 @@ async def reindex_all(ctx: dict[str, Any], reembed: bool = False) -> dict[str, A
 
 @traced_job
 async def purge_expired(ctx: dict[str, Any]) -> dict[str, int]:
-    """Cron (daily, 03:10 UTC): retention for answers, feedback and finished jobs (BUILD.md §5)."""
+    """Cron (daily, 03:10 UTC): retention for answers, feedback and finished jobs."""
     from compliance_rag.worker.retention import purge_expired as purge
 
     services: Services = ctx["services"]

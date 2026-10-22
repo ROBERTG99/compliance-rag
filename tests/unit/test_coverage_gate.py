@@ -1,4 +1,4 @@
-"""Coverage gate for `make test` (BUILD.md §10): ≥ 85% lines per core package, ≥ 70% overall."""
+"""Coverage gate for `make test`: ≥ 85% lines per core package, ≥ 70% overall."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Structured JSON logs (structlog) with ``correlation_id`` and ``run_id`` (BUILD.md §14).
+"""Structured JSON logs (structlog) with ``correlation_id`` and ``run_id``.
 
 Question, answer, quote, comment, prompt and document text never reach a log line: those keys are replaced by
 ``[redacted]`` at any depth, whatever the call site passes, and exceptions are rendered as their types and

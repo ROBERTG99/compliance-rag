@@ -1,4 +1,4 @@
-"""Dev OIDC issuer and API token validation (FR-11, T-26)."""
+"""Dev OIDC issuer and API token validation."""
 
 from __future__ import annotations
 

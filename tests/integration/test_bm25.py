@@ -1,4 +1,4 @@
-"""OpenSearch BM25 leg filters ACL, validity and visibility in the query (FR-6, T-18)."""
+"""OpenSearch BM25 leg filters ACL, validity and visibility in the query."""
 
 from __future__ import annotations
 

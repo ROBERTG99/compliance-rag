@@ -1,4 +1,4 @@
-"""Eval metrics, graded against ground truth from the corpus model (BUILD.md §11)."""
+"""Eval metrics, graded against ground truth from the corpus model."""
 
 from __future__ import annotations
 

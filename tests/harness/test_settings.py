@@ -1,4 +1,4 @@
-"""Claude Code settings, CLAUDE.md and rules (T-04)."""
+"""Claude Code settings, CLAUDE.md and rules."""
 
 import json
 from pathlib import Path
@@ -41,7 +41,7 @@ def test_hooks_registered() -> None:
 def test_claude_md_is_short_and_has_rules() -> None:
     text = (ROOT / "CLAUDE.md").read_text()
     assert len(text.splitlines()) < 200
-    for needle in ["Co-Authored-By", "PROGRESS.md", "docs/DECISIONS.md", "gateway", "Principal"]:
+    for needle in ["Co-Authored-By", "docs/DECISIONS.md", "gateway", "Principal"]:
         assert needle in text, needle
     assert (ROOT / "AGENTS.md").is_file()
 

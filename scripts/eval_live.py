@@ -1,4 +1,4 @@
-"""`make eval-live`: the RAG suite against a real model, within LIVE_EVAL_BUDGET_USD (BUILD.md §11).
+"""`make eval-live`: the RAG suite against a real model, within LIVE_EVAL_BUDGET_USD.
 
     CRAG_LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=... LIVE_EVAL_BUDGET_USD=2 uv run python scripts/eval_live.py
     make record-fixtures   # the same with CRAG_RECORD_CASSETTES=1: responses become offline cassettes
@@ -73,7 +73,7 @@ async def run_live(
     return run
 
 
-# §11: live runs are held to a stricter key-fact bar; Ragas faithfulness (live only) is not wired
+# live runs are held to a stricter key-fact bar; Ragas faithfulness (live only) is not wired
 LIVE_THRESHOLDS: dict[str, dict[str, float]] = {"key_fact_accuracy": {"min": 0.90}}
 
 

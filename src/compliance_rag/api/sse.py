@@ -1,4 +1,4 @@
-"""Run event store and SSE framing (BUILD.md §4.5).
+"""Run event store and SSE framing.
 
 Events go to the Redis Stream ``crag:run:{run_id}`` with explicit ids ``0-<seq>`` (TTL 300 s) so a
 client can resume with ``Last-Event-ID``. When Redis is unavailable the store falls back to process

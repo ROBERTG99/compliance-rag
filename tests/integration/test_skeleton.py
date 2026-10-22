@@ -1,4 +1,4 @@
-"""Walking skeleton → real API: an authenticated ask answers through the FakeLLM path (T-08, FR-8)."""
+"""Walking skeleton → real API: an authenticated ask answers through the FakeLLM path."""
 
 import pytest
 

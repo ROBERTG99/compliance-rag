@@ -1,4 +1,4 @@
-"""Source loaders (FR-2): LangChain loaders behind magic-byte, page-count and zip-bomb guards."""
+"""Source loaders: LangChain loaders behind magic-byte, page-count and zip-bomb guards."""
 
 from __future__ import annotations
 

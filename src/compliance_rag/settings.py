@@ -1,4 +1,4 @@
-"""Application settings (``CRAG_`` prefix) plus the shared portfolio variables.
+"""Application settings (``CRAG_`` prefix) plus the shared (unprefixed) variables.
 
 Defaults are offline: FakeLLM, LSA embedder, feature reranker, pgvector. Every variable is
 documented in ``.env.example`` (enforced by ``tests/unit/test_settings.py``).
@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     # paths
     app_root: str = "."
 
-    # shared portfolio variables (no CRAG_ prefix)
+    # shared variables (no CRAG_ prefix)
     demo_mode: Literal["offline", "live"] = Field("offline", validation_alias=_shared("demo_mode"))
     live_eval_budget_usd: float = Field(2.0, validation_alias=_shared("live_eval_budget_usd"))
     anthropic_api_key: SecretStr | None = Field(None, validation_alias=_shared("anthropic_api_key"))

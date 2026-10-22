@@ -25,7 +25,7 @@ and records a hash of the dev ids in the weights file). Datasets are append-only
 ## Metrics and gates
 
 Graded per case by `src/compliance_rag/evals/metrics.py` and aggregated by the vendored evalgate subset
-(`third_party/evalgate/`), with the thresholds of BUILD.md §11 in `evals/suites/rag.yaml` and
+(`third_party/evalgate/`), with the thresholds in `evals/suites/rag.yaml` and
 `evals/suites/retrieval.yaml`:
 
 - **Recall@10, MRR@10**: a gold span (same document, same version, normalised text) in the top 10 reranked

@@ -1,4 +1,4 @@
-"""Stale index copies after a failed ACL sync are never served; the reconcile cron repairs them (M3 review #4)."""
+"""Stale index copies after a failed ACL sync are never served; the reconcile cron repairs them."""
 
 from __future__ import annotations
 

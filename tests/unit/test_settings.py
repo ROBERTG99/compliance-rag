@@ -1,4 +1,4 @@
-"""Settings defaults are offline and every variable is documented (T-09)."""
+"""Settings defaults are offline and every variable is documented."""
 
 import re
 from pathlib import Path

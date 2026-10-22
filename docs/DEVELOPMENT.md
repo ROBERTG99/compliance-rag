@@ -1,8 +1,8 @@
 # Development
 
-## Environment recorded at bootstrap (2026-10-16)
+## Reference environment (2026-10-16)
 
-Environment: Claude Code on the web (`CLAUDE_CODE_REMOTE=true`), Appendix A applied.
+Versions of the tools used for the committed reports (Linux VM).
 
 | Tool | Version |
 |---|---|

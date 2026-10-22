@@ -1,4 +1,4 @@
-"""Documentation deliverables of BUILD.md §18; every number in the README cites where it comes from (T-49)."""
+"""Documentation deliverables: every number in the README cites where it comes from."""
 
 from __future__ import annotations
 
@@ -15,8 +15,6 @@ REQUIRED = [
     "docs/runbook.md",
     "docs/DEVELOPMENT.md",
     "docs/KNOWN_LIMITATIONS.md",
-    "docs/verification.md",
-    "docs/ai-development.md",
     "docs/design-faq.md",
     "CONTRIBUTING.md",
     "SECURITY.md",
@@ -33,13 +31,13 @@ README_SECTIONS = [
     "Guardrails",
     "Decisions",
     "Limitations",
-    "How this was built",
+    "Development",
     "License",
 ]
 # a measured number: a 3-decimal rate, a millisecond figure or an "x of y"/"x/y" count
 NUMBER = re.compile(r"\b0\.\d{3}\b|\b\d+(?:\.\d+)? ms\b|\b\d+ of \d+\b")
-SOURCE = re.compile(r"\]\((?:evals/|docs/|PROGRESS\.md)[^)]*\)|`make [a-z-]+`")
-REPORTS = ["evals/REPORT.md", "evals/reports/bench.json", "evals/reports/redteam.json", "PROGRESS.md"]
+SOURCE = re.compile(r"\]\((?:evals/|docs/)[^)]*\)|`make [a-z-]+`")
+REPORTS = ["evals/REPORT.md", "evals/reports/bench.json", "evals/reports/redteam.json"]
 
 
 def test_documents_exist() -> None:
@@ -49,7 +47,7 @@ def test_documents_exist() -> None:
     assert adrs == ADRS
 
 
-def test_readme_sections_in_portfolio_order() -> None:
+def test_readme_sections_in_order() -> None:
     headings = [
         line[3:].strip() for line in (ROOT / "README.md").read_text().splitlines() if line.startswith("## ")
     ]

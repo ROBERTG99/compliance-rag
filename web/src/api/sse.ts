@@ -4,7 +4,7 @@ import type { Problem } from "./types";
 export interface RunEvent {
   id: number;
   event: string;
-  // event payloads follow BUILD.md §4.5; screens narrow them by `event`
+  // event payloads follow the SSE event contract; screens narrow them by `event`
   data: Record<string, unknown>;
 }
 

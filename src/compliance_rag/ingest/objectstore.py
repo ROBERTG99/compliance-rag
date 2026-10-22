@@ -28,7 +28,7 @@ class ObjectNotFound(KeyError):
 
 
 class StorageUnavailable(OSError):
-    """S3/MinIO cannot be reached or refused the request (BUILD.md §4.7: uploads answer 503)."""
+    """S3/MinIO cannot be reached or refused the request (uploads answer 503)."""
 
 
 def _not_found(exc: ClientError) -> bool:

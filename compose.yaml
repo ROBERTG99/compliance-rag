@@ -143,7 +143,7 @@ services:
     # GET /v1/evals/latest serves what `make eval` last wrote (the image carries the committed copy)
     volumes: ["./evals/reports:/app/evals/reports:ro"]
     # the image's check (a Python process): every second while starting, every 30 s once healthy, so checks do
-    # not take CPU from requests (NFR-2)
+    # not take CPU from requests
     healthcheck:
       interval: 30s
       timeout: 3s
@@ -185,7 +185,7 @@ services:
     depends_on:
       api: { condition: service_healthy }
 
-  # --- profile observability (BUILD.md §14): collector 8680/8681, Grafana 8690, Prometheus 8691, Jaeger 8692
+  # --- profile observability: collector 8680/8681, Grafana 8690, Prometheus 8691, Jaeger 8692
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.132.0
     profiles: ["observability"]

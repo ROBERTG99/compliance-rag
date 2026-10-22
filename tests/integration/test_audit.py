@@ -1,4 +1,4 @@
-"""Append-only, hash-chained audit table (T-11)."""
+"""Append-only, hash-chained audit table."""
 
 from __future__ import annotations
 

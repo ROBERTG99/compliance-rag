@@ -11,9 +11,9 @@ Accepted
 ## Context
 
 The vector leg of hybrid retrieval needs approximate nearest-neighbour search over 384-dimension chunk
-embeddings, and every query must carry the principal's ACL, validity window and visibility
-(`docs/specs/000-build-spec.md` FR-5). Postgres is already the source of truth for documents, versions,
-ACL and chunks, and the system must run with zero outbound network offline (NFR-9). Index copies in other
+embeddings, and every query must carry the principal's ACL, validity window and visibility.
+Postgres is already the source of truth for documents, versions,
+ACL and chunks, and the system must run with zero outbound network offline. Index copies in other
 stores can lag behind a revocation, which is the failure that matters most for a compliance assistant.
 
 ## Decision
@@ -34,7 +34,7 @@ protocol behind compose profile `qdrant` and is selectable with `CRAG_VECTOR_STO
   that must be kept in sync through payload updates (`vector/qdrant.py:123-147`), so a revocation can be
   stale in the index for a while. It is kept as a supported alternative to prove the abstraction.
 - **Pinecone (hosted vector database).** Rejected: a hosted service cannot run in the offline,
-  no-API-key default (NFR-9), and would add a second ACL copy outside the deployment boundary. No adapter
+  no-API-key default, and would add a second ACL copy outside the deployment boundary. No adapter
   exists and none was benchmarked.
 - **No vector store (BM25 only).** Rejected: in the ablation fusing the vector leg gives slightly higher recall, near the noise band
   (hybrid 0.841 against bm25 0.812 recall@10, `evals/REPORT.md` "Retrieval ablation").

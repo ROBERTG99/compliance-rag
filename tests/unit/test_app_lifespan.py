@@ -1,4 +1,4 @@
-"""After the start-up warm-up the API freezes its long-lived objects out of the cyclic GC (NFR-2 tail latency)."""
+"""After the start-up warm-up the API freezes its long-lived objects out of the cyclic GC (tail latency)."""
 
 from __future__ import annotations
 
