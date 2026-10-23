@@ -1,5 +1,5 @@
 # API and Arq worker image. Multi-stage, non-root, no apt-get.
-FROM python:3.12.15-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 AS build
+FROM python:3.14.7-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d AS build
 ARG HTTPS_PROXY
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never \
     UV_PROJECT_ENVIRONMENT=/opt/venv PIP_DISABLE_PIP_VERSION_CHECK=1
@@ -12,7 +12,7 @@ COPY src ./src
 COPY data ./data
 RUN uv sync --frozen --no-dev --no-editable
 
-FROM python:3.12.15-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 AS runtime
+FROM python:3.14.7-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d AS runtime
 # the same BLAS kernels on every AVX2 host, so the seed fits the same LSA model everywhere (docs/DECISIONS.md)
 ENV PATH=/opt/venv/bin:$PATH PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 CRAG_APP_ROOT=/app OPENBLAS_CORETYPE=Haswell
 RUN useradd --uid 10001 --create-home --shell /usr/sbin/nologin crag
