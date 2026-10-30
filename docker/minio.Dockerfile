@@ -14,7 +14,7 @@ RUN go mod init minio-build \
       github.com/go-jose/go-jose/v4@v4.1.4 github.com/buger/jsonparser@v1.1.2 github.com/apache/thrift@v0.24.0 github.com/prometheus/prometheus@v0.311.3 github.com/klauspost/compress@v1.18.7 \
  && go build -mod=mod -o /go/bin/minio github.com/minio/minio
 
-FROM alpine:3.22.6@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8
+FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 RUN adduser -D -u 10001 minio && mkdir -p /data && chown minio /data
 COPY --from=build /go/bin/minio /usr/local/bin/minio
 USER 10001
