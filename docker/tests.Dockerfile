@@ -1,6 +1,6 @@
 # Test runner for `make test-docker` (compose.test.yaml): dev dependencies only; the repository is mounted
 # read-only at /repo, so the image never needs rebuilding for a code change.
-FROM python:3.12.15-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+FROM python:3.15.0-slim@sha256:f5b92f2a669a4c347044f29367f31983280b648250ca94dea66f98c53bc87e58
 ARG HTTPS_PROXY
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never UV_NO_SYNC=1 UV_FROZEN=1 \
     PATH=/opt/venv/bin:$PATH PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
