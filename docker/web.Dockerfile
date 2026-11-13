@@ -12,7 +12,7 @@ ARG VITE_DEV_PERSONAS=0
 ENV VITE_DEV_PERSONAS=$VITE_DEV_PERSONAS
 RUN pnpm exec vite build
 
-FROM nginx:1.30.6-alpine@sha256:970364228b1e4f932abc22d321932816782cca8a20b85a77552a7cfe9acfb3b5
+FROM nginx:1.31.8-alpine@sha256:713fc2ebfd92e8217db451477182ee91944b123d2b1ee9fd5a8c6e91ca6c3a11
 # the SPA needs none of the dynamic modules: dropping them removes 38 packages (gd, fontconfig, libexpat,
 # libxml2, ...) and their CVEs; works offline (no package index needed)
 RUN apk del --no-network nginx-module-acme nginx-module-geoip nginx-module-image-filter nginx-module-njs \
