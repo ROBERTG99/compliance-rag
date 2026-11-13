@@ -1,5 +1,5 @@
 # Static SPA: node build stage, non-root nginx runtime.
-FROM node:22.23.3-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392 AS build
+FROM node:26.13.0-slim@sha256:5adad64f9a1fca2d51972caa65983634c8a774eb300d72b20f7f2a0f60368072 AS build
 ARG HTTPS_PROXY
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=1
 RUN npm install -g pnpm@10.28.0 --no-fund --no-audit
